@@ -95,3 +95,5 @@ display refresh rate and compositor.
 | 2026-10-29 | after 7be16b4 | i5-1235U, 32 GB | `load_file`, 100 MB generated log (`make bench-files`), 623 k lines, warm page cache (`big_log` test, release) | 85 ms |
 | 2026-10-29 | after 7be16b4 | i5-1235U, 32 GB | `load_file`, same file after `posix_fadvise(DONTNEED)` via `dd oflag=nocache` (best effort cold cache, no sudo) | 101 ms |
 | 2026-10-29 | after 7be16b4 | i5-1235U, 32 GB | `load_head`, first 256 KB of that file | 0.3 ms |
+| 2026-10-29 | after c7bdf72 | i5-1235U, 32 GB | `list_dir`, `wide_0` of `make bench-files` (10 000 entries, default excludes plus the tree's `.gitignore`), cold and warm filter (`list_bench` test, release) | 7.1 ms |
+| 2026-10-29 | after c7bdf72 | i5-1235U, 32 GB | `list_dir`, ignored `target/` of that tree (50 top level entries, 5 000 files below it), listed directly | 0.06 ms |

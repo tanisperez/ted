@@ -11,6 +11,9 @@ authors.workspace = true
 ted-core = { path = "../ted-core" }
 thiserror = { workspace = true }
 log = { workspace = true }
+ignore = { workspace = true }
+notify = { workspace = true }
+async-channel = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

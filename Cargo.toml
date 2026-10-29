@@ -30,6 +30,19 @@ log = "0.4"
 rust-i18n = "4.2"
 # The rope of the text buffer, the exact version and features gpui-component already builds.
 ropey = { version = "=2.0.0-beta.1", features = ["metric_chars", "metric_lines_lf", "metric_utf16"] }
+# Syntax highlighting: the exact tree-sitter and grammar versions gpui-component 0.8.0 pins.
+tree-sitter = "=0.26.13"
+tree-sitter-rust = "=0.24.0"
+tree-sitter-javascript = "=0.23.1"
+tree-sitter-json = "=0.24.8"
+tree-sitter-toml-ng = "=0.7.0"
+tree-sitter-md = "=0.5.1"
+tree-sitter-html = "=0.23.2"
+# Folder explorer: gitignore matching, file watching and the batched channel. The exact versions
+# gpui already builds.
+ignore = "0.4.33"
+notify = "8.2"
+async-channel = "2.5"
 
 [workspace.lints.clippy]
 all = "warn"
