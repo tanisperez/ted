@@ -163,5 +163,5 @@ load time.
 
 ## Commands
 
-See `make help` (once the skeleton exists). Main targets: `run`, `build`, `release`, `check`,
-`lint`, `format`, `test`, `bench-files`.
+See `make help`. Main targets: `run`, `build`, `release`, `check`, `lint`, `format`, `test`, and
+`bench-files` once #4 adds it.

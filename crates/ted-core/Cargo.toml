@@ -1,0 +1,13 @@
+[package]
+name = "ted-core"
+description = "The text buffer of ted: rope, positions, selections, edits and undo. No IO."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

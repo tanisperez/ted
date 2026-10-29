@@ -1,0 +1,8 @@
+# Strings shared by several areas.
+_version: 2
+"common.cancel":
+  en: "Cancel"
+  es: "Cancelar"
+"common.ok":
+  en: "OK"
+  es: "Aceptar"
