@@ -6286,6 +6286,11 @@ dependencies = [
 [[package]]
 name = "ted-core"
 version = "0.1.0-dev"
+dependencies = [
+ "fastrand",
+ "pretty_assertions",
+ "ropey",
+]
 
 [[package]]
 name = "ted-syntax"

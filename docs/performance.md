@@ -89,4 +89,6 @@ display refresh rate and compositor.
 
 | Date | Commit | Machine | Metric | Value |
 | --- | --- | --- | --- | --- |
-|  |  |  |  |  |
+| 2026-10-29 | after 5de851c | i5-1235U, Iris Xe, 32 GB, KDE Wayland (XWayland) | Idle 10 s, debug: main thread CPU ticks, GPU render ns | 7 ticks, 0 ns |
+| 2026-10-29 | after 5de851c | i5-1235U, 32 GB | `Buffer::from_text`, 99 MB log, 1.33 M lines (`big_buffer` test, release) | 61 ms |
+| 2026-10-29 | after 5de851c | i5-1235U, 32 GB | `Buffer::line` of the middle line of that buffer | 2 us |

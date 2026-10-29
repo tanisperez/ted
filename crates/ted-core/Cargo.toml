@@ -8,6 +8,11 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+ropey = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+fastrand = { workspace = true }
 
 [lints]
 workspace = true
