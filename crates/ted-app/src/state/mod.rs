@@ -5,3 +5,4 @@ pub mod config;
 pub mod editor;
 pub mod locale;
 pub mod settings;
+pub mod status;

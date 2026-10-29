@@ -32,6 +32,16 @@ enum Content {
     Editor(Entity<EditorView>),
 }
 
+impl AppView {
+    /// The editor shown, if any.
+    pub(crate) fn editor(&self) -> Option<&Entity<EditorView>> {
+        match &self.content {
+            Content::Editor(editor) => Some(editor),
+            _ => None,
+        }
+    }
+}
+
 /// The root view of the main window.
 pub struct AppView {
     /// The settings in effect, read once at startup.
@@ -92,8 +102,8 @@ impl AppView {
             }
         };
         let file_size = loaded.size;
-        let buffer = match loaded.content {
-            FileContent::Text { buffer, .. } => buffer,
+        let (buffer, bom, lossy) = match loaded.content {
+            FileContent::Text { buffer, bom, lossy } => (buffer, bom, lossy),
             FileContent::Binary => {
                 self.content = Content::Message(t!("editor.binary").into());
                 cx.notify();
@@ -104,6 +114,7 @@ impl AppView {
             Content::Editor(editor) => editor.update(cx, |editor, cx| {
                 editor.state.buffer = buffer;
                 editor.state.expected_lines = None;
+                editor.state.read_only = lossy;
                 cx.notify();
             }),
             _ => {
@@ -112,6 +123,8 @@ impl AppView {
                     .then(|| estimate_lines(file_size, buffer.len(), buffer.line_count()));
                 let mut state = EditorState::new(buffer);
                 state.expected_lines = expected_lines;
+                state.bom = bom;
+                state.read_only = lossy;
                 let editor = cx.new(|cx| EditorView::new(state, cx));
                 let focus = editor.read(cx).focus_handle().clone();
                 focus.focus(window, cx);

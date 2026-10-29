@@ -1,0 +1,17 @@
+# The status bar.
+_version: 2
+"status.position":
+  en: "Ln %{line}, Col %{column}"
+  es: "Ln %{line}, Col %{column}"
+"status.spaces":
+  en: "Spaces: %{count}"
+  es: "Espacios: %{count}"
+"status.tabs":
+  en: "Tabs"
+  es: "Tabulaciones"
+"status.encoding_bom":
+  en: "UTF-8 with BOM"
+  es: "UTF-8 con BOM"
+"status.encoding_lossy":
+  en: "UTF-8 (read only)"
+  es: "UTF-8 (solo lectura)"

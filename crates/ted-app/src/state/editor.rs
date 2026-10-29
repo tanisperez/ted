@@ -78,6 +78,10 @@ pub struct EditorState {
     /// While only the start of a big file is loaded: its estimated line count, so the gutter
     /// already has its final width and does not jump when the whole text arrives.
     pub expected_lines: Option<usize>,
+    /// The file started with a UTF-8 BOM, which saving restores.
+    pub bom: bool,
+    /// The file was not valid UTF-8 and was decoded lossily: saving would change its bytes.
+    pub read_only: bool,
 }
 
 impl EditorState {
