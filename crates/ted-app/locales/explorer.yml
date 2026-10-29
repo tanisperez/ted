@@ -1,0 +1,8 @@
+# The folder explorer.
+_version: 2
+"explorer.title":
+  en: "Explorer (Ctrl+B)"
+  es: "Explorador (Ctrl+B)"
+"explorer.collapse_all":
+  en: "Collapse all"
+  es: "Contraer todo"

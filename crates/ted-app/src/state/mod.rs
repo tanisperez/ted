@@ -3,6 +3,7 @@
 
 pub mod config;
 pub mod editor;
+pub mod explorer;
 pub mod launch;
 pub mod locale;
 pub mod recents;

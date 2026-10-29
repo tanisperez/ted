@@ -14,14 +14,18 @@ use rust_i18n::t;
 use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
 use telaio_ui::components::EmptyState;
 
-use crate::actions::{OpenFile, OpenFolder};
+use crate::actions::{OpenFile, OpenFolder, ToggleExplorer};
 use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::launch::{self, LaunchError, Target};
 use crate::state::recents::{self, Recents};
 use crate::state::settings::Settings;
 use crate::theme::PaletteExt;
+use crate::theme::metrics::{
+    EXPLORER_RESIZE_HANDLE, EXPLORER_WIDTH, EXPLORER_WIDTH_MAX, EXPLORER_WIDTH_MIN, RAIL_WIDTH,
+};
 
 use super::editor::EditorView;
+use super::explorer::{ExplorerEvent, ExplorerView};
 
 /// Files at least this big show their first [`HEAD_BYTES`] while the rest loads.
 const HEAD_THRESHOLD: u64 = 8 * 1024 * 1024;
@@ -55,6 +59,14 @@ pub struct AppView {
     /// Bumped by every load, so a slow load cannot replace a newer one.
     load_generation: u64,
     focus_handle: FocusHandle,
+    /// The explorer of folder mode, with the subscription to its events.
+    pub(crate) explorer: Option<(Entity<ExplorerView>, Subscription)>,
+    /// Whether the explorer panel is shown (`Ctrl+B`).
+    pub(crate) explorer_visible: bool,
+    /// The explorer panel's width, changed by dragging its edge.
+    explorer_width: f32,
+    /// While the explorer's edge is dragged.
+    resizing_explorer: bool,
 }
 
 impl AppView {
@@ -74,6 +86,10 @@ impl AppView {
             content: Content::Welcome,
             load_generation: 0,
             focus_handle,
+            explorer: None,
+            explorer_visible: true,
+            explorer_width: EXPLORER_WIDTH,
+            resizing_explorer: false,
         };
         view.update_title(window);
         if let Some(path) = path {
@@ -99,7 +115,11 @@ impl AppView {
                 self.recents.add(&Target::File(file.clone()));
                 if matches!(self.target, Some(Target::Folder(_))) {
                     self.file = Some(file.clone());
+                    if let Some((explorer, _)) = &self.explorer {
+                        explorer.update(cx, |explorer, cx| explorer.reveal(&file, cx));
+                    }
                 } else {
+                    self.explorer = None;
                     self.target = Some(Target::File(file.clone()));
                     self.file = None;
                 }
@@ -108,6 +128,16 @@ impl AppView {
             Ok(target @ Target::Folder(_)) => {
                 log::info!("opening a folder");
                 self.recents.add(&target);
+                let explorer = cx.new(|cx| ExplorerView::new(target.path().to_path_buf(), cx));
+                let subscription = cx.subscribe_in(
+                    &explorer,
+                    window,
+                    |this, _, event: &ExplorerEvent, window, cx| match event {
+                        ExplorerEvent::Open(path) => this.open_path(path, window, cx),
+                    },
+                );
+                self.explorer = Some((explorer, subscription));
+                self.explorer_visible = true;
                 self.target = Some(target);
                 self.file = None;
                 self.load_generation += 1;
@@ -250,6 +280,26 @@ impl AppView {
     }
 }
 
+impl AppView {
+    /// The invisible strip on the explorer's right edge that resizes it.
+    fn render_resize_handle(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .id("explorer-resize")
+            .flex_none()
+            .h_full()
+            .w(px(EXPLORER_RESIZE_HANDLE))
+            .ml(px(-EXPLORER_RESIZE_HANDLE))
+            .cursor_col_resize()
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _, _, cx| {
+                    this.resizing_explorer = true;
+                    cx.stop_propagation();
+                }),
+            )
+    }
+}
+
 impl Render for AppView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         log::trace!("render AppView");
@@ -273,6 +323,26 @@ impl Render for AppView {
                 div().flex_1().child(state)
             }
         };
+        let content = match &self.explorer {
+            Some((explorer, _)) => h_flex()
+                .flex_1()
+                .min_h_0()
+                .child(self.render_rail(cx))
+                .when(self.explorer_visible, |row| {
+                    row.child(
+                        div()
+                            .flex_none()
+                            .h_full()
+                            .w(px(self.explorer_width))
+                            .border_r_1()
+                            .border_color(palette.border)
+                            .child(explorer.clone()),
+                    )
+                    .child(self.render_resize_handle(cx))
+                })
+                .child(content.min_w_0().h_full()),
+            None => content,
+        };
         v_flex()
             .id("app")
             .key_context("App")
@@ -282,6 +352,23 @@ impl Render for AppView {
             )
             .on_action(
                 cx.listener(|this, _: &OpenFolder, window, cx| this.prompt_open(true, window, cx)),
+            )
+            .on_action(cx.listener(|this, _: &ToggleExplorer, _, cx| {
+                if this.explorer.is_some() {
+                    this.explorer_visible = !this.explorer_visible;
+                    cx.notify();
+                }
+            }))
+            .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
+                if this.resizing_explorer {
+                    let width = f32::from(event.position.x) - RAIL_WIDTH;
+                    this.explorer_width = width.clamp(EXPLORER_WIDTH_MIN, EXPLORER_WIDTH_MAX);
+                    cx.notify();
+                }
+            }))
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.listener(|this, _, _, _| this.resizing_explorer = false),
             )
             .size_full()
             .bg(palette.bg)

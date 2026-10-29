@@ -32,3 +32,23 @@ pub const WELCOME_LOGO_SIZE: f32 = 40.0;
 pub const WELCOME_ROW_HEIGHT: f32 = 30.0;
 /// Space between the sections of the empty state.
 pub const WELCOME_SECTION_GAP: f32 = 24.0;
+/// Width of the activity rail left of the explorer.
+pub const RAIL_WIDTH: f32 = 44.0;
+/// Height of a rail button.
+pub const RAIL_BUTTON_HEIGHT: f32 = 42.0;
+/// Width of the rail's active indicator, on the button's left edge.
+pub const RAIL_INDICATOR_WIDTH: f32 = 2.0;
+/// Space between the rail indicator and the button's top and bottom.
+pub const RAIL_INDICATOR_INSET: f32 = 9.0;
+/// Default width of the explorer panel.
+pub const EXPLORER_WIDTH: f32 = 260.0;
+/// Narrowest the explorer panel can be dragged to.
+pub const EXPLORER_WIDTH_MIN: f32 = 180.0;
+/// Widest the explorer panel can be dragged to.
+pub const EXPLORER_WIDTH_MAX: f32 = 520.0;
+/// Width of the invisible strip on the explorer's edge that resizes it.
+pub const EXPLORER_RESIZE_HANDLE: f32 = 4.0;
+/// Height of the explorer's header (the folder name and its buttons).
+pub const EXPLORER_HEADER_HEIGHT: f32 = 36.0;
+/// Side padding of the explorer's list.
+pub const EXPLORER_LIST_PADDING: f32 = 6.0;

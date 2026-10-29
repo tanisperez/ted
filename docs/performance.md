@@ -97,3 +97,6 @@ display refresh rate and compositor.
 | 2026-10-29 | after 7be16b4 | i5-1235U, 32 GB | `load_head`, first 256 KB of that file | 0.3 ms |
 | 2026-10-29 | after c7bdf72 | i5-1235U, 32 GB | `list_dir`, `wide_0` of `make bench-files` (10 000 entries, default excludes plus the tree's `.gitignore`), cold and warm filter (`list_bench` test, release) | 7.1 ms |
 | 2026-10-29 | after c7bdf72 | i5-1235U, 32 GB | `list_dir`, ignored `target/` of that tree (50 top level entries, 5 000 files below it), listed directly | 0.06 ms |
+| 2026-10-29 | after 6d2c4b8 | i5-1235U, Iris Xe, 32 GB, KDE Wayland (XWayland) | Explorer, release: expanding `tree/wide_0` (10 000 entries), listing to rows | 8.7 ms |
+| 2026-10-29 | after 6d2c4b8 | i5-1235U, Iris Xe, 32 GB, KDE Wayland (XWayland) | Explorer, release: 300 wheel steps over that list, main thread CPU | 26 ticks (260 ms) |
+| 2026-10-29 | after 6d2c4b8 | i5-1235U, Iris Xe, 32 GB, KDE Wayland (XWayland) | Explorer open with a watcher, idle 10 s: main thread CPU ticks, GPU render ns | 7 ticks (as an empty window), 0 ns |

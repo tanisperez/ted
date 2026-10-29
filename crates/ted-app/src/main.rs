@@ -65,6 +65,7 @@ fn main() -> ExitCode {
         window::init(cx, &IDENTITY);
         actions::bind_keys(cx);
         views::bind_keys(cx);
+        views::bind_explorer_keys(cx);
         theme::install(cx, &settings);
 
         // 1440x900 logical, capped to 90% of the display (see `window::options`).

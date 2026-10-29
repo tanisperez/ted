@@ -1,11 +1,14 @@
-//! The status bar at the bottom of the main window: with a document open, the cursor position,
+//! The status bar at the bottom of the main window: in folder mode the folder path (a click opens
+//! it in the file manager); with a document open, the cursor position,
 //! the indentation, the encoding and the line ending, right aligned as in the design. The
-//! language joins them with highlighting (#9), the folder path and the branch with folder mode.
+//! language joins them with highlighting (#9), the branch with the Git panel.
 
+use gpui_kit::assets::IconName;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::state::launch::{Target, shorten_path};
 use crate::state::status::DocumentStatus;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::STATUS_BAR_HEIGHT;
@@ -30,6 +33,24 @@ impl AppView {
             .border_color(palette.border)
             .text_size(px(11.5))
             .text_color(palette.fg_subtle)
+            .children(match &self.target {
+                Some(Target::Folder(root)) => {
+                    let root = root.clone();
+                    let label = shorten_path(&root, std::env::home_dir().as_deref());
+                    Some(
+                        h_flex()
+                            .id("status-folder")
+                            .items_center()
+                            .gap(px(6.0))
+                            .cursor_pointer()
+                            .hover(|style| style.underline())
+                            .child(Icon::new(IconName::HardDrive).small())
+                            .child(label)
+                            .on_click(move |_, _, cx| cx.open_with_system(&root)),
+                    )
+                }
+                _ => None,
+            })
             .child(div().flex_1())
             .children(status.map(|status| {
                 h_flex()

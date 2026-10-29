@@ -7,8 +7,8 @@ _version: 2
   en: "This file or folder cannot be opened"
   es: "No se puede abrir este archivo o carpeta"
 "open.folder_placeholder":
-  en: "Open a file of this folder"
-  es: "Abre un archivo de esta carpeta"
+  en: "Pick a file in the explorer"
+  es: "Elige un archivo en el explorador"
 "open.recent":
   en: "Open recent"
   es: "Abrir reciente"

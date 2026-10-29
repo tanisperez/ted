@@ -288,10 +288,24 @@ no rail, no explorer, no tab bar: the editor fills the window. The status bar ha
 
 ### Folder mode
 
-`ted some/folder` or Open folder. The full layout above. Explorer header: folder name as an
-uppercase section label, then New file, New folder and Collapse all (22 px icon buttons). Tree rows
-show Git status letters at the right. `Ctrl+B` toggles the explorer, `Ctrl+Shift+G` the Git panel,
-`Esc` closes a floating panel.
+`ted some/folder`, a recent folder or Open folder. The full layout above; the tab bar comes with
+#8 and the Git panel later. Until a file is opened the content area shows "Pick a file in the
+explorer" with the `Ctrl+O` hint.
+
+- **Rail**: 44 px, `surface`, right border. The Explorer button (files icon 20, 42 px high) is
+  `fg` while the explorer shows and `fg_subtle` otherwise, with the 2 px `accent` indicator 9 px
+  from its top and bottom. A click, or `Ctrl+B`, shows or hides the explorer.
+- **Explorer**: `surface`, right border, 260 px by default, resized by dragging its right edge (a
+  4 px strip with the `col-resize` cursor) between 180 and 520 px. Header 36 px: the folder name as
+  a `SectionLabel`, then Collapse all (telaio `IconButton`). New file and New folder join it with
+  editing. The list is telaio's `TreeRow` (26 px, 16 px per level) with a folder, open folder or
+  file icon (14, `fg_subtle`) as its leading element, inside 6 px of side padding. A folder still
+  being listed shows "…" after its name. The selected row is telaio's selected row (`list_active`,
+  `accent_text` label).
+- **Keyboard** while the explorer has the focus: Up and Down move, Left collapses or goes to the
+  parent, Right expands or goes to the first child, Enter opens or toggles.
+- The file opened in the editor is revealed and selected. The status bar starts with the folder
+  path (hard drive icon, `~` for the home folder); a click opens it in the file manager.
 
 ### Settings
 

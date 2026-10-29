@@ -13,6 +13,8 @@ actions!(
         OpenFile,
         /// Opens a folder with the native dialog (`Ctrl+Shift+O`).
         OpenFolder,
+        /// Shows or hides the explorer in folder mode (`Ctrl+B`).
+        ToggleExplorer,
     ]
 );
 
@@ -36,10 +38,12 @@ pub fn bind_keys(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("cmd-o", OpenFile, None),
         KeyBinding::new("cmd-shift-o", OpenFolder, None),
+        KeyBinding::new("cmd-b", ToggleExplorer, None),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
         KeyBinding::new("ctrl-o", OpenFile, None),
         KeyBinding::new("ctrl-shift-o", OpenFolder, None),
+        KeyBinding::new("ctrl-b", ToggleExplorer, None),
     ]);
 }
