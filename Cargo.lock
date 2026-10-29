@@ -6305,6 +6305,7 @@ name = "ted-syntax"
 version = "0.1.0-dev"
 dependencies = [
  "pretty_assertions",
+ "ropey",
  "ted-core",
  "tree-sitter",
  "tree-sitter-html",
