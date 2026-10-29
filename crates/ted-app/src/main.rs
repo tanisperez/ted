@@ -9,7 +9,7 @@ mod views;
 
 rust_i18n::i18n!("locales", fallback = "en");
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use gpui_kit::component::Root;
@@ -56,10 +56,13 @@ fn main() -> ExitCode {
         state::locale::system_locales().join(", "),
     );
 
+    // What to open: the first argument, a file for now (folders come with the explorer, #6).
+    let file = std::env::args_os().nth(1).map(PathBuf::from);
     let theme_choice = settings.theme;
 
     window::application().run(move |cx| {
         window::init(cx, &IDENTITY);
+        views::bind_keys(cx);
         theme::install(cx, &settings);
 
         // 1440x900 logical, capped to 90% of the display (see `window::options`).
@@ -71,7 +74,7 @@ fn main() -> ExitCode {
                 // changes it while ted is running; an explicit choice sets the mode once.
                 telaio_ui::ThemeChoice::from(theme_choice).apply(Some(window), cx);
 
-                let view = cx.new(|_| AppView::new(settings));
+                let view = cx.new(|cx| AppView::new(settings, file, window, cx));
 
                 // Always listening, whatever the theme choice at startup: Settings can switch to
                 // "System" at any time (see `window::follow_system_appearance`).

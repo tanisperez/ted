@@ -1,0 +1,5 @@
+# The editor area.
+_version: 2
+"editor.binary":
+  en: "This is a binary file and cannot be shown as text."
+  es: "Es un archivo binario y no se puede mostrar como texto."

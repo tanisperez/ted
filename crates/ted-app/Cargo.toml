@@ -19,6 +19,8 @@ rust-i18n = { workspace = true }
 telaio-ui = { workspace = true }
 telaio-app = { workspace = true }
 ted-cli = { path = "../ted-cli" }
+ted-core = { path = "../ted-core" }
+ted-workspace = { path = "../ted-workspace" }
 
 [dev-dependencies]
 serde_json = { workspace = true }

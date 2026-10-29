@@ -15,3 +15,12 @@ pub const TITLE_BAR_HEIGHT: f32 = 40.0;
 pub const STATUS_BAR_HEIGHT: f32 = 24.0;
 /// Side length of the "t" logo in the title bar.
 pub const LOGO_SIZE: f32 = 18.0;
+/// Width of the line number gutter beyond its digits: the left padding plus
+/// [`EDITOR_GUTTER_RIGHT`].
+pub const EDITOR_GUTTER_PADDING: f32 = 28.0;
+/// Space between the line numbers and the gutter's right edge.
+pub const EDITOR_GUTTER_RIGHT: f32 = 16.0;
+/// Space between the gutter and the text.
+pub const EDITOR_TEXT_PADDING: f32 = 4.0;
+/// Width of the editor's vertical scrollbar.
+pub const EDITOR_SCROLLBAR_WIDTH: f32 = 10.0;
