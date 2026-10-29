@@ -1,0 +1,35 @@
+# Saving and unsaved changes.
+_version: 2
+"save.save":
+  en: "Save"
+  es: "Guardar"
+"save.dont_save":
+  en: "Don't save"
+  es: "No guardar"
+"save.unsaved":
+  en: "Save the changes to %{name}?"
+  es: "¿Guardar los cambios de %{name}?"
+"save.unsaved_detail":
+  en: "If you don't save them, they are lost."
+  es: "Si no los guardas, se perderán."
+"save.changed_on_disk":
+  en: "%{name} changed on disk"
+  es: "%{name} ha cambiado en el disco"
+"save.changed_on_disk_detail":
+  en: "Another program changed the file after it was opened. Saving replaces those changes."
+  es: "Otro programa cambió el archivo después de abrirlo. Al guardar se sustituyen esos cambios."
+"save.overwrite":
+  en: "Overwrite"
+  es: "Sobrescribir"
+"save.reload_detail":
+  en: "It also has changes here that are not saved. Reloading discards them."
+  es: "Aquí también tiene cambios sin guardar. Al recargar se descartan."
+"save.reload":
+  en: "Reload"
+  es: "Recargar"
+"save.keep_mine":
+  en: "Keep my changes"
+  es: "Conservar mis cambios"
+"save.read_only":
+  en: "This file is read only: it is not valid UTF-8, or it is still loading."
+  es: "Este archivo es de solo lectura: no es UTF-8 válido, o aún se está cargando."

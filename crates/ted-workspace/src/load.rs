@@ -3,7 +3,7 @@
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
 
 use ted_core::Buffer;
 
@@ -34,6 +34,8 @@ pub struct LoadedFile {
     pub path: PathBuf,
     /// The size of the whole file on disk, also for [`load_head`], which reads only the start.
     pub size: u64,
+    /// When the file was last modified, to notice changes made by other programs.
+    pub modified: Option<SystemTime>,
     pub content: FileContent,
 }
 
@@ -70,12 +72,12 @@ impl LoadError {
 /// Reads the whole file. Blocking: call it off the UI thread.
 pub fn load_file(path: &Path) -> Result<LoadedFile, LoadError> {
     let start = Instant::now();
-    let (mut file, size) = open(path)?;
+    let (mut file, size, modified) = open(path)?;
     // One allocation sized from the metadata and one read, no per-line work.
     let mut bytes = Vec::with_capacity(usize::try_from(size).unwrap_or(0).saturating_add(1));
     file.read_to_end(&mut bytes)
         .map_err(|e| LoadError::new(path, e))?;
-    let loaded = decode(path, size, bytes);
+    let loaded = decode(path, size, modified, bytes);
     log::info!("loaded a file of {size} bytes in {:?}", start.elapsed());
     Ok(loaded)
 }
@@ -85,7 +87,7 @@ pub fn load_file(path: &Path) -> Result<LoadedFile, LoadError> {
 /// the whole file. Same binary detection as [`load_file`].
 pub fn load_head(path: &Path, max_bytes: usize) -> Result<LoadedFile, LoadError> {
     let start = Instant::now();
-    let (file, size) = open(path)?;
+    let (file, size, modified) = open(path)?;
     let mut bytes = Vec::with_capacity(max_bytes.min(usize::try_from(size).unwrap_or(usize::MAX)));
     file.take(max_bytes as u64)
         .read_to_end(&mut bytes)
@@ -93,7 +95,7 @@ pub fn load_head(path: &Path, max_bytes: usize) -> Result<LoadedFile, LoadError>
     if (bytes.len() as u64) < size {
         cut_head(&mut bytes);
     }
-    let loaded = decode(path, size, bytes);
+    let loaded = decode(path, size, modified, bytes);
     log::info!(
         "loaded the head of a file of {size} bytes in {:?}",
         start.elapsed()
@@ -101,13 +103,13 @@ pub fn load_head(path: &Path, max_bytes: usize) -> Result<LoadedFile, LoadError>
     Ok(loaded)
 }
 
-fn open(path: &Path) -> Result<(File, u64), LoadError> {
+fn open(path: &Path) -> Result<(File, u64, Option<SystemTime>), LoadError> {
     let file = File::open(path).map_err(|e| LoadError::new(path, e))?;
     let metadata = file.metadata().map_err(|e| LoadError::new(path, e))?;
     if metadata.is_dir() {
         return Err(LoadError::IsDirectory(path.to_path_buf()));
     }
-    Ok((file, metadata.len()))
+    Ok((file, metadata.len(), metadata.modified().ok()))
 }
 
 /// Shortens a truncated read to end after its last `\n`. With no line end in the block, falls back
@@ -122,7 +124,7 @@ fn cut_head(bytes: &mut Vec<u8>) {
     }
 }
 
-fn decode(path: &Path, size: u64, mut bytes: Vec<u8>) -> LoadedFile {
+fn decode(path: &Path, size: u64, modified: Option<SystemTime>, mut bytes: Vec<u8>) -> LoadedFile {
     let content = if bytes[..bytes.len().min(BINARY_SAMPLE_LEN)].contains(&0) {
         FileContent::Binary
     } else {
@@ -143,6 +145,7 @@ fn decode(path: &Path, size: u64, mut bytes: Vec<u8>) -> LoadedFile {
     LoadedFile {
         path: path.to_path_buf(),
         size,
+        modified,
         content,
     }
 }

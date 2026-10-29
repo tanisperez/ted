@@ -6269,6 +6269,7 @@ dependencies = [
 name = "ted-app"
 version = "0.1.0-dev"
 dependencies = [
+ "async-channel",
  "gpui-kit",
  "log",
  "pretty_assertions",
@@ -6325,6 +6326,7 @@ dependencies = [
  "ignore",
  "log",
  "notify",
+ "pretty_assertions",
  "ted-core",
  "tempfile",
  "thiserror 2.0.21",

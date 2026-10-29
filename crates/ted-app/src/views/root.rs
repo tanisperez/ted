@@ -14,7 +14,7 @@ use rust_i18n::t;
 use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
 use telaio_ui::components::EmptyState;
 
-use crate::actions::{OpenFile, OpenFolder, ToggleExplorer};
+use crate::actions::{OpenFile, OpenFolder, Save, ToggleExplorer};
 use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::launch::{self, LaunchError, Target};
 use crate::state::recents::{self, Recents};
@@ -67,6 +67,14 @@ pub struct AppView {
     explorer_width: f32,
     /// While the explorer's edge is dragged.
     resizing_explorer: bool,
+    /// Keeps the window title in step with the editor (its dirty state).
+    editor_subscription: Option<Subscription>,
+    /// The window title last set, so it is only set again when it changes.
+    last_title: String,
+    /// The user chose to close the window without saving: it may close now.
+    pub(crate) closing: bool,
+    /// Checks the open file on disk when the window gets the focus back.
+    _activation: Subscription,
 }
 
 impl AppView {
@@ -78,6 +86,11 @@ impl AppView {
     ) -> Self {
         let focus_handle = cx.focus_handle();
         focus_handle.focus(window, cx);
+        let activation = cx.observe_window_activation(window, |this, window, cx| {
+            if window.is_window_active() {
+                this.check_disk(window, cx);
+            }
+        });
         let mut view = Self {
             settings,
             recents: recents::load(),
@@ -90,8 +103,12 @@ impl AppView {
             explorer_visible: true,
             explorer_width: EXPLORER_WIDTH,
             resizing_explorer: false,
+            editor_subscription: None,
+            last_title: String::new(),
+            closing: false,
+            _activation: activation,
         };
-        view.update_title(window);
+        view.update_title(window, cx);
         if let Some(path) = path {
             view.open_path(&path, window, cx);
         }
@@ -106,9 +123,18 @@ impl AppView {
         }
     }
 
-    /// Opens a file or a folder, from the command line, a dialog or the recents. A file opened
-    /// while a folder is open is shown inside folder mode.
+    /// Opens a file or a folder, from the command line, a dialog or the recents, asking first
+    /// when the open document has unsaved changes.
     pub(crate) fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
+        let path = path.to_path_buf();
+        self.confirm_discard(window, cx, move |this, window, cx| {
+            this.open_path_now(&path, window, cx)
+        });
+    }
+
+    /// Opens a file or a folder. A file opened while a folder is open is shown inside folder
+    /// mode.
+    fn open_path_now(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
         match launch::resolve(path) {
             Ok(Target::File(file)) => {
                 log::info!("opening a file");
@@ -157,7 +183,7 @@ impl AppView {
             }
         }
         recents::save(&self.recents);
-        self.update_title(window);
+        self.update_title(window, cx);
         cx.notify();
     }
 
@@ -185,17 +211,24 @@ impl AppView {
     }
 
     /// The window title: the file, the folder, or the app name alone.
-    fn update_title(&self, window: &mut Window) {
+    pub(crate) fn update_title(&mut self, window: &mut Window, cx: &App) {
+        let dirty = self
+            .editor()
+            .is_some_and(|editor| editor.read(cx).state.is_dirty());
         let name = self
             .file
             .as_deref()
             .or(self.target.as_ref().map(Target::path))
             .map(launch::display_name);
         let title = match name {
+            Some(name) if dirty => format!("\u{25cf} {name} \u{b7} ted"),
             Some(name) => format!("{name} \u{b7} ted"),
             None => "ted".to_string(),
         };
-        window.set_window_title(&title);
+        if title != self.last_title {
+            window.set_window_title(&title);
+            self.last_title = title;
+        }
     }
 
     /// Loads `path` in the background and shows it. A big file shows its start first, then the
@@ -247,6 +280,7 @@ impl AppView {
             }
         };
         let file_size = loaded.size;
+        let (path, modified) = (loaded.path.clone(), loaded.modified);
         let (buffer, bom, lossy) = match loaded.content {
             FileContent::Text { buffer, bom, lossy } => (buffer, bom, lossy),
             FileContent::Binary => {
@@ -260,6 +294,7 @@ impl AppView {
                 editor.state.buffer = buffer;
                 editor.state.expected_lines = None;
                 editor.state.read_only = lossy;
+                editor.state.disk_modified = modified;
                 cx.notify();
             }),
             _ => {
@@ -269,8 +304,15 @@ impl AppView {
                 let mut state = EditorState::new(buffer);
                 state.expected_lines = expected_lines;
                 state.bom = bom;
-                state.read_only = lossy;
+                // Only the start of a big file: no editing until the whole text replaces it.
+                state.read_only = lossy || expected_lines.is_some();
+                state.path = Some(path);
+                state.disk_modified = modified;
                 let editor = cx.new(|cx| EditorView::new(state, cx));
+                self.editor_subscription =
+                    Some(cx.observe_in(&editor, window, |this, _, window, cx| {
+                        this.update_title(window, cx)
+                    }));
                 let focus = editor.read(cx).focus_handle().clone();
                 focus.focus(window, cx);
                 self.content = Content::Editor(editor);
@@ -353,6 +395,9 @@ impl Render for AppView {
             .on_action(
                 cx.listener(|this, _: &OpenFolder, window, cx| this.prompt_open(true, window, cx)),
             )
+            .on_action(cx.listener(|this, _: &Save, window, cx| {
+                this.save(window, cx).detach();
+            }))
             .on_action(cx.listener(|this, _: &ToggleExplorer, _, cx| {
                 if this.explorer.is_some() {
                     this.explorer_visible = !this.explorer_visible;

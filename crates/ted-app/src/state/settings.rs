@@ -2,7 +2,7 @@
 //! is no explicit "Save" action, every change made through the Settings view writes the file at
 //! once.
 //!
-//! Only what 0.1.0 needs so far: language, theme, fonts and the log level. Each feature adds its
+//! Only what 0.1.0 needs so far: language, theme, fonts, the save cleanup and the log level. Each feature adds its
 //! own settings as it lands.
 
 use std::fs;
@@ -76,6 +76,10 @@ pub struct Settings {
     pub mono_font: String,
     /// The editor font size, in points, clamped to [`MONO_FONT_SIZE_RANGE`].
     pub mono_font_size: f32,
+    /// Whether saving removes the spaces and tabs at the end of every line.
+    pub trim_trailing_whitespace: bool,
+    /// Whether saving ends the file with a line break.
+    pub insert_final_newline: bool,
     /// How much is written to the log file.
     pub log_level: LogLevel,
 }
@@ -89,6 +93,8 @@ impl Default for Settings {
             ui_font_size: 13.0,
             mono_font: "Geist Mono".to_string(),
             mono_font_size: 12.5,
+            trim_trailing_whitespace: true,
+            insert_final_newline: true,
             log_level: LogLevel::default(),
         }
     }
@@ -145,6 +151,18 @@ fn parse_settings(content: &str) -> Settings {
     if let Some(value) = table.get("mono_font_size").and_then(as_f32) {
         settings.mono_font_size =
             value.clamp(*MONO_FONT_SIZE_RANGE.start(), *MONO_FONT_SIZE_RANGE.end());
+    }
+    if let Some(value) = table
+        .get("trim_trailing_whitespace")
+        .and_then(toml::Value::as_bool)
+    {
+        settings.trim_trailing_whitespace = value;
+    }
+    if let Some(value) = table
+        .get("insert_final_newline")
+        .and_then(toml::Value::as_bool)
+    {
+        settings.insert_final_newline = value;
     }
     if let Some(value) = text("log_level").and_then(LogLevel::parse) {
         settings.log_level = value;

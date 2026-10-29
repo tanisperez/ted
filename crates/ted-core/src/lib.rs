@@ -6,10 +6,12 @@
 //! CRLF line ends with a `\r` that [`Buffer::line`] leaves out.
 
 mod buffer;
+mod cleanup;
 mod detect;
 mod history;
 
 pub use buffer::{Buffer, Position};
+pub use cleanup::cleanup_edits;
 pub use detect::{Indent, LineEnding, SAMPLE_LEN, detect_indent, detect_line_ending};
 pub use history::{Edit, EditKind, History, Selection};
 pub use ropey::{Rope, RopeSlice};

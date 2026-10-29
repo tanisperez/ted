@@ -1,5 +1,7 @@
 //! The gpui views. Kept thin: state and logic live in `crate::state`.
 
+mod choice;
+mod document;
 mod editor;
 mod explorer;
 mod rail;

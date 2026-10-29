@@ -87,6 +87,14 @@ fn main() -> ExitCode {
                         .is_some_and(|view| view.read(cx).settings.theme == ThemeChoice::System)
                 });
 
+                // Unsaved changes are asked about before the window closes.
+                let closing = view.downgrade();
+                window.on_window_should_close(cx, move |window, cx| {
+                    closing
+                        .update(cx, |view, cx| view.should_close(window, cx))
+                        .unwrap_or(true)
+                });
+
                 cx.new(|cx| Root::new(view, window, cx))
             });
             // Opening the very first window failing is not recoverable: there is nothing left

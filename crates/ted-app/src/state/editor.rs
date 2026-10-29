@@ -7,6 +7,8 @@
 //! relative to the first visible line, so it stays small.
 
 use std::ops::Range;
+use std::path::PathBuf;
+use std::time::SystemTime;
 
 use ted_core::{Buffer, Edit, EditKind, History, Indent, Position, Selection};
 
@@ -85,8 +87,14 @@ pub struct EditorState {
     pub expected_lines: Option<usize>,
     /// The file started with a UTF-8 BOM, which saving restores.
     pub bom: bool,
-    /// The file was not valid UTF-8 and was decoded lossily: saving would change its bytes.
+    /// The file was not valid UTF-8 and was decoded lossily, or only its start is loaded yet:
+    /// saving would change its bytes.
     pub read_only: bool,
+    /// The file the text comes from.
+    pub path: Option<PathBuf>,
+    /// The file's modification time when it was loaded or saved, to notice other programs'
+    /// changes.
+    pub disk_modified: Option<SystemTime>,
 }
 
 impl EditorState {
@@ -523,6 +531,54 @@ impl EditorState {
         Some(text)
     }
 
+    /// Whether the text differs from the file on disk.
+    pub fn is_dirty(&self) -> bool {
+        self.history.is_dirty()
+    }
+
+    /// Applies the save cleanup (`ted_core::cleanup_edits`) as one undo step, keeping the cursor
+    /// on its line.
+    pub fn apply_cleanup(&mut self, edits: Vec<Edit>) {
+        if edits.is_empty() || self.read_only {
+            return;
+        }
+        let before = self.selection();
+        let shift = |offset: usize| {
+            let mut shifted = offset as isize;
+            for edit in &edits {
+                if edit.start >= offset {
+                    break;
+                }
+                let removed_end = (edit.start + edit.old_text.len()).min(offset);
+                shifted -= (removed_end - edit.start) as isize;
+                if edit.start + edit.old_text.len() <= offset {
+                    shifted += edit.new_text.len() as isize;
+                }
+            }
+            shifted.max(0) as usize
+        };
+        let after = Selection {
+            anchor: shift(before.anchor),
+            head: shift(before.head),
+        };
+        self.history
+            .edit_many(&mut self.buffer, edits, before, after);
+        self.set_selection(after);
+    }
+
+    /// Replaces the text with the file's new content (changed by another program), keeping the
+    /// cursor and the scroll where they can stay. The undo history starts again.
+    pub fn reload(&mut self, buffer: Buffer, modified: Option<SystemTime>) {
+        let cursor = self.cursor;
+        self.buffer = buffer;
+        self.history = History::default();
+        self.anchor = None;
+        self.disk_modified = modified;
+        self.set_cursor(cursor, false);
+        let viewport = self.viewport;
+        self.set_viewport(viewport);
+    }
+
     pub fn undo(&mut self) {
         if let Some(selection) = self.history.undo(&mut self.buffer) {
             self.set_selection(selection);
@@ -912,6 +968,20 @@ mod tests {
         state.move_cursor(Movement::Left, false);
         assert_eq!(state.cursor, Position::new(0, 1));
         assert_eq!(state.selected_text(), None);
+    }
+
+    #[test]
+    fn the_save_cleanup_keeps_the_cursor_and_undoes_at_once() {
+        let mut state = editor("a  \nbc  \nd");
+        at(&mut state, 1, 2);
+        let edits = ted_core::cleanup_edits(&state.buffer, true, true);
+        state.apply_cleanup(edits);
+        assert_eq!(state.buffer.to_text(), "a\nbc\nd\n");
+        assert_eq!(state.cursor, Position::new(1, 2));
+        assert!(state.is_dirty());
+        state.undo();
+        assert_eq!(state.buffer.to_text(), "a  \nbc  \nd");
+        assert!(!state.is_dirty());
     }
 
     #[test]

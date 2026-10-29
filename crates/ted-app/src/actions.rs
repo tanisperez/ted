@@ -15,6 +15,8 @@ actions!(
         OpenFolder,
         /// Shows or hides the explorer in folder mode (`Ctrl+B`).
         ToggleExplorer,
+        /// Saves the open document (`Ctrl+S`).
+        Save,
     ]
 );
 
@@ -39,11 +41,13 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-o", OpenFile, None),
         KeyBinding::new("cmd-shift-o", OpenFolder, None),
         KeyBinding::new("cmd-b", ToggleExplorer, None),
+        KeyBinding::new("cmd-s", Save, None),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
         KeyBinding::new("ctrl-o", OpenFile, None),
         KeyBinding::new("ctrl-shift-o", OpenFolder, None),
         KeyBinding::new("ctrl-b", ToggleExplorer, None),
+        KeyBinding::new("ctrl-s", Save, None),
     ]);
 }

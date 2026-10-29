@@ -68,19 +68,50 @@ pub enum EditKind {
 
 #[derive(Debug, Clone)]
 struct Transaction {
-    edit: Edit,
+    /// Unique among the transactions of one history, for the save point.
+    id: u64,
+    /// The edits, sorted by `start` and not overlapping, in the coordinates of the text before
+    /// the transaction.
+    edits: Vec<Edit>,
     kind: EditKind,
     before: Selection,
     after: Selection,
 }
 
-/// The undo and redo stacks of one buffer.
+impl Transaction {
+    /// Applies the edits, last first so the earlier offsets stay valid.
+    fn apply(&self, buffer: &mut Buffer) {
+        for edit in self.edits.iter().rev() {
+            edit.apply(buffer);
+        }
+    }
+
+    /// Reverts the edits: each inverse at its offset in the text after the transaction.
+    fn revert(&self, buffer: &mut Buffer) {
+        let mut shift = 0isize;
+        let mut inverses = Vec::with_capacity(self.edits.len());
+        for edit in &self.edits {
+            let mut inverse = edit.inverse();
+            inverse.start = (edit.start as isize + shift) as usize;
+            shift += edit.new_text.len() as isize - edit.old_text.len() as isize;
+            inverses.push(inverse);
+        }
+        for inverse in inverses.iter().rev() {
+            inverse.apply(buffer);
+        }
+    }
+}
+
+/// The undo and redo stacks of one buffer, and the step the file on disk matches.
 #[derive(Debug, Clone, Default)]
 pub struct History {
     undo: Vec<Transaction>,
     redo: Vec<Transaction>,
     /// Set when the cursor moves, so the next edit starts a new step.
     broken: bool,
+    next_id: u64,
+    /// The id of the last step applied when the file was saved or loaded (`None`: no step).
+    saved: Option<u64>,
 }
 
 impl History {
@@ -101,14 +132,45 @@ impl History {
         self.redo.clear();
         if !self.broken
             && let Some(last) = self.undo.last_mut()
+            && last.edits.len() == 1
             && merge(last, &edit, kind)
         {
             last.after = after;
             return;
         }
+        self.push(vec![edit], kind, before, after);
+    }
+
+    /// Applies several edits to `buffer` as one step: `edits` sorted by start, not overlapping,
+    /// in the coordinates of the current text (trimming whitespace on save).
+    pub fn edit_many(
+        &mut self,
+        buffer: &mut Buffer,
+        edits: Vec<Edit>,
+        before: Selection,
+        after: Selection,
+    ) {
+        if edits.is_empty() {
+            return;
+        }
+        let transaction = Transaction {
+            id: 0,
+            edits,
+            kind: EditKind::Other,
+            before,
+            after,
+        };
+        transaction.apply(buffer);
+        self.redo.clear();
+        self.push(transaction.edits, EditKind::Other, before, after);
+    }
+
+    fn push(&mut self, edits: Vec<Edit>, kind: EditKind, before: Selection, after: Selection) {
         self.broken = false;
+        self.next_id += 1;
         self.undo.push(Transaction {
-            edit,
+            id: self.next_id,
+            edits,
             kind,
             before,
             after,
@@ -120,10 +182,28 @@ impl History {
         self.broken = true;
     }
 
+    /// The current step, to hand to [`Self::set_saved`] once the text taken now is on disk. The
+    /// next edit starts a new step, so the checkpoint keeps naming exactly this text.
+    pub fn checkpoint(&mut self) -> Option<u64> {
+        self.broken = true;
+        self.undo.last().map(|transaction| transaction.id)
+    }
+
+    /// Records that the file on disk holds the text of `checkpoint`.
+    pub fn set_saved(&mut self, checkpoint: Option<u64>) {
+        self.saved = checkpoint;
+    }
+
+    /// Whether the text differs from the file on disk: undoing back to the saved step makes it
+    /// clean again.
+    pub fn is_dirty(&self) -> bool {
+        self.undo.last().map(|transaction| transaction.id) != self.saved
+    }
+
     /// Undoes the last step and returns the selection from before it.
     pub fn undo(&mut self, buffer: &mut Buffer) -> Option<Selection> {
         let transaction = self.undo.pop()?;
-        transaction.edit.inverse().apply(buffer);
+        transaction.revert(buffer);
         let selection = transaction.before;
         self.redo.push(transaction);
         self.broken = true;
@@ -133,7 +213,7 @@ impl History {
     /// Redoes the last undone step and returns the selection from after it.
     pub fn redo(&mut self, buffer: &mut Buffer) -> Option<Selection> {
         let transaction = self.redo.pop()?;
-        transaction.edit.apply(buffer);
+        transaction.apply(buffer);
         let selection = transaction.after;
         self.undo.push(transaction);
         self.broken = true;
@@ -154,7 +234,7 @@ fn merge(last: &mut Transaction, edit: &Edit, kind: EditKind) -> bool {
     if kind != last.kind {
         return false;
     }
-    let previous = &mut last.edit;
+    let previous = &mut last.edits[0];
     match kind {
         EditKind::Typing => {
             // A word typed after whitespace starts a new step, so undo goes back a word at a time.
@@ -284,6 +364,62 @@ mod tests {
         assert!(!history.can_redo());
         assert_eq!(history.redo(&mut buffer), None);
         assert_eq!(buffer.to_text(), "b");
+    }
+
+    #[test]
+    fn several_edits_undo_and_redo_as_one_step() {
+        let mut buffer = Buffer::from_text("a  \nb\t\nc");
+        let mut history = History::default();
+        let edits = vec![
+            Edit {
+                start: 1,
+                old_text: "  ".into(),
+                new_text: String::new(),
+            },
+            Edit {
+                start: 5,
+                old_text: "\t".into(),
+                new_text: String::new(),
+            },
+            Edit {
+                start: 8,
+                old_text: String::new(),
+                new_text: "\n".into(),
+            },
+        ];
+        let cursor = Selection::cursor(0);
+        history.edit_many(&mut buffer, edits, cursor, cursor);
+        assert_eq!(buffer.to_text(), "a\nb\nc\n");
+        history.undo(&mut buffer);
+        assert_eq!(buffer.to_text(), "a  \nb\t\nc");
+        history.redo(&mut buffer);
+        assert_eq!(buffer.to_text(), "a\nb\nc\n");
+    }
+
+    #[test]
+    fn the_save_point_follows_undo_and_redo() {
+        let mut buffer = Buffer::from_text("");
+        let mut history = History::default();
+        assert!(!history.is_dirty());
+        typed(&mut history, &mut buffer, 0, "a");
+        assert!(history.is_dirty());
+        let checkpoint = history.checkpoint();
+        typed(&mut history, &mut buffer, 1, "b");
+        history.set_saved(checkpoint);
+        // "b" was typed after the checkpoint: still dirty, and it did not merge into "a".
+        assert!(history.is_dirty());
+        history.undo(&mut buffer);
+        assert_eq!(buffer.to_text(), "a");
+        assert!(!history.is_dirty());
+        history.undo(&mut buffer);
+        assert!(history.is_dirty());
+        history.redo(&mut buffer);
+        assert!(!history.is_dirty());
+        // A new edit after undoing past the save point: the saved text cannot come back.
+        history.undo(&mut buffer);
+        typed(&mut history, &mut buffer, 0, "z");
+        history.undo(&mut buffer);
+        assert!(history.is_dirty());
     }
 
     /// Random edits, then undo everything: the text must come back to the start, and redo

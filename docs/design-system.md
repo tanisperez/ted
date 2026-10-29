@@ -307,6 +307,23 @@ explorer" with the `Ctrl+O` hint.
 - The file opened in the editor is revealed and selected. The status bar starts with the folder
   path (hard drive icon, `~` for the home folder); a click opens it in the file manager.
 
+### Saving and unsaved changes
+
+- `Ctrl+S` saves. A document with unsaved changes shows `●` before its name in the window title
+  (`● main.rs · ted`); the tab bar's dot joins it with #8. Undoing back to the saved text makes
+  it clean again.
+- Questions use telaio's modal frame (`views/choice.rs`), never the platform's plain prompt: the
+  title in the header, the explanation in `fg_muted`, the answers in the footer, the suggested one
+  a `PrimaryButton` (also Enter), one that loses work a `DangerButton`, the rest
+  `SecondaryButton`. Escape or the close button cancels.
+- Closing the window, or opening another file, with unsaved changes asks "Save the changes to
+  name?": Don't save (danger), Cancel, Save (primary).
+- When the window gets the focus back, a file changed by another program reloads at once if it has
+  no unsaved changes; otherwise it asks: Keep my changes, Reload (primary). Saving over a file
+  changed on disk asks first: Cancel, Overwrite (primary).
+- Saving trims trailing whitespace and ends the file with a line break (`trim_trailing_whitespace`
+  and `insert_final_newline` in `settings.toml`, both on), as one undo step.
+
 ### Settings
 
 Modal over the window (`Ctrl+,`): 800 x 720, `overlay`, radius 14, shadow, `scrim` behind it. Left
