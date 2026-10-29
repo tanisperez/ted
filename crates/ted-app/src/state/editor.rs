@@ -8,7 +8,7 @@
 
 use std::ops::Range;
 
-use ted_core::{Buffer, Position};
+use ted_core::{Buffer, Edit, EditKind, History, Indent, Position, Selection};
 
 /// Empty space above the first line, in pixels.
 pub const PADDING_TOP: f32 = 10.0;
@@ -64,6 +64,11 @@ pub struct EditorState {
     pub buffer: Buffer,
     /// Where the cursor is.
     pub cursor: Position,
+    /// Where the selection started, when there is one. The selection runs from here to the
+    /// cursor.
+    pub anchor: Option<Position>,
+    /// Undo and redo.
+    pub history: History,
     /// The display column vertical movements try to keep, set by horizontal ones.
     preferred_column: Option<usize>,
     /// Vertical scroll offset, in pixels from the top of the document.
@@ -168,8 +173,26 @@ impl EditorState {
         line.min(self.buffer.line_count() - 1)
     }
 
-    /// Moves the cursor and scrolls it into view.
-    pub fn move_cursor(&mut self, movement: Movement) {
+    /// Moves the cursor and scrolls it into view. With `select`, the selection extends to the new
+    /// place; without it, a selection collapses (to its start or end for Left and Right).
+    pub fn move_cursor(&mut self, movement: Movement, select: bool) {
+        self.history.break_group();
+        if select {
+            self.anchor.get_or_insert(self.cursor);
+        } else if let Some(anchor) = self.anchor.take()
+            && anchor != self.cursor
+            && matches!(movement, Movement::Left | Movement::Right)
+        {
+            let (start, end) = (anchor.min(self.cursor), anchor.max(self.cursor));
+            self.cursor = if movement == Movement::Left {
+                start
+            } else {
+                end
+            };
+            self.preferred_column = None;
+            self.scroll_to_cursor();
+            return;
+        }
         let buffer = &self.buffer;
         let cursor = self.cursor;
         let page = self.viewport.lines_per_page();
@@ -241,14 +264,277 @@ impl EditorState {
         self.scroll_y += scroll_lines * f64::from(self.viewport.line_height);
         self.clamp_scroll();
         self.cursor = position;
+        if self.anchor == Some(position) {
+            self.anchor = None;
+        }
         self.scroll_to_cursor();
     }
 
-    /// Puts the cursor at `position` (a click), clamped to the text.
-    pub fn set_cursor(&mut self, position: Position) {
+    /// Puts the cursor at `position` (a click), clamped to the text. With `select` (a drag, or a
+    /// Shift click), the selection extends to it.
+    pub fn set_cursor(&mut self, position: Position, select: bool) {
+        self.history.break_group();
         let offset = self.buffer.position_to_offset(position);
-        self.cursor = self.buffer.offset_to_position(offset);
+        let position = self.buffer.offset_to_position(offset);
+        if select {
+            self.anchor.get_or_insert(self.cursor);
+        } else {
+            self.anchor = None;
+        }
+        self.cursor = position;
+        if self.anchor == Some(position) {
+            self.anchor = None;
+        }
         self.preferred_column = None;
+    }
+
+    /// The selection as byte offsets.
+    pub fn selection(&self) -> Selection {
+        let head = self.buffer.position_to_offset(self.cursor);
+        let anchor = self
+            .anchor
+            .map_or(head, |anchor| self.buffer.position_to_offset(anchor));
+        Selection { anchor, head }
+    }
+
+    /// Sets the selection from byte offsets.
+    pub fn set_selection(&mut self, selection: Selection) {
+        self.cursor = self.buffer.offset_to_position(selection.head);
+        self.anchor =
+            (!selection.is_empty()).then(|| self.buffer.offset_to_position(selection.anchor));
+        self.preferred_column = None;
+    }
+
+    /// The selected text, `None` when nothing is selected.
+    pub fn selected_text(&self) -> Option<String> {
+        let selection = self.selection();
+        (!selection.is_empty()).then(|| self.buffer.text_in(selection.range()))
+    }
+
+    pub fn select_all(&mut self) {
+        self.history.break_group();
+        self.set_selection(Selection {
+            anchor: 0,
+            head: self.buffer.len(),
+        });
+    }
+
+    /// Selects the word under `position` (a double click), or the single character there when it
+    /// is not part of a word.
+    pub fn select_word_at(&mut self, position: Position) {
+        let offset = self.buffer.position_to_offset(position);
+        let position = self.buffer.offset_to_position(offset);
+        let line = self.buffer.line(position.line).to_string();
+        let start_of_line = offset - position.column;
+        let (start, end) = word_range(&line, position.column);
+        self.history.break_group();
+        self.set_selection(Selection {
+            anchor: start_of_line + start,
+            head: start_of_line + end,
+        });
+    }
+
+    /// Selects line `line` and its line break (a triple click).
+    pub fn select_line(&mut self, line: usize) {
+        let line = line.min(self.buffer.line_count() - 1);
+        let start = self.buffer.line_to_byte(line);
+        let end = self.buffer.line_to_byte(line + 1);
+        self.history.break_group();
+        self.set_selection(Selection {
+            anchor: start,
+            head: end,
+        });
+    }
+
+    /// Replaces the selection (or inserts at the cursor) with `text`, as typing or another edit.
+    pub fn insert(&mut self, text: &str, kind: EditKind) {
+        let selection = self.selection();
+        self.replace(selection.range(), text, kind);
+    }
+
+    /// Replaces `range` with `text` and puts the cursor after it. Does nothing on a read only
+    /// document.
+    pub fn replace(&mut self, range: Range<usize>, text: &str, kind: EditKind) {
+        if self.read_only {
+            return;
+        }
+        let before = self.selection();
+        let after = Selection::cursor(range.start + text.len());
+        let edit = Edit {
+            start: range.start,
+            old_text: self.buffer.text_in(range),
+            new_text: text.to_string(),
+        };
+        self.history
+            .edit(&mut self.buffer, edit, kind, before, after);
+        self.set_selection(after);
+        self.scroll_to_cursor();
+    }
+
+    /// Enter: a line break in the document's line ending, then the current line's indentation.
+    pub fn newline(&mut self) {
+        let line = self.buffer.line(self.cursor.line).to_string();
+        let indent_len = line.len() - line.trim_start_matches([' ', '\t']).len();
+        let column = self.cursor.column.min(indent_len);
+        let text = format!("{}{}", self.buffer.line_ending().as_str(), &line[..column]);
+        self.insert(&text, EditKind::Other);
+    }
+
+    /// Backspace: deletes the selection, or the character (or line break) before the cursor.
+    pub fn backspace(&mut self) {
+        let selection = self.selection();
+        if !selection.is_empty() {
+            return self.replace(selection.range(), "", EditKind::Deleting);
+        }
+        let end = selection.head;
+        if end == 0 {
+            return;
+        }
+        let rope = self.buffer.rope();
+        let mut start = rope.floor_char_boundary(end - 1);
+        if rope.byte(start) == b'\n' && start > 0 && rope.byte(start - 1) == b'\r' {
+            start -= 1;
+        }
+        self.replace(start..end, "", EditKind::Deleting);
+    }
+
+    /// Delete: deletes the selection, or the character (or line break) after the cursor.
+    pub fn delete(&mut self) {
+        let selection = self.selection();
+        if !selection.is_empty() {
+            return self.replace(selection.range(), "", EditKind::Deleting);
+        }
+        let start = selection.head;
+        let rope = self.buffer.rope();
+        if start >= rope.len() {
+            return;
+        }
+        let mut end = rope.ceil_char_boundary(start + 1);
+        if rope.byte(start) == b'\r' && end < rope.len() && rope.byte(end) == b'\n' {
+            end += 1;
+        }
+        self.replace(start..end, "", EditKind::Deleting);
+    }
+
+    /// The text of one indentation level: the document's own, spaces by default.
+    fn indent_unit(&self) -> String {
+        match self.buffer.indent() {
+            Some(Indent::Tabs) => "\t".to_string(),
+            Some(Indent::Spaces(count)) => " ".repeat(usize::from(count)),
+            None => " ".repeat(TAB_SIZE),
+        }
+    }
+
+    /// Tab: indents the selected lines when the selection spans lines, otherwise inserts
+    /// indentation up to the next stop.
+    pub fn indent(&mut self) {
+        let unit = self.indent_unit();
+        let selection = self.selection();
+        let range = selection.range();
+        let first = self.buffer.byte_to_line(range.start);
+        let last = self.buffer.byte_to_line(range.end);
+        if first == last {
+            let text = if unit == "\t" {
+                unit
+            } else {
+                let line = self.buffer.line(self.cursor.line).to_string();
+                let column = display_column(&line, self.cursor.column);
+                " ".repeat(unit.len() - column % unit.len())
+            };
+            return self.insert(&text, EditKind::Other);
+        }
+        self.change_lines(first, last, |line| {
+            if line.is_empty() {
+                line.to_string()
+            } else {
+                format!("{unit}{line}")
+            }
+        });
+    }
+
+    /// Shift+Tab: removes one indentation level from the lines of the selection or the cursor.
+    pub fn outdent(&mut self) {
+        let unit = self.indent_unit();
+        let range = self.selection().range();
+        let first = self.buffer.byte_to_line(range.start);
+        let last = self.buffer.byte_to_line(range.end);
+        self.change_lines(first, last, |line| {
+            if let Some(rest) = line.strip_prefix(unit.as_str()) {
+                rest.to_string()
+            } else {
+                line.trim_start_matches([' ', '\t']).to_string()
+            }
+        });
+    }
+
+    /// Rewrites lines `first..=last` (without their line breaks) as one undo step, and selects
+    /// them whole when they were more than one.
+    fn change_lines(&mut self, first: usize, last: usize, change: impl Fn(&str) -> String) {
+        if self.read_only {
+            return;
+        }
+        let start = self.buffer.line_to_byte(first);
+        let end = self.buffer.line_to_byte(last) + self.buffer.line_len(last);
+        let old_text = self.buffer.text_in(start..end);
+        let new_text = old_text
+            .split('\n')
+            .map(|line| {
+                let (body, cr) = match line.strip_suffix('\r') {
+                    Some(body) => (body, "\r"),
+                    None => (line, ""),
+                };
+                format!("{}{cr}", change(body))
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        if new_text == old_text {
+            return;
+        }
+        let before = self.selection();
+        let after = if first == last {
+            let delta = new_text.len() as isize - old_text.len() as isize;
+            let head = (before.head as isize + delta).max(start as isize) as usize;
+            Selection::cursor(head)
+        } else {
+            Selection {
+                anchor: start,
+                head: start + new_text.len(),
+            }
+        };
+        let edit = Edit {
+            start,
+            old_text,
+            new_text,
+        };
+        self.history
+            .edit(&mut self.buffer, edit, EditKind::Other, before, after);
+        self.set_selection(after);
+        self.scroll_to_cursor();
+    }
+
+    /// Cut: removes the selection and returns it.
+    pub fn cut(&mut self) -> Option<String> {
+        if self.read_only {
+            return None;
+        }
+        let text = self.selected_text()?;
+        let range = self.selection().range();
+        self.replace(range, "", EditKind::Other);
+        Some(text)
+    }
+
+    pub fn undo(&mut self) {
+        if let Some(selection) = self.history.undo(&mut self.buffer) {
+            self.set_selection(selection);
+            self.scroll_to_cursor();
+        }
+    }
+
+    pub fn redo(&mut self) {
+        if let Some(selection) = self.history.redo(&mut self.buffer) {
+            self.set_selection(selection);
+            self.scroll_to_cursor();
+        }
     }
 
     /// Scrolls the least needed to show the cursor's line and column.
@@ -370,6 +656,48 @@ pub fn column_for_expanded(line: &str, index: usize) -> usize {
     line.len()
 }
 
+/// The byte range of the word around byte `column` of `line`: letters, digits and `_`. Anything
+/// else selects that one character; whitespace selects the run of whitespace.
+pub fn word_range(line: &str, column: usize) -> (usize, usize) {
+    let column = column.min(line.len());
+    let class = |ch: char| {
+        if ch.is_alphanumeric() || ch == '_' {
+            0
+        } else if ch.is_whitespace() {
+            1
+        } else {
+            2
+        }
+    };
+    let Some(ch) = line[column..]
+        .chars()
+        .next()
+        .or_else(|| line[..column].chars().next_back())
+    else {
+        return (column, column);
+    };
+    let at = if column == line.len() {
+        column - ch.len_utf8()
+    } else {
+        column
+    };
+    let target = class(ch);
+    if target == 2 {
+        return (at, at + ch.len_utf8());
+    }
+    let start = line[..at]
+        .char_indices()
+        .rev()
+        .take_while(|(_, ch)| class(*ch) == target)
+        .last()
+        .map_or(at, |(index, _)| index);
+    let end = line[at..]
+        .char_indices()
+        .find(|(_, ch)| class(*ch) != target)
+        .map_or(line.len(), |(index, _)| at + index);
+    (start, end)
+}
+
 fn advance(display: usize, ch: char) -> usize {
     if ch == '\t' {
         (display / TAB_SIZE + 1) * TAB_SIZE
@@ -439,16 +767,16 @@ mod tests {
     fn horizontal_moves_cross_lines_and_characters() {
         let mut state = editor("añb\ncd");
         state.cursor = Position::new(0, 1);
-        state.move_cursor(Movement::Right);
+        state.move_cursor(Movement::Right, false);
         assert_eq!(state.cursor, Position::new(0, 3));
-        state.move_cursor(Movement::Right);
-        state.move_cursor(Movement::Right);
+        state.move_cursor(Movement::Right, false);
+        state.move_cursor(Movement::Right, false);
         assert_eq!(state.cursor, Position::new(1, 0));
-        state.move_cursor(Movement::Left);
+        state.move_cursor(Movement::Left, false);
         assert_eq!(state.cursor, Position::new(0, 4));
-        state.move_cursor(Movement::Left);
+        state.move_cursor(Movement::Left, false);
         assert_eq!(state.cursor, Position::new(0, 3));
-        state.move_cursor(Movement::Left);
+        state.move_cursor(Movement::Left, false);
         assert_eq!(state.cursor, Position::new(0, 1));
     }
 
@@ -456,34 +784,34 @@ mod tests {
     fn vertical_moves_keep_the_column() {
         let mut state = editor("long line\nab\nlonger line");
         state.cursor = Position::new(0, 7);
-        state.move_cursor(Movement::Down);
+        state.move_cursor(Movement::Down, false);
         assert_eq!(state.cursor, Position::new(1, 2));
-        state.move_cursor(Movement::Down);
+        state.move_cursor(Movement::Down, false);
         assert_eq!(state.cursor, Position::new(2, 7));
-        state.move_cursor(Movement::Down);
+        state.move_cursor(Movement::Down, false);
         assert_eq!(state.cursor, Position::new(2, 11));
-        state.move_cursor(Movement::Up);
+        state.move_cursor(Movement::Up, false);
         assert_eq!(state.cursor, Position::new(1, 2));
     }
 
     #[test]
     fn document_moves_scroll_the_cursor_into_view() {
         let mut state = editor(&"x\n".repeat(99));
-        state.move_cursor(Movement::DocumentEnd);
+        state.move_cursor(Movement::DocumentEnd, false);
         assert_eq!(state.cursor, Position::new(99, 0));
         // Line 99's bottom is 10 + 100 * 20 = 2010, at the bottom of a 200 px viewport.
         assert_eq!(state.scroll_y, 1810.0);
-        state.move_cursor(Movement::DocumentStart);
+        state.move_cursor(Movement::DocumentStart, false);
         assert_eq!(state.scroll_y, 0.0);
     }
 
     #[test]
     fn page_moves_scroll_by_a_page() {
         let mut state = editor(&"x\n".repeat(99));
-        state.move_cursor(Movement::PageDown);
+        state.move_cursor(Movement::PageDown, false);
         assert_eq!(state.cursor.line, 10);
         assert_eq!(state.scroll_y, 200.0);
-        state.move_cursor(Movement::PageUp);
+        state.move_cursor(Movement::PageUp, false);
         assert_eq!(state.cursor.line, 0);
         assert_eq!(state.scroll_y, 0.0);
     }
@@ -495,6 +823,106 @@ mod tests {
         state.expected_lines = Some(estimate_lines(1_000_000, 100, 10));
         assert_eq!(state.gutter_lines(), 100_000);
         assert_eq!(estimate_lines(5, 0, 1), 1);
+    }
+
+    fn at(state: &mut EditorState, line: usize, column: usize) {
+        state.set_cursor(Position::new(line, column), false);
+    }
+
+    #[test]
+    fn enter_keeps_the_indentation_and_the_line_ending() {
+        let mut state = editor("    let a = 1;\r\n");
+        at(&mut state, 0, 14);
+        state.newline();
+        assert_eq!(state.buffer.to_text(), "    let a = 1;\r\n    \r\n");
+        assert_eq!(state.cursor, Position::new(1, 4));
+    }
+
+    #[test]
+    fn typing_replaces_the_selection_and_undoes_in_one_step() {
+        let mut state = editor("hello world");
+        state.set_selection(Selection { anchor: 0, head: 5 });
+        for ch in ["H", "i"] {
+            state.insert(ch, EditKind::Typing);
+        }
+        assert_eq!(state.buffer.to_text(), "Hi world");
+        state.undo();
+        assert_eq!(state.buffer.to_text(), "hello world");
+        assert_eq!(state.selection(), Selection { anchor: 0, head: 5 });
+        state.redo();
+        assert_eq!(state.buffer.to_text(), "Hi world");
+    }
+
+    #[test]
+    fn backspace_and_delete_take_a_crlf_whole() {
+        let mut state = editor("a\r\nb");
+        at(&mut state, 1, 0);
+        state.backspace();
+        assert_eq!(state.buffer.to_text(), "ab");
+        let mut state = editor("añ\r\nb");
+        at(&mut state, 0, 3);
+        state.delete();
+        assert_eq!(state.buffer.to_text(), "añb");
+        state.backspace();
+        assert_eq!(state.buffer.to_text(), "ab");
+    }
+
+    #[test]
+    fn tab_inserts_to_the_next_stop_or_indents_lines() {
+        let mut state = editor("ab\ncd\n");
+        at(&mut state, 0, 1);
+        state.indent();
+        assert_eq!(state.buffer.to_text(), "a   b\ncd\n");
+        state.select_all();
+        state.indent();
+        assert_eq!(state.buffer.to_text(), "    a   b\n    cd\n");
+        state.outdent();
+        assert_eq!(state.buffer.to_text(), "a   b\ncd\n");
+    }
+
+    #[test]
+    fn words_and_lines_select_with_clicks() {
+        assert_eq!(word_range("let foo_bar = 1;", 6), (4, 11));
+        assert_eq!(word_range("let foo_bar = 1;", 11), (11, 12));
+        assert_eq!(word_range("let foo_bar = 1;", 12), (12, 13));
+        assert_eq!(word_range("a, b", 1), (1, 2));
+        assert_eq!(word_range("ñandú", 5), (0, 7));
+        let mut state = editor("one two\nthree\n");
+        state.select_word_at(Position::new(0, 5));
+        assert_eq!(state.selected_text().as_deref(), Some("two"));
+        state.select_line(0);
+        assert_eq!(state.selected_text().as_deref(), Some("one two\n"));
+    }
+
+    #[test]
+    fn cut_removes_the_selection() {
+        let mut state = editor("one two");
+        state.set_selection(Selection { anchor: 3, head: 7 });
+        assert_eq!(state.cut().as_deref(), Some(" two"));
+        assert_eq!(state.buffer.to_text(), "one");
+    }
+
+    #[test]
+    fn shift_moves_extend_and_plain_moves_collapse() {
+        let mut state = editor("abcdef");
+        at(&mut state, 0, 1);
+        state.move_cursor(Movement::Right, true);
+        state.move_cursor(Movement::Right, true);
+        assert_eq!(state.selected_text().as_deref(), Some("bc"));
+        state.move_cursor(Movement::Left, false);
+        assert_eq!(state.cursor, Position::new(0, 1));
+        assert_eq!(state.selected_text(), None);
+    }
+
+    #[test]
+    fn a_read_only_document_does_not_change() {
+        let mut state = editor("text");
+        state.read_only = true;
+        state.insert("x", EditKind::Typing);
+        state.backspace();
+        state.select_all();
+        assert_eq!(state.cut(), None);
+        assert_eq!(state.buffer.to_text(), "text");
     }
 
     #[test]

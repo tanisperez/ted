@@ -9,11 +9,17 @@
 //!
 //! The cursor does not blink: a blink timer would repaint the window twice a second while idle,
 //! which the performance rules forbid.
+//!
+//! Text comes in through gpui's input handler ([`EntityInputHandler`]), so typing, dead keys and
+//! input methods (with their marked text) work as in any native field; editing keys (Enter, Tab,
+//! Backspace, the clipboard, undo) are actions bound in the `Editor` key context.
 
 use gpui_kit::component::ActiveTheme;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
-use ted_core::Position;
+use std::ops::Range;
+
+use ted_core::{EditKind, Position, Selection};
 
 use crate::state::editor::{
     EditorState, Movement, Viewport, column_for_expanded, expand_tabs, expanded_index,
@@ -55,6 +61,48 @@ actions!(
         MoveToDocumentStart,
         /// Moves the cursor to the end of the document.
         MoveToDocumentEnd,
+        /// Extends the selection one character left.
+        SelectLeft,
+        /// Extends the selection one character right.
+        SelectRight,
+        /// Extends the selection one line up.
+        SelectUp,
+        /// Extends the selection one line down.
+        SelectDown,
+        /// Extends the selection to the start of the line.
+        SelectToLineStart,
+        /// Extends the selection to the end of the line.
+        SelectToLineEnd,
+        /// Extends the selection one page up.
+        SelectPageUp,
+        /// Extends the selection one page down.
+        SelectPageDown,
+        /// Extends the selection to the start of the document.
+        SelectToDocumentStart,
+        /// Extends the selection to the end of the document.
+        SelectToDocumentEnd,
+        /// Selects the whole document.
+        SelectAll,
+        /// Deletes the selection or the character before the cursor.
+        Backspace,
+        /// Deletes the selection or the character after the cursor.
+        Delete,
+        /// Breaks the line, keeping its indentation.
+        Newline,
+        /// Indents the selected lines, or inserts indentation.
+        Indent,
+        /// Removes one indentation level from the selected lines.
+        Outdent,
+        /// Copies the selection, or the whole line without one.
+        Copy,
+        /// Cuts the selection, or the whole line without one.
+        Cut,
+        /// Pastes the clipboard's text.
+        Paste,
+        /// Undoes the last change.
+        Undo,
+        /// Redoes the last undone change.
+        Redo,
     ]
 );
 
@@ -73,6 +121,21 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("end", MoveToLineEnd, context),
         KeyBinding::new("pageup", PageUp, context),
         KeyBinding::new("pagedown", PageDown, context),
+        KeyBinding::new("shift-left", SelectLeft, context),
+        KeyBinding::new("shift-right", SelectRight, context),
+        KeyBinding::new("shift-up", SelectUp, context),
+        KeyBinding::new("shift-down", SelectDown, context),
+        KeyBinding::new("shift-home", SelectToLineStart, context),
+        KeyBinding::new("shift-end", SelectToLineEnd, context),
+        KeyBinding::new("shift-pageup", SelectPageUp, context),
+        KeyBinding::new("shift-pagedown", SelectPageDown, context),
+        KeyBinding::new("backspace", Backspace, context),
+        KeyBinding::new("shift-backspace", Backspace, context),
+        KeyBinding::new("delete", Delete, context),
+        KeyBinding::new("enter", Newline, context),
+        KeyBinding::new("shift-enter", Newline, context),
+        KeyBinding::new("tab", Indent, context),
+        KeyBinding::new("shift-tab", Outdent, context),
     ]);
     #[cfg(target_os = "macos")]
     cx.bind_keys([
@@ -80,11 +143,33 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-down", MoveToDocumentEnd, context),
         KeyBinding::new("cmd-left", MoveToLineStart, context),
         KeyBinding::new("cmd-right", MoveToLineEnd, context),
+        KeyBinding::new("cmd-shift-up", SelectToDocumentStart, context),
+        KeyBinding::new("cmd-shift-down", SelectToDocumentEnd, context),
+        KeyBinding::new("cmd-shift-left", SelectToLineStart, context),
+        KeyBinding::new("cmd-shift-right", SelectToLineEnd, context),
+        KeyBinding::new("cmd-a", SelectAll, context),
+        KeyBinding::new("cmd-c", Copy, context),
+        KeyBinding::new("cmd-x", Cut, context),
+        KeyBinding::new("cmd-v", Paste, context),
+        KeyBinding::new("cmd-z", Undo, context),
+        KeyBinding::new("cmd-shift-z", Redo, context),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
         KeyBinding::new("ctrl-home", MoveToDocumentStart, context),
         KeyBinding::new("ctrl-end", MoveToDocumentEnd, context),
+        KeyBinding::new("ctrl-shift-home", SelectToDocumentStart, context),
+        KeyBinding::new("ctrl-shift-end", SelectToDocumentEnd, context),
+        KeyBinding::new("ctrl-a", SelectAll, context),
+        KeyBinding::new("ctrl-c", Copy, context),
+        KeyBinding::new("ctrl-insert", Copy, context),
+        KeyBinding::new("ctrl-x", Cut, context),
+        KeyBinding::new("shift-delete", Cut, context),
+        KeyBinding::new("ctrl-v", Paste, context),
+        KeyBinding::new("shift-insert", Paste, context),
+        KeyBinding::new("ctrl-z", Undo, context),
+        KeyBinding::new("ctrl-shift-z", Redo, context),
+        KeyBinding::new("ctrl-y", Redo, context),
     ]);
 }
 
@@ -96,6 +181,15 @@ pub struct EditorView {
     painted: Vec<PaintedLine>,
     /// While the scrollbar thumb is dragged: the distance from the thumb's top to the pointer.
     thumb_grab: Option<f32>,
+    /// While the mouse button that started a selection is down.
+    selecting: bool,
+    /// The text an input method is composing, as byte offsets: shown in the document, replaced
+    /// as the composition changes and committed when it ends.
+    marked: Option<Range<usize>>,
+    /// The text area's top left corner and line height in the last frame, for the input method's
+    /// candidate window.
+    text_origin: Point<Pixels>,
+    line_height: Pixels,
 }
 
 /// A line as painted in the last frame.
@@ -117,6 +211,10 @@ impl EditorView {
             focus_handle: cx.focus_handle(),
             painted: Vec::new(),
             thumb_grab: None,
+            selecting: false,
+            marked: None,
+            text_origin: Point::default(),
+            line_height: px(20.0),
         }
     }
 
@@ -124,9 +222,54 @@ impl EditorView {
         &self.focus_handle
     }
 
-    fn move_cursor(&mut self, movement: Movement, cx: &mut Context<Self>) {
-        self.state.move_cursor(movement);
+    fn move_cursor(&mut self, movement: Movement, select: bool, cx: &mut Context<Self>) {
+        self.marked = None;
+        self.state.move_cursor(movement, select);
         cx.notify();
+    }
+
+    /// Runs an edit on the state and repaints.
+    fn edit(&mut self, cx: &mut Context<Self>, edit: impl FnOnce(&mut EditorState)) {
+        self.marked = None;
+        edit(&mut self.state);
+        cx.notify();
+    }
+
+    fn copy(&mut self, cut: bool, cx: &mut Context<Self>) {
+        // Nothing selected: the whole line, as most editors do.
+        if self.state.selected_text().is_none() {
+            self.state.select_line(self.state.cursor.line);
+        }
+        let text = if cut {
+            self.state.cut()
+        } else {
+            self.state.selected_text()
+        };
+        if let Some(text) = text {
+            cx.write_to_clipboard(ClipboardItem::new_string(text));
+        }
+        cx.notify();
+    }
+
+    fn paste(&mut self, cx: &mut Context<Self>) {
+        let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) else {
+            return;
+        };
+        // Pasted lines take the document's line ending.
+        let text = text.replace("\r\n", "\n");
+        let text = text.replace('\n', self.state.buffer.line_ending().as_str());
+        self.edit(cx, |state| state.insert(&text, EditKind::Other));
+    }
+
+    /// A UTF-16 range of the platform input as a byte range of the buffer.
+    fn bytes_from_utf16(&self, range: &Range<usize>) -> Range<usize> {
+        let buffer = &self.state.buffer;
+        buffer.utf16_to_byte(range.start)..buffer.utf16_to_byte(range.end)
+    }
+
+    fn utf16_from_bytes(&self, range: &Range<usize>) -> Range<usize> {
+        let buffer = &self.state.buffer;
+        buffer.byte_to_utf16(range.start)..buffer.byte_to_utf16(range.end)
     }
 
     /// The document position under a point relative to the text area's top left corner.
@@ -155,38 +298,224 @@ impl Render for EditorView {
             .track_focus(&self.focus_handle)
             .size_full()
             .on_action(
-                cx.listener(|this, _: &MoveLeft, _, cx| this.move_cursor(Movement::Left, cx)),
-            )
-            .on_action(
-                cx.listener(|this, _: &MoveRight, _, cx| this.move_cursor(Movement::Right, cx)),
-            )
-            .on_action(cx.listener(|this, _: &MoveUp, _, cx| this.move_cursor(Movement::Up, cx)))
-            .on_action(
-                cx.listener(|this, _: &MoveDown, _, cx| this.move_cursor(Movement::Down, cx)),
-            )
-            .on_action(cx.listener(|this, _: &MoveToLineStart, _, cx| {
-                this.move_cursor(Movement::LineStart, cx)
-            }))
-            .on_action(
-                cx.listener(|this, _: &MoveToLineEnd, _, cx| {
-                    this.move_cursor(Movement::LineEnd, cx)
+                cx.listener(|this, _: &MoveLeft, _, cx| {
+                    this.move_cursor(Movement::Left, false, cx)
                 }),
             )
+            .on_action(cx.listener(|this, _: &MoveRight, _, cx| {
+                this.move_cursor(Movement::Right, false, cx)
+            }))
             .on_action(
-                cx.listener(|this, _: &PageUp, _, cx| this.move_cursor(Movement::PageUp, cx)),
+                cx.listener(|this, _: &MoveUp, _, cx| this.move_cursor(Movement::Up, false, cx)),
             )
             .on_action(
-                cx.listener(|this, _: &PageDown, _, cx| this.move_cursor(Movement::PageDown, cx)),
+                cx.listener(|this, _: &MoveDown, _, cx| {
+                    this.move_cursor(Movement::Down, false, cx)
+                }),
             )
+            .on_action(cx.listener(|this, _: &MoveToLineStart, _, cx| {
+                this.move_cursor(Movement::LineStart, false, cx)
+            }))
+            .on_action(cx.listener(|this, _: &MoveToLineEnd, _, cx| {
+                this.move_cursor(Movement::LineEnd, false, cx)
+            }))
+            .on_action(
+                cx.listener(|this, _: &PageUp, _, cx| {
+                    this.move_cursor(Movement::PageUp, false, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &PageDown, _, cx| {
+                this.move_cursor(Movement::PageDown, false, cx)
+            }))
             .on_action(cx.listener(|this, _: &MoveToDocumentStart, _, cx| {
-                this.move_cursor(Movement::DocumentStart, cx)
+                this.move_cursor(Movement::DocumentStart, false, cx)
             }))
             .on_action(cx.listener(|this, _: &MoveToDocumentEnd, _, cx| {
-                this.move_cursor(Movement::DocumentEnd, cx)
+                this.move_cursor(Movement::DocumentEnd, false, cx)
             }))
+            .on_action(
+                cx.listener(|this, _: &SelectLeft, _, cx| {
+                    this.move_cursor(Movement::Left, true, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &SelectRight, _, cx| {
+                this.move_cursor(Movement::Right, true, cx)
+            }))
+            .on_action(
+                cx.listener(|this, _: &SelectUp, _, cx| this.move_cursor(Movement::Up, true, cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &SelectDown, _, cx| {
+                    this.move_cursor(Movement::Down, true, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &SelectToLineStart, _, cx| {
+                this.move_cursor(Movement::LineStart, true, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SelectToLineEnd, _, cx| {
+                this.move_cursor(Movement::LineEnd, true, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SelectPageUp, _, cx| {
+                this.move_cursor(Movement::PageUp, true, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SelectPageDown, _, cx| {
+                this.move_cursor(Movement::PageDown, true, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SelectToDocumentStart, _, cx| {
+                this.move_cursor(Movement::DocumentStart, true, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SelectToDocumentEnd, _, cx| {
+                this.move_cursor(Movement::DocumentEnd, true, cx)
+            }))
+            .on_action(
+                cx.listener(|this, _: &SelectAll, _, cx| this.edit(cx, EditorState::select_all)),
+            )
+            .on_action(
+                cx.listener(|this, _: &Backspace, _, cx| this.edit(cx, EditorState::backspace)),
+            )
+            .on_action(cx.listener(|this, _: &Delete, _, cx| this.edit(cx, EditorState::delete)))
+            .on_action(cx.listener(|this, _: &Newline, _, cx| this.edit(cx, EditorState::newline)))
+            .on_action(cx.listener(|this, _: &Indent, _, cx| this.edit(cx, EditorState::indent)))
+            .on_action(cx.listener(|this, _: &Outdent, _, cx| this.edit(cx, EditorState::outdent)))
+            .on_action(cx.listener(|this, _: &Copy, _, cx| this.copy(false, cx)))
+            .on_action(cx.listener(|this, _: &Cut, _, cx| this.copy(true, cx)))
+            .on_action(cx.listener(|this, _: &Paste, _, cx| this.paste(cx)))
+            .on_action(cx.listener(|this, _: &Undo, _, cx| this.edit(cx, EditorState::undo)))
+            .on_action(cx.listener(|this, _: &Redo, _, cx| this.edit(cx, EditorState::redo)))
             .child(EditorElement {
                 editor: cx.entity(),
             })
+    }
+}
+
+impl EntityInputHandler for EditorView {
+    fn text_for_range(
+        &mut self,
+        range: Range<usize>,
+        adjusted_range: &mut Option<Range<usize>>,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
+    ) -> Option<String> {
+        let bytes = self.bytes_from_utf16(&range);
+        *adjusted_range = Some(self.utf16_from_bytes(&bytes));
+        Some(self.state.buffer.text_in(bytes))
+    }
+
+    fn selected_text_range(
+        &mut self,
+        _ignore_disabled_input: bool,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
+    ) -> Option<UTF16Selection> {
+        let selection = self.state.selection();
+        Some(UTF16Selection {
+            range: self.utf16_from_bytes(&selection.range()),
+            reversed: selection.head < selection.anchor,
+        })
+    }
+
+    fn marked_text_range(
+        &self,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
+    ) -> Option<Range<usize>> {
+        self.marked
+            .as_ref()
+            .map(|range| self.utf16_from_bytes(range))
+    }
+
+    fn unmark_text(&mut self, _window: &mut Window, _cx: &mut Context<Self>) {
+        self.marked = None;
+    }
+
+    fn replace_text_in_range(
+        &mut self,
+        range: Option<Range<usize>>,
+        text: &str,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let range = range
+            .map(|range| self.bytes_from_utf16(&range))
+            .or(self.marked.take())
+            .unwrap_or_else(|| self.state.selection().range());
+        self.state.replace(range, text, EditKind::Typing);
+        cx.notify();
+    }
+
+    fn replace_and_mark_text_in_range(
+        &mut self,
+        range: Option<Range<usize>>,
+        new_text: &str,
+        new_selected_range: Option<Range<usize>>,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let range = range
+            .map(|range| self.bytes_from_utf16(&range))
+            .or(self.marked.clone())
+            .unwrap_or_else(|| self.state.selection().range());
+        let start = range.start;
+        self.state.replace(range, new_text, EditKind::Typing);
+        self.marked = (!new_text.is_empty()).then(|| start..start + new_text.len());
+        // The selection inside the composition, in UTF-16 units of the new text.
+        if let Some(selected) = new_selected_range {
+            let to_byte = |utf16: usize| {
+                let mut units = 0;
+                for (index, ch) in new_text.char_indices() {
+                    if units >= utf16 {
+                        return index;
+                    }
+                    units += ch.len_utf16();
+                }
+                new_text.len()
+            };
+            self.state.set_selection(Selection {
+                anchor: start + to_byte(selected.start),
+                head: start + to_byte(selected.end),
+            });
+        }
+        cx.notify();
+    }
+
+    fn bounds_for_range(
+        &mut self,
+        range_utf16: Range<usize>,
+        _element_bounds: Bounds<Pixels>,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
+    ) -> Option<Bounds<Pixels>> {
+        let start = self.bytes_from_utf16(&range_utf16).start;
+        let position = self.state.buffer.offset_to_position(start);
+        let (lines, first_y) = self.state.visible_lines();
+        if !lines.contains(&position.line) {
+            return None;
+        }
+        let painted = self
+            .painted
+            .iter()
+            .find(|painted| painted.line == position.line)?;
+        let column = position.column.checked_sub(painted.start_column)?;
+        let x = painted.shaped.x_for_index(expanded_index(
+            &painted.text,
+            column.min(painted.text.len()),
+        ));
+        let y = px(first_y) + self.line_height * (position.line - lines.start) as f32;
+        Some(Bounds::new(
+            self.text_origin + point(painted.x + x, y),
+            size(px(CURSOR_WIDTH), self.line_height),
+        ))
+    }
+
+    fn character_index_for_point(
+        &mut self,
+        point: Point<Pixels>,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
+    ) -> Option<usize> {
+        let position = self.position_at(point - self.text_origin);
+        let offset = self.state.buffer.position_to_offset(position);
+        Some(self.state.buffer.byte_to_utf16(offset))
     }
 }
 
@@ -215,6 +544,8 @@ pub struct EditorLayout {
     painted: Vec<PaintedLine>,
     cursor: Option<Bounds<Pixels>>,
     current_line: Option<Bounds<Pixels>>,
+    /// The selected parts of the visible lines.
+    selection: Vec<Bounds<Pixels>>,
     text_hitbox: Hitbox,
     gutter_hitbox: Hitbox,
 }
@@ -366,6 +697,46 @@ impl Element for EditorElement {
                     ))
                 });
 
+            // The selection, one rectangle per visible line it covers. A line whose break is
+            // selected shows one more character's width.
+            let selection = state.selection();
+            let mut selection_rects = Vec::new();
+            if !selection.is_empty() {
+                let range = selection.range();
+                let start = state.buffer.offset_to_position(range.start);
+                let end = state.buffer.offset_to_position(range.end);
+                for painted in &painted {
+                    if painted.line < start.line || painted.line > end.line {
+                        continue;
+                    }
+                    let x_at = |column: usize| {
+                        let column = column.saturating_sub(painted.start_column);
+                        let column = column.min(painted.text.len());
+                        painted.x
+                            + painted
+                                .shaped
+                                .x_for_index(expanded_index(&painted.text, column))
+                    };
+                    let left = if painted.line == start.line {
+                        x_at(start.column)
+                    } else {
+                        painted.x
+                    };
+                    let mut right = if painted.line == end.line {
+                        x_at(end.column)
+                    } else {
+                        x_at(usize::MAX) + char_width
+                    };
+                    if right <= left {
+                        right = left + char_width * 0.5;
+                    }
+                    selection_rects.push(Bounds::from_corners(
+                        point(text_left + left, row_top(painted.line)),
+                        point(text_left + right, row_top(painted.line) + line_height),
+                    ));
+                }
+            }
+
             let numbers = lines
                 .clone()
                 .map(|line| {
@@ -425,6 +796,7 @@ impl Element for EditorElement {
                 painted,
                 cursor,
                 current_line,
+                selection: selection_rects,
                 text_hitbox: window.insert_hitbox(text, HitboxBehavior::Normal),
                 gutter_hitbox: window.insert_hitbox(gutter, HitboxBehavior::Normal),
             }
@@ -457,6 +829,9 @@ impl Element for EditorElement {
                 bounds: layout.text,
             }),
             |window| {
+                for rect in &layout.selection {
+                    window.paint_quad(fill(*rect, palette.accent_subtle));
+                }
                 for (row, painted) in layout.painted.iter().enumerate() {
                     let origin = point(
                         layout.text.left() + painted.x,
@@ -493,9 +868,18 @@ impl Element for EditorElement {
             window.paint_quad(fill(thumb, palette.border_strong).corner_radii(px(3.0)));
         }
 
+        let text_origin = layout.text.origin;
         self.editor.update(cx, |editor, _| {
             editor.painted = std::mem::take(&mut layout.painted);
+            editor.text_origin = text_origin;
+            editor.line_height = line_height;
         });
+        let focus_handle = self.editor.read(cx).focus_handle.clone();
+        window.handle_input(
+            &focus_handle,
+            ElementInputHandler::new(bounds, self.editor.clone()),
+            cx,
+        );
 
         self.register_mouse_handlers(bounds, layout, window);
     }
@@ -562,12 +946,20 @@ impl EditorElement {
             }
             editor.update(cx, |editor, cx| {
                 window.focus(&editor.focus_handle, cx);
+                editor.marked = None;
                 let local = point(
                     event.position.x - text.left(),
                     event.position.y - text.top(),
                 );
                 let position = editor.position_at(local);
-                editor.state.set_cursor(position);
+                match event.click_count {
+                    2 => editor.state.select_word_at(position),
+                    3 => editor.state.select_line(position.line),
+                    _ => {
+                        editor.state.set_cursor(position, event.modifiers.shift);
+                        editor.selecting = true;
+                    }
+                }
                 cx.notify();
             });
             cx.stop_propagation();
@@ -578,8 +970,23 @@ impl EditorElement {
             if !phase.bubble() {
                 return;
             }
-            let Some(scrollbar) = scrollbar else { return };
             editor.update(cx, |editor, cx| {
+                if editor.selecting {
+                    if event.pressed_button == Some(MouseButton::Left) {
+                        let local = point(
+                            event.position.x - text.left(),
+                            event.position.y - text.top(),
+                        );
+                        let position = editor.position_at(local);
+                        editor.state.set_cursor(position, true);
+                        editor.state.scroll_to_cursor();
+                        cx.notify();
+                    } else {
+                        editor.selecting = false;
+                    }
+                    return;
+                }
+                let Some(scrollbar) = scrollbar else { return };
                 if editor.thumb_grab.is_some() {
                     if event.pressed_button == Some(MouseButton::Left) {
                         drag_thumb(editor, scrollbar, event.position.y);
@@ -594,7 +1001,10 @@ impl EditorElement {
         let editor = self.editor.clone();
         window.on_mouse_event(move |_: &MouseUpEvent, phase, _window, cx| {
             if phase.bubble() {
-                editor.update(cx, |editor, _| editor.thumb_grab = None);
+                editor.update(cx, |editor, _| {
+                    editor.thumb_grab = None;
+                    editor.selecting = false;
+                });
             }
         });
     }

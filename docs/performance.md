@@ -103,3 +103,4 @@ display refresh rate and compositor.
 | 2026-10-29 | after 5c1c0ad | i5-1235U, Iris Xe, 32 GB, KDE Wayland (XWayland) | 100 MB log, release: 300 wheel steps (8 ms apart), main thread CPU | 35 ticks in 2.5 s, about 1.2 ms per step |
 | 2026-10-29 | after 5c1c0ad | i5-1235U, Iris Xe, 32 GB, KDE Wayland (XWayland) | 100 MB log, release: dragging the scrollbar thumb from the end, 120 moves (every visible line new on each) | 44 ticks in 2.4 s, about 3.7 ms per move |
 | 2026-10-29 | after 5c1c0ad | i5-1235U, Iris Xe, 32 GB, KDE Wayland (XWayland) | 100 MB log, release: RSS with the whole file loaded | 252 MB |
+| 2026-10-29 | after 5e510fe | i5-1235U, Iris Xe, 32 GB, KDE Wayland (XWayland) | 100 MB log, release: typing 200 characters 10 ms apart in the middle of the file, main thread CPU | 33 ticks, about 1.7 ms per keystroke, painted in the next frame |

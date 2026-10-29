@@ -58,7 +58,7 @@ impl Edit {
 /// What kind of change an edit is, for grouping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EditKind {
-    /// Characters typed: consecutive ones on the same line group together.
+    /// Characters typed: consecutive ones on the same line group together, one word at a time.
     Typing,
     /// Backspace or Delete: consecutive ones group together.
     Deleting,
@@ -157,9 +157,13 @@ fn merge(last: &mut Transaction, edit: &Edit, kind: EditKind) -> bool {
     let previous = &mut last.edit;
     match kind {
         EditKind::Typing => {
+            // A word typed after whitespace starts a new step, so undo goes back a word at a time.
+            let starts_word = previous.new_text.ends_with(char::is_whitespace)
+                && edit.new_text.starts_with(|ch: char| !ch.is_whitespace());
             let follows = edit.old_text.is_empty()
                 && edit.start == previous.start + previous.new_text.len()
-                && !edit.new_text.contains('\n');
+                && !edit.new_text.contains('\n')
+                && !starts_word;
             if follows {
                 previous.new_text.push_str(&edit.new_text);
             }
@@ -222,6 +226,19 @@ mod tests {
     }
 
     #[test]
+    fn undo_goes_back_a_word_at_a_time() {
+        let mut buffer = Buffer::from_text("");
+        let mut history = History::default();
+        for (at, ch) in "ab cd".char_indices() {
+            typed(&mut history, &mut buffer, at, &ch.to_string());
+        }
+        history.undo(&mut buffer);
+        assert_eq!(buffer.to_text(), "ab ");
+        history.undo(&mut buffer);
+        assert_eq!(buffer.to_text(), "");
+    }
+
+    #[test]
     fn a_new_line_or_a_cursor_move_starts_a_new_step() {
         let mut buffer = Buffer::from_text("");
         let mut history = History::default();
@@ -232,6 +249,8 @@ mod tests {
         typed(&mut history, &mut buffer, 3, "c");
         history.undo(&mut buffer);
         assert_eq!(buffer.to_text(), "a\nb");
+        history.undo(&mut buffer);
+        assert_eq!(buffer.to_text(), "a\n");
         history.undo(&mut buffer);
         assert_eq!(buffer.to_text(), "a");
         history.undo(&mut buffer);
