@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help run build release check lint lint-fix format format-check test clean
+.PHONY: help run build release check lint lint-fix format format-check test clean bench-files
 
 help:
 	@echo "Usage: make [target]"
@@ -15,6 +15,7 @@ help:
 	@echo "  format-check  Check formatting without modifying files"
 	@echo "  test          Run all tests"
 	@echo "  clean         Remove build artifacts"
+	@echo "  bench-files   Generate the bench fixtures under target/bench-files/"
 
 run:
 	cargo run
@@ -45,3 +46,6 @@ test:
 
 clean:
 	cargo clean
+
+bench-files:
+	cargo run --release -p ted-workspace --example bench_files
