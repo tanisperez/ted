@@ -3,6 +3,7 @@
 // A GUI application on Windows: never open a console window behind the main window.
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+mod actions;
 mod state;
 mod theme;
 mod views;
@@ -56,12 +57,13 @@ fn main() -> ExitCode {
         state::locale::system_locales().join(", "),
     );
 
-    // What to open: the first argument, a file for now (folders come with the explorer, #6).
-    let file = std::env::args_os().nth(1).map(PathBuf::from);
+    // What to open: the first argument, a file or a folder.
+    let path = std::env::args_os().nth(1).map(PathBuf::from);
     let theme_choice = settings.theme;
 
     window::application().run(move |cx| {
         window::init(cx, &IDENTITY);
+        actions::bind_keys(cx);
         views::bind_keys(cx);
         theme::install(cx, &settings);
 
@@ -74,7 +76,7 @@ fn main() -> ExitCode {
                 // changes it while ted is running; an explicit choice sets the mode once.
                 telaio_ui::ThemeChoice::from(theme_choice).apply(Some(window), cx);
 
-                let view = cx.new(|cx| AppView::new(settings, file, window, cx));
+                let view = cx.new(|cx| AppView::new(settings, path, window, cx));
 
                 // Always listening, whatever the theme choice at startup: Settings can switch to
                 // "System" at any time (see `window::follow_system_appearance`).

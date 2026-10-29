@@ -24,3 +24,11 @@ pub const EDITOR_GUTTER_RIGHT: f32 = 16.0;
 pub const EDITOR_TEXT_PADDING: f32 = 4.0;
 /// Width of the editor's vertical scrollbar.
 pub const EDITOR_SCROLLBAR_WIDTH: f32 = 10.0;
+/// Width of the empty state's column.
+pub const WELCOME_WIDTH: f32 = 440.0;
+/// Side of the large logo of the empty state.
+pub const WELCOME_LOGO_SIZE: f32 = 40.0;
+/// Height of a row of the empty state (actions and recents), as the design's menu rows.
+pub const WELCOME_ROW_HEIGHT: f32 = 30.0;
+/// Space between the sections of the empty state.
+pub const WELCOME_SECTION_GAP: f32 = 24.0;

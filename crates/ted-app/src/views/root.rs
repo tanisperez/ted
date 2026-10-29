@@ -1,16 +1,23 @@
-//! The main window's view: the title bar, the content area and the status bar. The content is the
-//! editor of the file given on the command line, loaded in the background; the explorer, the tabs
-//! and the empty state come later (#6, #7, #8).
+//! The main window's view: the title bar, the content area and the status bar.
+//!
+//! What it shows depends on what was opened (`state::launch`): nothing (the empty state with the
+//! recents, `views/welcome.rs`), one file alone (file mode, the editor fills the window) or a
+//! folder (folder mode; the explorer and the tabs come with #6 and #8). Files load in the
+//! background; a generation counter drops the result of a load that a newer one replaced.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
+use telaio_ui::components::EmptyState;
 
+use crate::actions::{OpenFile, OpenFolder};
 use crate::state::editor::{EditorState, estimate_lines};
+use crate::state::launch::{self, LaunchError, Target};
+use crate::state::recents::{self, Recents};
 use crate::state::settings::Settings;
 use crate::theme::PaletteExt;
 
@@ -23,16 +30,58 @@ const HEAD_BYTES: usize = 256 * 1024;
 
 /// What the content area shows.
 enum Content {
-    /// Nothing to show.
-    Empty,
-    /// The file is being read.
+    /// Nothing opened: the empty state with the recents.
+    Welcome,
+    /// A file is being read.
     Loading,
-    /// The file could not be shown.
-    Message(SharedString),
+    /// A folder is open and no file yet.
+    Folder,
+    /// Something could not be opened or shown: a title and a detail.
+    Message(SharedString, Option<SharedString>),
     Editor(Entity<EditorView>),
 }
 
+/// The root view of the main window.
+pub struct AppView {
+    /// The settings in effect, read once at startup.
+    pub settings: Settings,
+    /// The recently opened folders and files.
+    pub(crate) recents: Recents,
+    /// What is open: `None` in the empty state.
+    pub(crate) target: Option<Target>,
+    /// The file shown in folder mode, `None` until one is opened.
+    pub(crate) file: Option<PathBuf>,
+    content: Content,
+    /// Bumped by every load, so a slow load cannot replace a newer one.
+    load_generation: u64,
+    focus_handle: FocusHandle,
+}
+
 impl AppView {
+    pub fn new(
+        settings: Settings,
+        path: Option<PathBuf>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let focus_handle = cx.focus_handle();
+        focus_handle.focus(window, cx);
+        let mut view = Self {
+            settings,
+            recents: recents::load(),
+            target: None,
+            file: None,
+            content: Content::Welcome,
+            load_generation: 0,
+            focus_handle,
+        };
+        view.update_title(window);
+        if let Some(path) = path {
+            view.open_path(&path, window, cx);
+        }
+        view
+    }
+
     /// The editor shown, if any.
     pub(crate) fn editor(&self) -> Option<&Entity<EditorView>> {
         match &self.content {
@@ -40,35 +89,90 @@ impl AppView {
             _ => None,
         }
     }
-}
 
-/// The root view of the main window.
-pub struct AppView {
-    /// The settings in effect, read once at startup.
-    pub settings: Settings,
-    content: Content,
-}
+    /// Opens a file or a folder, from the command line, a dialog or the recents. A file opened
+    /// while a folder is open is shown inside folder mode.
+    pub(crate) fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
+        match launch::resolve(path) {
+            Ok(Target::File(file)) => {
+                log::info!("opening a file");
+                self.recents.add(&Target::File(file.clone()));
+                if matches!(self.target, Some(Target::Folder(_))) {
+                    self.file = Some(file.clone());
+                } else {
+                    self.target = Some(Target::File(file.clone()));
+                    self.file = None;
+                }
+                self.load(file, window, cx);
+            }
+            Ok(target @ Target::Folder(_)) => {
+                log::info!("opening a folder");
+                self.recents.add(&target);
+                self.target = Some(target);
+                self.file = None;
+                self.load_generation += 1;
+                self.content = Content::Folder;
+            }
+            Err(error) => {
+                let (title, path) = match &error {
+                    LaunchError::NotFound(path) => (t!("open.not_found"), path),
+                    LaunchError::Unreadable(path, _) => (t!("open.unreadable"), path),
+                };
+                log::warn!("cannot open a path: {error:?}");
+                self.recents.remove(path);
+                self.content = Content::Message(
+                    title.into_owned().into(),
+                    Some(path.display().to_string().into()),
+                );
+            }
+        }
+        recents::save(&self.recents);
+        self.update_title(window);
+        cx.notify();
+    }
 
-impl AppView {
-    pub fn new(
-        settings: Settings,
-        file: Option<PathBuf>,
+    /// Asks for a file or a folder with the native dialog and opens it.
+    pub(crate) fn prompt_open(
+        &mut self,
+        folder: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) -> Self {
-        let mut view = Self {
-            settings,
-            content: Content::Empty,
+    ) {
+        let receiver = cx.prompt_for_paths(PathPromptOptions {
+            files: !folder,
+            directories: folder,
+            multiple: false,
+            prompt: None,
+        });
+        cx.spawn_in(window, async move |this, cx| {
+            let Ok(Ok(Some(mut paths))) = receiver.await else {
+                return;
+            };
+            let Some(path) = paths.pop() else { return };
+            let _ = this.update_in(cx, |view, window, cx| view.open_path(&path, window, cx));
+        })
+        .detach();
+    }
+
+    /// The window title: the file, the folder, or the app name alone.
+    fn update_title(&self, window: &mut Window) {
+        let name = self
+            .file
+            .as_deref()
+            .or(self.target.as_ref().map(Target::path))
+            .map(launch::display_name);
+        let title = match name {
+            Some(name) => format!("{name} \u{b7} ted"),
+            None => "ted".to_string(),
         };
-        if let Some(path) = file {
-            view.open_file(path, window, cx);
-        }
-        view
+        window.set_window_title(&title);
     }
 
     /// Loads `path` in the background and shows it. A big file shows its start first, then the
     /// whole text replaces it, keeping the cursor and the scroll.
-    fn open_file(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+    fn load(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+        self.load_generation += 1;
+        let generation = self.load_generation;
         self.content = Content::Loading;
         cx.spawn_in(window, async move |this, cx| {
             let size = std::fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0);
@@ -77,10 +181,14 @@ impl AppView {
                 let head = cx
                     .background_spawn(async move { load_head(&head_path, HEAD_BYTES) })
                     .await;
-                let _ = this.update_in(cx, |view, window, cx| view.show(head, window, cx));
+                let _ = this.update_in(cx, |view, window, cx| {
+                    view.show(generation, head, window, cx)
+                });
             }
             let loaded = cx.background_spawn(async move { load_file(&path) }).await;
-            let _ = this.update_in(cx, |view, window, cx| view.show(loaded, window, cx));
+            let _ = this.update_in(cx, |view, window, cx| {
+                view.show(generation, loaded, window, cx)
+            });
         })
         .detach();
     }
@@ -88,15 +196,22 @@ impl AppView {
     /// Shows a loaded file: a new editor, or the full text in the editor of its head.
     fn show(
         &mut self,
+        generation: u64,
         loaded: Result<LoadedFile, ted_workspace::LoadError>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if generation != self.load_generation {
+            return;
+        }
         let loaded = match loaded {
             Ok(loaded) => loaded,
             Err(error) => {
                 log::warn!("cannot open a file: {error}");
-                self.content = Content::Message(error.to_string().into());
+                self.content = Content::Message(
+                    t!("open.unreadable").into_owned().into(),
+                    Some(error.to_string().into()),
+                );
                 cx.notify();
                 return;
             }
@@ -105,7 +220,7 @@ impl AppView {
         let (buffer, bom, lossy) = match loaded.content {
             FileContent::Text { buffer, bom, lossy } => (buffer, bom, lossy),
             FileContent::Binary => {
-                self.content = Content::Message(t!("editor.binary").into());
+                self.content = Content::Message(t!("editor.binary").into_owned().into(), None);
                 cx.notify();
                 return;
             }
@@ -141,16 +256,33 @@ impl Render for AppView {
         let palette = cx.palette();
         let content = match &self.content {
             Content::Editor(editor) => div().flex_1().min_h_0().child(editor.clone()),
-            Content::Loading | Content::Empty => div().flex_1(),
-            Content::Message(message) => div()
-                .flex_1()
-                .flex()
-                .items_center()
-                .justify_center()
-                .text_color(palette.fg_muted)
-                .child(message.clone()),
+            Content::Welcome => div().flex_1().min_h_0().child(self.render_welcome(cx)),
+            Content::Loading => div().flex_1(),
+            Content::Folder => div().flex_1().child(
+                EmptyState::new(t!("open.folder_placeholder"))
+                    .icon(Icon::new(IconName::FolderOpen))
+                    .hint(crate::actions::hints::OPEN_FILE),
+            ),
+            Content::Message(title, detail) => {
+                let mut state = EmptyState::new(title.clone())
+                    .icon(Icon::new(IconName::TriangleAlert))
+                    .action(self.render_open_buttons(cx));
+                if let Some(detail) = detail {
+                    state = state.description(detail.clone());
+                }
+                div().flex_1().child(state)
+            }
         };
         v_flex()
+            .id("app")
+            .key_context("App")
+            .track_focus(&self.focus_handle)
+            .on_action(
+                cx.listener(|this, _: &OpenFile, window, cx| this.prompt_open(false, window, cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &OpenFolder, window, cx| this.prompt_open(true, window, cx)),
+            )
             .size_full()
             .bg(palette.bg)
             .text_color(palette.fg)

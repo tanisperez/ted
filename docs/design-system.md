@@ -251,25 +251,40 @@ count and the measured advance of Geist Mono, not from the 0.62 constant.
 
 ### Empty state, with recents
 
-No argument on the command line. The window has no document: no tabs, no editor, no rail panel.
-It lists **recent folders** and **recent files** with the actions Open file (`Ctrl+O`) and Open
-folder (`Ctrl+Shift+O`).
+No argument on the command line, or nothing opened yet (`views/welcome.rs`). No tabs, no editor,
+no rail. A column of 440 px (`WELCOME_WIDTH`), centered horizontally, 64 px from the top, that
+scrolls when the recents do not fit. Its sections are 24 px apart:
 
-The prototype has no dedicated empty screen. What it designs is the recents menu that opens from
-the workspace switcher in the title bar, and the empty state reuses its rows: a 360 px `overlay`
-card (radius 10, padding 6, shadow), a `RECENT FOLDERS` section label, rows of 30 px (icon 14,
-name, path in 12 px `fg_subtle` with ellipsis, a check on the current one), a 1 px separator, a
-`RECENT FILES` section, a separator, then the two Open actions with their shortcut hints in
-Geist Mono 11. The empty state shows the same list centered in the content area, without the
-popover chrome. Confirm this with a design pass before implementing it.
+1. **Header**: a 40 px logo square (radius 10, `accent`, "t" 22/700 in `accent_fg`), "ted" 20/600
+   and the tagline in `fg_muted`.
+2. **Start**: Open file and Open folder rows, the shortcut at the right in Geist Mono 11
+   `fg_subtle` (`Ctrl+O`, `Ctrl+Shift+O`; the macOS glyphs on macOS).
+3. **Recent folders** and **Recent files** (10 each at most, hidden when empty): rows with the
+   icon (folder or file-text, 14, `fg_subtle`), the name (truncated at 180 px) and the path with
+   the home folder as `~` in 12 px `fg_subtle`, truncated.
+
+Sections start with a `SectionLabel` (11/600 uppercase `fg_subtle`). Rows are 30 px high, 8 px
+side padding, gap 10, radius 6, `hover` background on hover, pointer cursor; a click opens. The
+recents live in `<config dir>/ted/recents.toml`. A recent that no longer exists shows the error
+state and leaves the list.
+
+**Error state**: telaio's `EmptyState` with the triangle-alert icon, "This file or folder does not
+exist" (or "cannot be opened"), the path as its description, and the Open file and Open folder
+secondary buttons.
+
+### Title bar switcher
+
+Right of the logo and the separator: a ghost button 26 px high (radius 6, `fg_muted`) with an
+icon and the name of what is open: folder icon and the folder name, file-text icon and the file
+name, or folder-clock and "Open recent" with nothing open. Its menu (360 px) lists the recent
+folders, a separator, the recent files (each with its `~` path at the right in 12 px `fg_subtle`
+and a check on the open one), a separator, and telaio's shortcut rows for Open file and Open
+folder. The window title is `name · ted`, or `ted` alone.
 
 ### File mode
 
-`ted some/file.txt`. The title bar shows the file name where the workspace switcher is, no search
-trigger. No rail, no explorer, no tab bar: the editor fills the window. The status bar has no
-folder path.
-
-The prototype only shows folder mode; this is taken from `AGENTS.md`.
+`ted some/file.txt`, a recent file or Open file with nothing open. The switcher shows the file;
+no rail, no explorer, no tab bar: the editor fills the window. The status bar has no folder path.
 
 ### Folder mode
 

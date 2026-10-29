@@ -4,6 +4,7 @@ mod editor;
 mod root;
 mod status_bar;
 mod title_bar;
+mod welcome;
 
 pub use editor::bind_keys;
 pub use root::AppView;

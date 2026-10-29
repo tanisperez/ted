@@ -1,0 +1,32 @@
+# Opening files and folders, and the empty state.
+_version: 2
+"open.not_found":
+  en: "This file or folder does not exist"
+  es: "Este archivo o carpeta no existe"
+"open.unreadable":
+  en: "This file or folder cannot be opened"
+  es: "No se puede abrir este archivo o carpeta"
+"open.folder_placeholder":
+  en: "Open a file of this folder"
+  es: "Abre un archivo de esta carpeta"
+"open.recent":
+  en: "Open recent"
+  es: "Abrir reciente"
+"welcome.tagline":
+  en: "A fast, lightweight text editor"
+  es: "Un editor de texto ligero y rápido"
+"welcome.start":
+  en: "Start"
+  es: "Empezar"
+"welcome.open_file":
+  en: "Open file…"
+  es: "Abrir archivo…"
+"welcome.open_folder":
+  en: "Open folder…"
+  es: "Abrir carpeta…"
+"welcome.recent_folders":
+  en: "Recent folders"
+  es: "Carpetas recientes"
+"welcome.recent_files":
+  en: "Recent files"
+  es: "Archivos recientes"
