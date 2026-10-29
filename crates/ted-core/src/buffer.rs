@@ -182,6 +182,27 @@ impl Buffer {
         self.version += 1;
     }
 
+    /// The text in `range` (byte offsets, clamped to char boundaries).
+    pub fn text_in(&self, range: Range<usize>) -> String {
+        let start = self.rope.floor_char_boundary(range.start.min(self.len()));
+        let end = self
+            .rope
+            .floor_char_boundary(range.end.min(self.len()))
+            .max(start);
+        self.rope.slice(start..end).to_string()
+    }
+
+    /// The UTF-16 offset of byte `offset`, for the platform text input.
+    pub fn byte_to_utf16(&self, offset: usize) -> usize {
+        self.rope.byte_to_utf16_idx(offset.min(self.len()))
+    }
+
+    /// The byte offset of UTF-16 offset `offset`, clamped to the text.
+    pub fn utf16_to_byte(&self, offset: usize) -> usize {
+        self.rope
+            .utf16_to_byte_idx(offset.min(self.rope.len_utf16()))
+    }
+
     /// The whole text as a `String`. Allocates the full size, so never call it from a render.
     pub fn to_text(&self) -> String {
         self.rope.to_string()
