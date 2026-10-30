@@ -1,0 +1,29 @@
+title: Syntax highlighting
+description: The languages ted highlights, how it detects them, and how it handles logs and big files.
+---
+<h1>Syntax highlighting</h1>
+<p class="lead">ted colors code with tree-sitter, in the background, and keeps the colors in step as you type. Logs get a highlighter of their own, fast at any size.</p>
+
+<h2>Languages</h2>
+<p>The language comes from the file name and its extension, and shows at the right of the status bar.</p>
+<div class="table"><table>
+    <thead><tr><th>Language</th><th>Files</th></tr></thead>
+    <tbody>
+        <tr><td>Rust</td><td><code>.rs</code></td></tr>
+        <tr><td>JavaScript</td><td><code>.js</code>, <code>.mjs</code>, <code>.cjs</code>, <code>.jsx</code></td></tr>
+        <tr><td>JSON</td><td><code>.json</code>, <code>.jsonc</code>, <code>.geojson</code>, <code>.webmanifest</code>, <code>.babelrc</code>, <code>.prettierrc</code>, <code>.eslintrc</code>, <code>composer.lock</code></td></tr>
+        <tr><td>TOML</td><td><code>.toml</code>, <code>Cargo.lock</code>, <code>Pipfile</code>, <code>poetry.lock</code>, <code>uv.lock</code></td></tr>
+        <tr><td>Markdown</td><td><code>.md</code>, <code>.markdown</code>, <code>.mdown</code></td></tr>
+        <tr><td>HTML</td><td><code>.html</code>, <code>.htm</code>, <code>.xhtml</code></td></tr>
+        <tr><td>XML</td><td><code>.xml</code>, <code>.svg</code>, <code>.xsd</code>, <code>.xsl</code>, <code>.xslt</code>, <code>.plist</code>, <code>.csproj</code>, <code>.xaml</code>, <code>.rss</code>, <code>.atom</code></td></tr>
+        <tr><td>Makefile</td><td><code>Makefile</code>, <code>makefile</code>, <code>GNUmakefile</code>, <code>.mk</code>, <code>.mak</code></td></tr>
+        <tr><td>Log</td><td><code>.log</code></td></tr>
+    </tbody>
+</table></div>
+<p>Anything else is <strong>Plain text</strong>. In Markdown, headings, lists, quotes and code blocks are colored; inline code and emphasis are not yet.</p>
+
+<h2>Logs</h2>
+<p>In a <code>.log</code> file, the date and time at the start of each line and the level word (<code>ERROR</code>, <code>WARN</code>, <code>INFO</code>, <code>DEBUG</code>, <code>TRACE</code>, and <code>FATAL</code>, <code>ERR</code>, <code>WARNING</code>) are colored. Only the lines on screen are looked at, so a log of any size scrolls as fast with colors as without.</p>
+
+<h2>Big files</h2>
+<p>A file bigger than 4 MB is not parsed and stays plain, so a huge generated JSON never costs a long parse or the memory of its tree. The limit is the <code>highlight_max_size_mb</code> key of <a href="settings.html#settings-toml">settings.toml</a>. Logs are highlighted at any size.</p>

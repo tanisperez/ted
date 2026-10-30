@@ -1,0 +1,23 @@
+title: Saving and changes on disk
+description: How ted saves, what it cleans up, and how it protects unsaved changes and files changed by other programs.
+---
+<h1>Saving and changes on disk</h1>
+<p class="lead"><kbd>Ctrl</kbd> <kbd>S</kbd> saves the file shown. ted never loses a change without asking.</p>
+
+<h2>Saving</h2>
+<ul>
+    <li>The file is written to a temporary file next to it and then renamed over it, so a crash or a full disk never leaves half a file.</li>
+    <li>Saving removes the spaces and tabs at the end of every line and ends the file with a line break, as one step that undo can revert. Both can be turned off in <a href="settings.html#files">Settings</a>.</li>
+    <li>A file with unsaved changes shows a dot in its tab, in place of the cross, and before its name in the window title. Undoing back to the saved text makes it clean again.</li>
+</ul>
+
+<h2>Unsaved changes</h2>
+<p>Closing a tab, closing the window, or opening another folder with unsaved changes asks <strong>Save the changes to name?</strong>, with <strong>Don't save</strong>, <strong>Cancel</strong> and <strong>Save</strong>, once per file. <strong>Cancel</strong> stops there and nothing closes.</p>
+
+<h2>Changes made by other programs</h2>
+<p>When the ted window gets the focus back, it checks the file shown. If another program changed it:</p>
+<ul>
+    <li>without unsaved changes in ted, it reloads at once;</li>
+    <li>with unsaved changes, ted asks: <strong>Keep my changes</strong> or <strong>Reload</strong>.</li>
+</ul>
+<p>Saving over a file that another program changed after ted read it asks first: <strong>Cancel</strong> or <strong>Overwrite</strong>.</p>

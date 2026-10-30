@@ -1,0 +1,33 @@
+title: The interface
+description: A tour of the ted window: title bar, explorer, tabs, editor, minimap and status bar.
+---
+<h1>The interface</h1>
+<p class="lead">This page names every part of the window, so the rest of the documentation can refer to them.</p>
+
+<div class="shot">
+    <img class="light" src="../img/hero-light.webp" width="1800" height="1125" loading="lazy" alt="The ted window: the explorer of a Rust project, three tabs, highlighted code and the minimap.">
+    <img class="dark" src="../img/hero-dark.webp" width="1800" height="1125" loading="lazy" alt="The ted window: the explorer of a Rust project, three tabs, highlighted code and the minimap.">
+</div>
+
+<h2>Title bar</h2>
+<ul>
+    <li><strong>Switcher.</strong> Right of the app name, it shows what is open: the folder, or the file shown. Click it for the recent folders and files, <strong>Open file…</strong> and <strong>Open folder…</strong>.</li>
+    <li><strong>Settings.</strong> The gear opens <a href="settings.html">Settings</a> (<kbd>Ctrl</kbd> <kbd>,</kbd>).</li>
+</ul>
+<p>On Linux ted draws its own window frame, with the minimize, maximize and close buttons at the right of the title bar.</p>
+
+<h2>Explorer</h2>
+<p>In folder mode, the explorer on the left lists the folder. Folders are read when you expand them, files listed in <code>.gitignore</code> are hidden, and so are the patterns of the <a href="settings.html#files">Exclude</a> setting (<code>.git</code>, <code>target</code> and <code>node_modules</code> by default). Changes on disk show up on their own.</p>
+<p>Click a file to open it. With the explorer focused, <kbd>↑</kbd> and <kbd>↓</kbd> move, <kbd>←</kbd> collapses or goes to the parent folder, <kbd>→</kbd> expands or goes to the first child, and <kbd>Enter</kbd> opens. <strong>Collapse all</strong> sits in the explorer's header. Drag the explorer's right edge to resize it. See <a href="folders-and-tabs.html">Folders and tabs</a>.</p>
+
+<h2>Tabs</h2>
+<p>Every open file has a tab above the editor: in folder mode always, and with several files opened together. A dot in place of the cross means unsaved changes. See <a href="folders-and-tabs.html#tabs">Tabs</a>.</p>
+
+<h2>Editor</h2>
+<p>The line numbers on the left, the text, and the line of the cursor highlighted. Both can be turned off in <a href="settings.html#editor">Settings</a>. Code and logs are colored: see <a href="highlighting.html">Syntax highlighting</a>.</p>
+
+<h2>Minimap</h2>
+<p>The column at the right of the text draws every line of the file small, in its colors. The lighter band is the part on screen. Drag it to scroll, or click elsewhere in the minimap to jump there; the wheel over it scrolls the editor. When the file is taller than the minimap, the minimap scrolls with the editor. It hides when the window is narrow, and the <strong>Minimap</strong> setting turns it off.</p>
+
+<h2>Status bar</h2>
+<p>In folder mode it starts with the <strong>Files</strong> toggle, which shows or hides the explorer (<kbd>Alt</kbd> <kbd>1</kbd>), and the folder's path; click the path to open it in your file manager. At the right: the cursor position (<code>Ln 12, Col 5</code>), the indentation of the file (<code>Spaces: 4</code> or <code>Tabs</code>), the encoding, the line ending (<code>LF</code> or <code>CRLF</code>) and the language.</p>

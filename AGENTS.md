@@ -49,9 +49,12 @@ Expo/React Native conventions here.
   runs) is fine; write our own code. Only `gpui` itself is Apache-2.0.
 - Languages of the UI: **English** (source and fallback) and **Spanish**. Not Galician nor
   Italian.
-- No website, no `site/`, no package repositories and no updater for now. The user docs live
-  as Markdown under `docs/user/` until a website is decided. Sections 13, 15 and 16 of the shared
-  rules apply only where they do not need a website or the updater.
+- Website (decided on 2026-10-30): `ted.tanis.codes`, a smaller copy of Postino's `site/` with
+  screenshots only (no videos, no install script, no package repositories), deployed by
+  `website.yml`. The user docs live in `site/docs-src/pages/` as in Postino (rule 13), built with
+  `make docs`; every user-visible change updates them in the same commit. No package
+  repositories and no updater for now: sections 15 and 16 of the shared rules apply only where
+  they do not need them.
 - Releases (decided on 2026-10-30): the `release.yml` workflow and `packaging/` of Postino, with
   the same packages minus `latest.json` (deb, rpm, Arch, AppImage, tarball, macOS dmg and app
   tarball, Windows installer and portable zip, `SHA256SUMS`). The installers put `ted` on the
@@ -64,7 +67,8 @@ Expo/React Native conventions here.
 
 ## Pending decisions (ask before choosing)
 
-- Website, packaging channels and the in-app updater (not before the user asks).
+- Package repositories (APT, DNF, AUR), other channels and the in-app updater (not before the
+  user asks).
 - Language of the user docs (English for now, as everything in the repository).
 - Word wrap, multiple cursors, split views: not in 0.1.0; ask before designing them. The
   minimap was decided on 2026-10-30: it is in 0.1.0 (#16), built directly in the style of VS Code

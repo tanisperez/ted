@@ -1,0 +1,23 @@
+title: Find in file
+description: Find text in the open file: the find bar, the match counter, case sensitivity and big files.
+---
+<h1>Find in file</h1>
+<p class="lead"><kbd>Ctrl</kbd> <kbd>F</kbd> opens the find bar at the top right of the editor, with the selected text in it when the selection is on one line.</p>
+
+<div class="shot">
+    <img class="light" src="../img/log-light.webp" width="1800" height="1125" loading="lazy" alt="A 100 MB log open at line 314,446 with the find bar showing match 9,451 of 18,821 for ERROR, and the minimap on the right.">
+    <img class="dark" src="../img/log-dark.webp" width="1800" height="1125" loading="lazy" alt="A 100 MB log open at line 314,446 with the find bar showing match 9,451 of 18,821 for ERROR, and the minimap on the right.">
+</div>
+
+<h2>Using the find bar</h2>
+<ul>
+    <li>Type, and ted selects the first match after the cursor. Every match on screen is tinted.</li>
+    <li><kbd>Enter</kbd> or <kbd>F3</kbd> goes to the next match, <kbd>Shift</kbd> <kbd>Enter</kbd> or <kbd>Shift</kbd> <kbd>F3</kbd> to the previous one, wrapping around the end of the file. The arrows of the bar do the same.</li>
+    <li>The counter shows which match is selected, <code>3 of 120</code>, or <code>No results</code>.</li>
+    <li>The <strong>Match case</strong> button, <code>Aa</code>, makes the search case sensitive. Without it, the search ignores case in every language.</li>
+    <li><kbd>Esc</kbd> or the cross closes the bar and puts the cursor back in the text, the match still selected.</li>
+</ul>
+<p>The text is matched literally: a <code>.</code> or a <code>*</code> means itself.</p>
+
+<h2>Big files</h2>
+<p>ted counts the matches in the background, a few megabytes at a time, so the window never waits; a 100 MB log is counted in about 30 ms. While it counts, the counter ends in <code>…</code>. When a file has more than 100,000 matches, next and previous still work, and the counter shows the total.</p>

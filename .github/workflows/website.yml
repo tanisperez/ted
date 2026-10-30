@@ -1,0 +1,46 @@
+# Publishes site/ to GitHub Pages (ted.tanis.codes). The site is rebuilt from scratch on every
+# run, there is no gh-pages branch. The custom domain is set in the repository's Pages settings.
+name: Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/website.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Generates site/docs/ from site/docs-src/. Fails on a broken link or anchor between pages.
+      - name: Build the documentation
+        run: python3 site/docs-src/build.py
+
+      # site/docs-src holds the sources of site/docs, not pages.
+      - name: Assemble the site
+        run: rsync -a --exclude docs-src/ --exclude README.md site/ _site/
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v5

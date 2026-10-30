@@ -10,7 +10,13 @@ the display's refresh rate, browses folders of a hundred thousand files without 
 does no work while idle. Tabs, syntax highlighting for code and logs, find in file, a minimap
 and the settings in a plain text file. No accounts, no telemetry.
 
-[Download](https://github.com/tanisperez/ted/releases/latest) · [Documentation](#documentation)
+[Website](https://ted.tanis.codes) · [Download](https://ted.tanis.codes/install.html) ·
+[Documentation](https://ted.tanis.codes/docs/)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/img/hero-dark.webp">
+  <img src="site/img/hero-light.webp" alt="The ted window: the explorer of a Rust project, three tabs, highlighted code and the minimap.">
+</picture>
 
 ## Install
 
@@ -62,6 +68,9 @@ The packages of a release are built by the `Release` workflow; `packaging/` has 
 `docs/releasing.md` the steps.
 
 ## Documentation
+
+The [user documentation](https://ted.tanis.codes/docs/) is on the website; its sources are in
+`site/docs-src/`. For developers:
 
 - [Architecture](docs/architecture.md): the crates and how a file is loaded, painted and saved.
 - [Design system](docs/design-system.md): colors, sizes and every screen.

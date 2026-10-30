@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help run build release check lint lint-fix format format-check test clean bench-files
+.PHONY: help run build release check lint lint-fix format format-check test clean bench-files docs
 
 help:
 	@echo "Usage: make [target]"
@@ -16,6 +16,7 @@ help:
 	@echo "  test          Run all tests"
 	@echo "  clean         Remove build artifacts"
 	@echo "  bench-files   Generate the bench fixtures under target/bench-files/"
+	@echo "  docs          Build the user documentation of the website into site/docs/"
 
 run:
 	cargo run
@@ -49,3 +50,6 @@ clean:
 
 bench-files:
 	cargo run --release -p ted-workspace --example bench_files
+
+docs:
+	python3 site/docs-src/build.py

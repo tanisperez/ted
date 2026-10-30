@@ -1,0 +1,22 @@
+# ted
+
+> ted is a fast, lightweight, native, open source text editor for Linux, Windows and macOS. It opens a 100 MB log in under 100 ms, browses folders of a hundred thousand files at once, highlights code and logs, and does no work while idle. No account, no telemetry; the settings are a plain text file.
+
+ted is written in Rust on gpui, the GPU accelerated UI framework of the Zed editor, with its own text engine: a rope buffer and an editor element that lays out and paints only the visible lines.
+
+## Website
+
+- [Home](https://ted.tanis.codes/): features and screenshots.
+- [Download](https://ted.tanis.codes/install.html): the Windows installer and portable zip, the macOS disk image, and the Linux deb, rpm, Arch package, AppImage and tarball.
+
+## Documentation
+
+$docs
+
+## Project
+
+- [Source code on GitHub](https://github.com/tanisperez/ted): the README covers building from source.
+- [Releases](https://github.com/tanisperez/ted/releases): every download, with SHA-256 checksums.
+- [Issues](https://github.com/tanisperez/ted/issues): bug reports and feature requests.
+- [Architecture](https://github.com/tanisperez/ted/blob/main/docs/architecture.md): the crates and how a file is loaded, painted and saved.
+- [Performance](https://github.com/tanisperez/ted/blob/main/docs/performance.md): the targets and the measured numbers.

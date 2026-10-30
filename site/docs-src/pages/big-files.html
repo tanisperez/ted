@@ -1,0 +1,25 @@
+title: Big files and logs
+description: How ted opens, scrolls and searches files of hundreds of megabytes.
+---
+<h1>Big files and logs</h1>
+<p class="lead">ted is built to open big files without making you wait. These are its numbers on a 100 MB log, on a laptop with an Intel Core i5-1235U.</p>
+
+<div class="table"><table>
+    <thead><tr><th>What</th><th>Time</th></tr></thead>
+    <tbody>
+        <tr><td>First screen, from opening the file</td><td>77 ms</td></tr>
+        <tr><td>The whole file loaded, in the background</td><td>146 ms</td></tr>
+        <tr><td>Painting a frame while scrolling</td><td>about 1 ms</td></tr>
+        <tr><td>Painting a keystroke</td><td>about 2 ms</td></tr>
+        <tr><td>Counting every match of a search</td><td>about 30 ms</td></tr>
+    </tbody>
+</table></div>
+
+<h2>How it works</h2>
+<ul>
+    <li>A file of 8 MB or more shows its first 256 KB at once, read only, while the rest loads. The gutter already has room for every line, so nothing jumps when the whole text arrives, and editing starts then.</li>
+    <li>Only the lines on screen are laid out and painted. A very long line, such as a minified JSON, is laid out only around the columns on screen.</li>
+    <li>The text lives in a rope, so an edit in the middle of a 100 MB file costs about the same as at its end.</li>
+    <li>Searching, highlighting and saving run in the background.</li>
+</ul>
+<p>Opening the 100 MB log adds about 110 MB of memory to the window, the size of the file plus the index of its lines.</p>

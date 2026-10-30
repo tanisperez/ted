@@ -1,0 +1,23 @@
+title: Troubleshooting
+description: What to do when ted does not start, a file does not open, or something looks wrong.
+---
+<h1>Troubleshooting</h1>
+<p class="lead">Most problems leave a trace in the <a href="files-and-folders.html#log-file">log file</a>. Run ted with more detail to see it:</p>
+```shell
+$ TED_LOG=debug ted
+```
+
+<h2>A file opens read only</h2>
+<p>Either it is not valid UTF-8, and ted shows it with replacement characters instead of changing its bytes on save, or it is a big file that is still loading: its first screen shows at once, and editing starts when the whole text is there. The status bar shows <code>UTF-8 (read only)</code> in the first case.</p>
+
+<h2>A file has no colors</h2>
+<p>Check the language at the right of the status bar. <strong>Plain text</strong> means ted does not know the file type; see <a href="highlighting.html#languages">Languages</a>. A file bigger than 4 MB stays plain on purpose; see <a href="highlighting.html#big-files">Big files</a>.</p>
+
+<h2>A file or folder does not show in the explorer</h2>
+<p>It may be listed in a <code>.gitignore</code>, or match the <a href="settings.html#files">Exclude</a> setting.</p>
+
+<h2>ted does not start on Linux</h2>
+<p>ted needs a Wayland or X11 session and the system libraries its package lists as dependencies. Run it from a terminal to see the error.</p>
+
+<h2>Reporting a problem</h2>
+<p>Open an issue on <a href="https://github.com/tanisperez/ted/issues">GitHub</a> with your system, the version (<code>ted --version</code>) and the end of the log file.</p>

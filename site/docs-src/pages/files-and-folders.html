@@ -1,0 +1,21 @@
+title: Files and folders
+description: Where ted keeps its settings, its recent files list and its log file on each system.
+---
+<h1>Files and folders</h1>
+<p class="lead">ted keeps three files of its own. It never writes anywhere else except the files you save.</p>
+
+<div class="table"><table>
+    <thead><tr><th>File</th><th>Linux</th><th>macOS</th><th>Windows</th></tr></thead>
+    <tbody>
+        <tr><td>Settings</td><td><code>~/.config/ted/settings.toml</code></td><td><code>~/Library/Application Support/ted/settings.toml</code></td><td><code>%APPDATA%\ted\settings.toml</code></td></tr>
+        <tr><td>Recent folders and files</td><td><code>~/.config/ted/recents.toml</code></td><td><code>~/Library/Application Support/ted/recents.toml</code></td><td><code>%APPDATA%\ted\recents.toml</code></td></tr>
+        <tr><td>Log file</td><td><code>~/.local/state/ted/ted.log</code></td><td><code>~/Library/Logs/ted/ted.log</code></td><td><code>%LOCALAPPDATA%\ted\logs\ted.log</code></td></tr>
+    </tbody>
+</table></div>
+<p>On Linux, <code>XDG_CONFIG_HOME</code> and <code>XDG_STATE_HOME</code> move the first two and the last one.</p>
+
+<h2>Recent files</h2>
+<p>ted remembers the last ten folders and the last ten files you opened, most recent first. A recent entry that no longer exists leaves the list when you try to open it.</p>
+
+<h2>Log file</h2>
+<p>ted writes what it does to its log file: what was opened, how long it took, warnings and errors. It never writes the contents of your files or what you type. When the file reaches 5 MB it is renamed to <code>ted.1.log</code>, and at most ten files are kept. The <code>log_level</code> setting and the <code>TED_LOG</code> variable choose how much is written; see <a href="command-line.html#environment-variables">Command line</a>.</p>

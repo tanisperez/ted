@@ -1,0 +1,18 @@
+title: Editing text
+description: Moving, selecting, the clipboard, undo, indentation and line endings in ted.
+---
+<h1>Editing text</h1>
+<p class="lead">The editor works as you expect from any text field, with a few things of its own: indentation follows the file, and pasted text takes the file's line ending.</p>
+
+<h2>Moving and selecting</h2>
+<p>The arrows move by character and line, <kbd>Home</kbd> and <kbd>End</kbd> to the start and end of the line, <kbd>Page Up</kbd> and <kbd>Page Down</kbd> by a screen, and <kbd>Ctrl</kbd> <kbd>Home</kbd> and <kbd>Ctrl</kbd> <kbd>End</kbd> to the start and end of the file. Hold <kbd>Shift</kbd> with any of them to select. <kbd>Ctrl</kbd> <kbd>A</kbd> selects everything.</p>
+<p>With the mouse: click to place the cursor, drag to select, <kbd>Shift</kbd> click to extend the selection, double click to select a word and triple click to select a line.</p>
+
+<h2>Clipboard and undo</h2>
+<p><kbd>Ctrl</kbd> <kbd>C</kbd>, <kbd>Ctrl</kbd> <kbd>X</kbd> and <kbd>Ctrl</kbd> <kbd>V</kbd> copy, cut and paste. With nothing selected, copy and cut take the whole line. Pasted text takes the line ending of the file. <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes, and <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Z</kbd> or <kbd>Ctrl</kbd> <kbd>Y</kbd> redoes; typing a word is one step.</p>
+
+<h2>Indentation</h2>
+<p><kbd>Tab</kbd> indents and <kbd>Shift</kbd> <kbd>Tab</kbd> outdents: the cursor to the next stop, or every selected line by one level. The level follows the file: a file indented with tabs gets tabs, a file indented with two spaces gets two spaces. In a new or flat file, the <a href="settings.html#editor">Tab size</a> and <a href="settings.html#editor">Insert spaces</a> settings decide. The status bar shows what the file uses.</p>
+
+<h2>Line endings and encodings</h2>
+<p>ted keeps the line ending of each file, <code>LF</code> or <code>CRLF</code>, and the byte order mark of a UTF-8 file that has one. A file that is not valid UTF-8 opens read only, its unknown bytes shown as replacement characters, so saving can never change bytes ted could not read. Binary files are not shown.</p>

@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ted, a fast and lightweight text editor</title>
+    <meta name="description" content="ted is a fast, native, open source text editor for Linux, Windows and macOS. It opens a 100 MB log in under 100 ms, browses huge folders at once and does no work while idle.">
+    <meta name="author" content="Estanislao Pérez Nartallo">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://ted.tanis.codes/">
+    <link rel="icon" href="favicon.ico" sizes="48x48">
+    <link rel="icon" href="img/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="img/icon-512.png">
+    <link rel="manifest" href="site.webmanifest">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="ted">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:title" content="ted, a fast and lightweight text editor">
+    <meta property="og:description" content="ted is a fast, native, open source text editor for Linux, Windows and macOS. It opens a 100 MB log in under 100 ms, browses huge folders at once and does no work while idle.">
+    <meta property="og:url" content="https://ted.tanis.codes/">
+    <meta property="og:image" content="https://ted.tanis.codes/img/og.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="The ted window: the explorer of a Rust project, three tabs and highlighted code with the minimap.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ted, a fast and lightweight text editor">
+    <meta name="twitter:description" content="ted is a fast, native, open source text editor for Linux, Windows and macOS. It opens a 100 MB log in under 100 ms, browses huge folders at once and does no work while idle.">
+    <meta name="twitter:image" content="https://ted.tanis.codes/img/og.png">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "ted",
+        "description": "A fast, lightweight, native text editor for Linux, Windows and macOS. Opens big files and folders at once, without accounts or telemetry.",
+        "url": "https://ted.tanis.codes/",
+        "downloadUrl": "https://ted.tanis.codes/install.html",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Linux, Windows, macOS",
+        "image": "https://ted.tanis.codes/img/og.png",
+        "screenshot": "https://ted.tanis.codes/img/hero-light.webp",
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": { "@type": "Person", "name": "Estanislao Pérez Nartallo", "url": "https://tanis.codes" },
+        "sameAs": ["https://github.com/tanisperez/ted"]
+    }
+    </script>
+    <link rel="preload" href="fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/theme.js"></script>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="./">
+                <img src="img/logo.svg" alt="" width="28" height="28">
+                ted
+            </a>
+            <nav class="nav" aria-label="Main">
+                <a class="nav-wide" href="./#features">Features</a>
+                <a href="install.html">Download</a>
+                <a href="docs/">Docs</a>
+                <a class="nav-github" href="https://github.com/tanisperez/ted" aria-label="ted on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>GitHub</span>
+                </a>
+                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
+                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+        <section class="hero">
+            <div class="wrap">
+                <span class="eyebrow"><span class="pill">Open source</span> Free for everyone, Apache-2.0</span>
+                <h1>The text editor that opens <span class="accent">anything at once</span></h1>
+                <p class="lead">ted is a native, lightweight text editor. A 100 MB log shows up in under 100 ms and scrolls at your display's refresh rate, a folder of a hundred thousand files opens without waiting, and nothing runs while you are not typing.</p>
+                <div class="actions">
+                    <a class="btn btn-primary" href="install.html">Download ted</a>
+                    <a class="btn btn-secondary" href="https://github.com/tanisperez/ted">
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                        View on GitHub
+                    </a>
+                </div>
+                <p class="platforms">For Linux, Windows and macOS</p>
+
+                <div class="hero-shot">
+                    <div class="shot">
+                        <img class="light" src="img/hero-light.webp" width="1800" height="1125" fetchpriority="high"
+                            alt="The ted window: the explorer of a Rust project, three tabs, highlighted code and the minimap.">
+                        <img class="dark" src="img/hero-dark.webp" width="1800" height="1125" fetchpriority="high"
+                            alt="The ted window: the explorer of a Rust project, three tabs, highlighted code and the minimap.">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="highlights" aria-label="Highlights">
+            <div class="wrap">
+                <ul>
+                    <li><strong>Native, not a browser</strong><span>Written in Rust on gpui, the GPU accelerated UI framework behind the Zed editor.</span></li>
+                    <li><strong>Big files, no waiting</strong><span>Only the lines on screen are laid out, so a 100 MB log costs about what a small file does.</span></li>
+                    <li><strong>Idle means idle</strong><span>No timers and no blinking cursor: with nothing to do, ted uses no CPU and no GPU.</span></li>
+                    <li><strong>Yours to keep</strong><span>Open source under Apache-2.0. No account, no telemetry, settings in a plain text file.</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="section" id="features">
+            <div class="wrap">
+                <div class="section-head">
+                    <span class="kicker">Features</span>
+                    <h2>Everything a text editor needs, and fast</h2>
+                    <p>Open a file on its own or a whole folder with its explorer and tabs. Code and logs are highlighted, and the minimap shows where you are.</p>
+                </div>
+
+                <div class="features">
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Logs of any size</h3>
+                            <div class="text">
+                                <p>Open a log of hundreds of megabytes and start reading at once: the first screen shows while the rest loads in the background. Find counts every match behind the scenes, so the window never waits.</p>
+                                <ul class="checks">
+                                    <li>The first screen of a 100 MB log in under 100 ms</li>
+                                    <li>Levels and dates highlighted, at any size</li>
+                                    <li>Find in file with a match counter, case sensitivity and <kbd>F3</kbd></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/log-light.webp" width="1800" height="1125" loading="lazy"
+                                alt="A 100 MB log open at line 314,446 with the find bar showing match 9,451 of 18,821 for ERROR, and the minimap on the right.">
+                            <img class="dark" src="img/log-dark.webp" width="1800" height="1125" loading="lazy"
+                                alt="A 100 MB log open at line 314,446 with the find bar showing match 9,451 of 18,821 for ERROR, and the minimap on the right.">
+                        </div>
+                    </article>
+
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Settings that apply at once</h3>
+                            <div class="text">
+                                <p>Light or dark, or follow your system. Pick the sizes, line numbers, the current line highlight, the minimap, the tab size and what saving cleans up. Every change shows at once and lands in a plain <code>settings.toml</code>.</p>
+                                <ul class="checks">
+                                    <li>English and Spanish</li>
+                                    <li>Trailing whitespace and the final newline fixed on save</li>
+                                    <li>Hide build folders from the explorer with .gitignore style patterns</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/settings-light.webp" width="1800" height="1125" loading="lazy"
+                                alt="The Settings window over the editor: the language, the three theme cards and the interface font size.">
+                            <img class="dark" src="img/settings-dark.webp" width="1800" height="1125" loading="lazy"
+                                alt="The Settings window over the editor: the language, the three theme cards and the interface font size.">
+                        </div>
+                    </article>
+
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Pick up where you left off</h3>
+                            <div class="text">
+                                <p>With nothing open, ted lists the folders and files you opened last. From a terminal, <code>ted .</code> opens the current folder and <code>ted a.txt b.txt</code> opens each file in its own tab.</p>
+                                <ul class="checks">
+                                    <li>Recent folders and files, one click away</li>
+                                    <li>Open file and Open folder with <kbd>Ctrl</kbd> <kbd>O</kbd> and <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>O</kbd></li>
+                                    <li>The installers put <code>ted</code> on your PATH</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/welcome-light.webp" width="1800" height="1125" loading="lazy"
+                                alt="The empty state: Open file and Open folder, then the recent folders and files.">
+                            <img class="dark" src="img/welcome-dark.webp" width="1800" height="1125" loading="lazy"
+                                alt="The empty state: Open file and Open folder, then the recent folders and files.">
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section section-alt" id="more">
+            <div class="wrap">
+                <div class="section-head">
+                    <span class="kicker">And more</span>
+                    <h2>The details that matter every day</h2>
+                </div>
+                <ul class="grid">
+                    <li class="card">
+                        <span class="badge">Rust JSON TOML</span>
+                        <h3>Syntax highlighting</h3>
+                        <p>Rust, JavaScript, JSON, TOML, Markdown, HTML, XML and Makefiles with tree-sitter, parsed in the background and kept in step as you type.</p>
+                    </li>
+                    <li class="card">
+                        <span class="badge">.gitignore</span>
+                        <h3>An explorer that keeps up</h3>
+                        <p>Folders are read only when you expand them, ignored files stay hidden, and changes on disk show up on their own.</p>
+                    </li>
+                    <li class="card">
+                        <span class="badge">Ctrl S</span>
+                        <h3>Saving you can trust</h3>
+                        <p>Files are written atomically. ted asks before losing changes and notices when another program changes a file.</p>
+                    </li>
+                    <li class="card">
+                        <span class="badge">Ctrl F</span>
+                        <h3>Find in file</h3>
+                        <p>Every match highlighted on screen, a counter, case sensitivity, and the next or previous match with <kbd>Enter</kbd> and <kbd>F3</kbd>.</p>
+                    </li>
+                    <li class="card">
+                        <span class="badge">Minimap</span>
+                        <h3>See the whole file</h3>
+                        <p>The minimap draws every line in its colors. Drag it to scroll, or click to jump. Turn it off in Settings.</p>
+                    </li>
+                    <li class="card">
+                        <span class="badge">Ctrl Tab</span>
+                        <h3>Keyboard friendly</h3>
+                        <p>Switch tabs with <kbd>Ctrl</kbd> <kbd>Tab</kbd>, close them with <kbd>Ctrl</kbd> <kbd>W</kbd>, and toggle the explorer with <kbd>Alt</kbd> <kbd>1</kbd>.</p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="cta">
+            <div class="wrap">
+                <div class="cta-box">
+                    <img src="img/logo.svg" alt="" width="64" height="64">
+                    <h2>Give ted a try</h2>
+                    <p>Free and open source, for Linux, Windows and macOS. No account needed, just download it and open a file.</p>
+                    <div class="actions">
+                        <a class="btn btn-primary" href="install.html">Download ted</a>
+                        <a class="btn btn-secondary" href="docs/">Read the docs</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>ted is open source under the Apache License 2.0.</span>
+            <nav aria-label="Footer">
+                <a href="https://github.com/tanisperez/ted">GitHub</a>
+                <a href="https://github.com/tanisperez/ted/releases">Releases</a>
+                <a href="https://github.com/tanisperez/ted/issues">Report an issue</a>
+                <a href="https://tanis.codes">tanis.codes</a>
+            </nav>
+        </div>
+    </footer>
+</body>
+</html>

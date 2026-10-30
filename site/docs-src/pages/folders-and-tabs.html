@@ -1,0 +1,23 @@
+title: Folders and tabs
+description: Working on a folder in ted: the explorer, tabs, switching and closing them.
+---
+<h1>Folders and tabs</h1>
+<p class="lead">Open a folder to work on several files: the explorer lists it, and each file you open gets a tab.</p>
+
+<h2>Opening a folder</h2>
+<p>Use <strong>Open folder…</strong> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>O</kbd>), a recent folder, or <code>ted path/to/folder</code> from a terminal. Opening another folder replaces the open one, after asking about any unsaved changes.</p>
+
+<h2>The explorer</h2>
+<p>See <a href="interface.html#explorer">The interface</a> for what it shows and its keys. The file in the editor is revealed and selected in the explorer. <kbd>Alt</kbd> <kbd>1</kbd>, or the <strong>Files</strong> toggle of the status bar, shows or hides it.</p>
+
+<h2>Tabs</h2>
+<ul>
+    <li>Opening a file that is already open shows its tab. A new tab goes right after the current one.</li>
+    <li>Each tab keeps its own scroll position, cursor and undo history, so switching is instant, even to a big log.</li>
+    <li><kbd>Ctrl</kbd> <kbd>Tab</kbd> and <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Tab</kbd> go to the next and previous tab, on every system.</li>
+    <li>The cross, a middle click or <kbd>Ctrl</kbd> <kbd>W</kbd> closes a tab. A tab with unsaved changes asks first.</li>
+    <li>Drag a tab to reorder it. When the tabs do not fit, the bar scrolls and its arrows and list button appear.</li>
+</ul>
+
+<h2>Several files without a folder</h2>
+<p><code>ted a.txt b.txt</code> opens both in tabs without the explorer. The tab bar shows while more than one file is open, and the title bar's switcher names the file shown.</p>

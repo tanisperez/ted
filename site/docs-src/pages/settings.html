@@ -1,0 +1,67 @@
+title: Settings
+description: Every setting of ted, its default, and the settings.toml file.
+---
+<h1>Settings</h1>
+<p class="lead">Open Settings with the gear at the top right or <kbd>Ctrl</kbd> <kbd>,</kbd>. Every change applies at once and is saved to <code>settings.toml</code>; <strong>Reset values</strong> restores the defaults.</p>
+
+<div class="shot">
+    <img class="light" src="../img/settings-light.webp" width="1800" height="1125" loading="lazy" alt="The Settings window over the editor: the language, the three theme cards and the interface font size.">
+    <img class="dark" src="../img/settings-dark.webp" width="1800" height="1125" loading="lazy" alt="The Settings window over the editor: the language, the three theme cards and the interface font size.">
+</div>
+
+<h2>Appearance</h2>
+<div class="table"><table>
+    <thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
+    <tbody>
+        <tr><td>Interface language</td><td>Automatic</td><td>English or Spanish. Automatic follows your system, English when it is neither.</td></tr>
+        <tr><td>Theme</td><td>System</td><td>Light, Dark, or System, which follows the light or dark mode of your desktop.</td></tr>
+        <tr><td>Font size (Interface)</td><td>13 px</td><td>The size of the interface text, 11 to 16.</td></tr>
+    </tbody>
+</table></div>
+
+<h2>Editor</h2>
+<div class="table"><table>
+    <thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
+    <tbody>
+        <tr><td>Font size (Text)</td><td>12.5 px</td><td>The size of the editor text, 10 to 18 in half steps.</td></tr>
+        <tr><td>Line numbers</td><td>On</td><td>Shows the line numbers at the left of the text.</td></tr>
+        <tr><td>Highlight current line</td><td>On</td><td>Tints the line of the cursor.</td></tr>
+        <tr><td>Minimap</td><td>On</td><td>Shows the <a href="interface.html#minimap">minimap</a> at the right of the text.</td></tr>
+        <tr><td>Tab size</td><td>4</td><td>The columns a tab takes, 2, 4 or 8, and the width of an indentation level in spaces.</td></tr>
+        <tr><td>Insert spaces</td><td>On</td><td>Whether <kbd>Tab</kbd> inserts spaces in a new or flat file. A file indented with tabs or spaces keeps its own style.</td></tr>
+    </tbody>
+</table></div>
+
+<h2>Files</h2>
+<div class="table"><table>
+    <thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
+    <tbody>
+        <tr><td>Trim trailing whitespace</td><td>On</td><td>Saving removes the spaces and tabs at the end of every line.</td></tr>
+        <tr><td>Insert final newline</td><td>On</td><td>Saving ends the file with a line break.</td></tr>
+        <tr><td>Exclude</td><td><code>.git, target, node_modules</code></td><td>What the explorer hides, comma separated, in the <code>.gitignore</code> syntax (<code>*.log</code>, <code>/build</code>). Applied when you press <kbd>Enter</kbd> or leave the field. <code>.gitignore</code> files are honored too.</td></tr>
+    </tbody>
+</table></div>
+
+<h2>settings.toml</h2>
+<p>The settings live in a plain text file: <code>~/.config/ted/settings.toml</code> on Linux, <code>~/Library/Application Support/ted/settings.toml</code> on macOS and <code>%APPDATA%\ted\settings.toml</code> on Windows. You can edit it by hand while ted is closed; a value ted does not understand falls back to its default, and the rest of the file still applies. Two keys exist only in the file:</p>
+<ul>
+    <li><code>ui_font</code> and <code>mono_font</code>, the font families, <code>Geist</code> and <code>Geist Mono</code> by default.</li>
+    <li><code>highlight_max_size_mb</code>, 4 by default: files bigger than this many megabytes are not parsed for <a href="highlighting.html#big-files">highlighting</a>.</li>
+    <li><code>log_level</code>, <code>info</code> by default: how much ted writes to its <a href="files-and-folders.html#log-file">log file</a>.</li>
+</ul>
+```toml title="settings.toml"
+language = "auto"
+theme = "system"
+ui_font_size = 13.0
+mono_font_size = 12.5
+line_numbers = true
+highlight_current_line = true
+minimap = true
+tab_size = 4
+insert_spaces = true
+trim_trailing_whitespace = true
+insert_final_newline = true
+highlight_max_size_mb = 4
+explorer_exclude = [".git", "target", "node_modules"]
+log_level = "info"
+```

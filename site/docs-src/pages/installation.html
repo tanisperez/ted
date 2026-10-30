@@ -1,0 +1,45 @@
+title: Installation
+description: How to install ted on Windows, macOS and Linux, put it on the PATH, and build it from source.
+---
+<h1>Installation</h1>
+<p class="lead">Every release on <a href="https://github.com/tanisperez/ted/releases/latest">GitHub</a> has packages for Windows x86_64, macOS on Apple silicon and Linux x86_64. The <a href="../install.html">download page</a> links to them.</p>
+
+<h2>Windows</h2>
+<p>Run <code>ted-X.Y.Z-windows-x86_64-setup.exe</code>. It installs ted for your user only, under <code>%LOCALAPPDATA%\Programs\ted</code>, and needs no administrator rights. The installer offers three options:</p>
+<ul>
+    <li><strong>Add ted to the PATH</strong>, checked: run <code>ted file.txt</code> or <code>ted .</code> from any new terminal. Uninstalling removes it again.</li>
+    <li><strong>Add "Open with ted" to the Explorer menu</strong>, checked: on every file, on folders and on the background of an open folder.</li>
+    <li><strong>Create a desktop shortcut</strong>, unchecked.</li>
+</ul>
+<p>ted also shows in the <strong>Open with</strong> list of the usual text files (<code>.txt</code>, <code>.md</code>, <code>.log</code>, <code>.json</code> and others) without becoming their default app. To use ted without installing anything, unzip <code>ted-X.Y.Z-windows-x86_64-portable.zip</code> and run <code>ted.exe</code>.</p>
+
+<h2>macOS</h2>
+<p>Open <code>ted-X.Y.Z-macos-arm64.dmg</code> and drag ted to Applications. ted then shows in Finder's <strong>Open With</strong> menu of text files and folders. A Mac app cannot put itself on the PATH; to run <code>ted</code> from a terminal, link it once:</p>
+```shell
+$ sudo ln -sf /Applications/ted.app/Contents/MacOS/ted /usr/local/bin/ted
+```
+
+<h2>Linux</h2>
+<p>The packages install <code>ted</code> in <code>/usr/bin</code>, with its desktop entry and icons, so ted shows in your applications menu and in the Open With menu of text files and folders.</p>
+```shell
+# Debian and Ubuntu
+$ sudo apt install ./ted_X.Y.Z_amd64.deb
+# Fedora and openSUSE
+$ sudo dnf install ./ted-X.Y.Z-1.x86_64.rpm
+# Arch Linux
+$ sudo pacman -U ./ted-X.Y.Z-1-x86_64.pkg.tar.zst
+```
+<p>The AppImage, <code>ted-X.Y.Z-x86_64.AppImage</code>, runs on any distribution once it is executable (<code>chmod +x</code>), and installs nothing. The tarball, <code>ted-X.Y.Z-linux-x86_64.tar.gz</code>, holds <code>bin/ted</code> and the desktop files in a <code>/usr</code> layout, to copy wherever you like.</p>
+
+<h2>First launch</h2>
+<p>ted is not code signed yet. On macOS, if the system says it cannot verify the developer, choose <strong>Open Anyway</strong> in System Settings, Privacy and Security. On Windows, if SmartScreen shows <strong>Windows protected your PC</strong>, choose <strong>More info</strong> and then <strong>Run anyway</strong>.</p>
+<p>Every release lists the SHA-256 checksum of each package in <code>SHA256SUMS</code>.</p>
+
+<h2>Building from source</h2>
+<p>ted builds with the stable Rust toolchain. On Linux it needs the development packages of Wayland, X11, xkbcommon, fontconfig and Vulkan; the <a href="https://github.com/tanisperez/ted#building-from-source">README</a> lists them.</p>
+```shell
+$ git clone https://github.com/tanisperez/ted
+$ cd ted
+$ make release
+$ ./target/release/ted
+```

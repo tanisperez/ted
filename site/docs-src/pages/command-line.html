@@ -1,0 +1,38 @@
+title: Command line
+description: Running ted from a terminal: opening files and folders, options and environment variables.
+---
+<h1>Command line</h1>
+<p class="lead">The installers put <code>ted</code> on your PATH (on macOS, see <a href="installation.html#macos">Installation</a>). From a terminal it opens what you name, and returns at once.</p>
+
+```shell
+$ ted notes.md              # a file on its own
+$ ted .                     # the current folder, with the explorer
+$ ted a.txt b.txt           # several files, each in its tab
+$ ted . README.md           # a folder, with a file open in a tab
+$ ted                       # the recent files and folders
+```
+
+<h2>Arguments</h2>
+<ul>
+    <li>Files open each in its own tab, in order. With a folder among them, the folder opens with the explorer and the files in its tabs; only the first folder given is opened.</li>
+    <li>A path that does not exist shows an error in the window.</li>
+    <li>After <code>--</code>, every argument is a path, even one that starts with a dash: <code>ted -- -notes.txt</code>.</li>
+</ul>
+
+<h2>Options</h2>
+<div class="table"><table>
+    <thead><tr><th>Option</th><th>What it does</th></tr></thead>
+    <tbody>
+        <tr><td><code>-h</code>, <code>--help</code></td><td>Prints the usage and exits.</td></tr>
+        <tr><td><code>-V</code>, <code>--version</code></td><td>Prints the version and exits.</td></tr>
+    </tbody>
+</table></div>
+<p>Any other option is an error: ted prints <code>error: unknown option</code> and exits with code 2.</p>
+
+<h2>Environment variables</h2>
+<div class="table"><table>
+    <thead><tr><th>Variable</th><th>What it does</th></tr></thead>
+    <tbody>
+        <tr><td><code>TED_LOG</code></td><td>The log level of this run: <code>off</code>, <code>error</code>, <code>warn</code>, <code>info</code>, <code>debug</code> or <code>trace</code>. Overrides the <code>log_level</code> setting.</td></tr>
+    </tbody>
+</table></div>
