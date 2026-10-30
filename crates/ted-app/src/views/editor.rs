@@ -23,9 +23,13 @@ use std::ops::Range;
 use ted_core::{EditKind, Position, Selection};
 
 use crate::state::editor::{
-    EditorState, Movement, Viewport, column_for_expanded, expand_tabs, expanded_index,
+    EditorState, Movement, PADDING_TOP, Viewport, column_for_expanded, expand_tabs, expanded_index,
 };
 use crate::state::find::Find;
+use crate::state::minimap::{
+    EditorMeasures, LINE_HEIGHT as MINIMAP_LINE, MAX_COLUMNS as MINIMAP_COLUMNS, MinimapLayout,
+    line_blocks,
+};
 use crate::state::syntax::{ParseRequest, line_runs};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
@@ -110,6 +114,17 @@ actions!(
     ]
 );
 
+/// Width of the minimap column, its left padding, and the narrowest editor that shows it.
+const MINIMAP_WIDTH: f32 = 100.0;
+const MINIMAP_PADDING: f32 = 6.0;
+const MINIMAP_MIN_EDITOR_WIDTH: f32 = 480.0;
+/// Height of a block in the minimap's 2 px lines, and how strong its color is.
+const MINIMAP_BLOCK_HEIGHT: f32 = 1.5;
+const MINIMAP_ALPHA: f32 = 0.6;
+/// The most bytes the minimap's lines may span for one highlight query over all of them; past
+/// it (very long lines) each line is queried on its own start.
+const MINIMAP_MAX_RANGE: usize = 256 * 1024;
+
 /// Alpha of the `warning` color behind the find bar's matches, and behind the selected one.
 const MATCH_ALPHA: f32 = 0.22;
 const CURRENT_MATCH_ALPHA: f32 = 0.5;
@@ -187,6 +202,7 @@ pub fn bind_keys(cx: &mut App) {
 pub struct EditorDisplay {
     pub line_numbers: bool,
     pub current_line: bool,
+    pub minimap: bool,
 }
 
 impl Default for EditorDisplay {
@@ -194,6 +210,7 @@ impl Default for EditorDisplay {
         Self {
             line_numbers: true,
             current_line: true,
+            minimap: true,
         }
     }
 }
@@ -208,6 +225,8 @@ pub struct EditorView {
     painted: Vec<PaintedLine>,
     /// While the scrollbar thumb is dragged: the distance from the thumb's top to the pointer.
     thumb_grab: Option<f32>,
+    /// While the minimap's slider is dragged.
+    minimap_grab: Option<MinimapGrab>,
     /// While the mouse button that started a selection is down.
     selecting: bool,
     /// The text an input method is composing, as byte offsets: shown in the document, replaced
@@ -247,6 +266,7 @@ impl EditorView {
             focus_handle: cx.focus_handle(),
             painted: Vec::new(),
             thumb_grab: None,
+            minimap_grab: None,
             selecting: false,
             marked: None,
             text_origin: Point::default(),
@@ -596,6 +616,8 @@ pub struct EditorLayout {
     gutter: Bounds<Pixels>,
     text: Bounds<Pixels>,
     scrollbar: Option<Scrollbar>,
+    minimap: Option<Minimap>,
+    minimap_hitbox: Option<Hitbox>,
     line_height: Pixels,
     /// The y of the first visible line, relative to the top of the element.
     first_y: Pixels,
@@ -614,6 +636,30 @@ pub struct EditorLayout {
     hitbox: Hitbox,
     text_hitbox: Hitbox,
     gutter_hitbox: Hitbox,
+}
+
+/// The minimap of a frame: where it is and its blocks with their colors.
+pub struct Minimap {
+    geometry: MinimapGeometry,
+    blocks: Vec<(Bounds<Pixels>, Hsla)>,
+}
+
+/// What the mouse handlers need of the minimap.
+#[derive(Clone, Copy)]
+struct MinimapGeometry {
+    area: Bounds<Pixels>,
+    slider: Bounds<Pixels>,
+    layout: MinimapLayout,
+}
+
+/// A drag of the minimap's slider: where it was grabbed and how far it travels.
+#[derive(Clone, Copy)]
+struct MinimapGrab {
+    /// The distance from the slider's top to the pointer.
+    grab: f64,
+    layout: MinimapLayout,
+    /// The minimap's top.
+    top: Pixels,
 }
 
 /// The vertical scrollbar.
@@ -685,9 +731,21 @@ impl Element for EditorElement {
         };
         let gutter = Bounds::new(bounds.origin, size(gutter_width, bounds.size.height));
         let text_left = bounds.left() + gutter_width + px(EDITOR_TEXT_PADDING);
+        // The minimap sits between the text and the scrollbar, when the editor is wide enough.
+        let text_right = bounds.right() - px(EDITOR_SCROLLBAR_WIDTH);
+        let minimap_area = (display.minimap && bounds.size.width > px(MINIMAP_MIN_EDITOR_WIDTH))
+            .then(|| {
+                Bounds::from_corners(
+                    point(text_right - px(MINIMAP_WIDTH), bounds.top()),
+                    point(text_right, bounds.bottom()),
+                )
+            });
         let text = Bounds::from_corners(
             point(text_left, bounds.top()),
-            point(bounds.right() - px(EDITOR_SCROLLBAR_WIDTH), bounds.bottom()),
+            point(
+                minimap_area.map_or(text_right, |area| area.left()),
+                bounds.bottom(),
+            ),
         );
 
         let viewport = Viewport {
@@ -858,6 +916,59 @@ impl Element for EditorElement {
                 })
                 .collect();
 
+            let minimap = minimap_area.map(|area| {
+                let layout = MinimapLayout::new(EditorMeasures {
+                    lines: state.buffer.line_count(),
+                    line_height: f64::from(viewport.line_height),
+                    scroll_y: state.scroll_y,
+                    max_scroll_y: state.max_scroll_y(),
+                    viewport_height: f64::from(viewport.height),
+                });
+                let height = f64::from(area.size.height);
+                let mut blocks = Vec::new();
+                let lines = layout.lines(state.buffer.line_count(), height);
+                let max_bytes = MINIMAP_COLUMNS * 4;
+                let spans = state.syntax.lines_spans(
+                    &state.buffer,
+                    lines.clone(),
+                    max_bytes,
+                    MINIMAP_MAX_RANGE,
+                );
+                for (line, spans) in lines.zip(spans) {
+                    let top = (line as f64 * MINIMAP_LINE - layout.scroll) as f32;
+                    let slice = state.buffer.line(line);
+                    let end = slice.floor_char_boundary(slice.len().min(max_bytes));
+                    let text = slice.slice(..end).to_string();
+                    for (columns, highlight) in line_blocks(&text, &spans) {
+                        let color = highlight
+                            .and_then(|highlight| colors.get(highlight))
+                            .unwrap_or(text_color);
+                        blocks.push((
+                            Bounds::new(
+                                point(
+                                    area.left() + px(MINIMAP_PADDING + columns.start as f32),
+                                    area.top() + px(top),
+                                ),
+                                size(px(columns.len() as f32), px(MINIMAP_BLOCK_HEIGHT)),
+                            ),
+                            color.opacity(MINIMAP_ALPHA),
+                        ));
+                    }
+                }
+                let slider = Bounds::new(
+                    point(area.left(), area.top() + px(layout.slider_top as f32)),
+                    size(area.size.width, px(layout.slider_height as f32)),
+                );
+                Minimap {
+                    geometry: MinimapGeometry {
+                        area,
+                        slider,
+                        layout,
+                    },
+                    blocks,
+                }
+            });
+
             let content_height = state.content_height();
             let scrollbar = (content_height > f64::from(viewport.height)).then(|| {
                 let track = Bounds::from_corners(
@@ -890,6 +1001,10 @@ impl Element for EditorElement {
                 gutter,
                 text,
                 scrollbar,
+                minimap_hitbox: minimap.as_ref().map(|minimap| {
+                    window.insert_hitbox(minimap.geometry.area, HitboxBehavior::Normal)
+                }),
+                minimap,
                 line_height,
                 first_y: px(first_y),
                 numbers,
@@ -968,6 +1083,29 @@ impl Element for EditorElement {
             let _ = number.paint(origin, line_height, TextAlign::Left, None, window, cx);
         }
 
+        if let Some(minimap) = &layout.minimap {
+            if let Some(hitbox) = &layout.minimap_hitbox {
+                window.set_cursor_style(CursorStyle::Arrow, hitbox);
+            }
+            let dragging = self.editor.read(cx).minimap_grab.is_some();
+            window.with_content_mask(
+                Some(ContentMask {
+                    bounds: minimap.geometry.area,
+                }),
+                |window| {
+                    for (rect, color) in &minimap.blocks {
+                        window.paint_quad(fill(*rect, *color));
+                    }
+                    let slider = if dragging {
+                        palette.pressed
+                    } else {
+                        palette.hover
+                    };
+                    window.paint_quad(fill(minimap.geometry.slider, slider));
+                },
+            );
+        }
+
         if let Some(scrollbar) = layout.scrollbar {
             // The thumb is inset 2 px in its 10 px track, as the design's scrollbar.
             let thumb = Bounds::from_corners(
@@ -999,6 +1137,7 @@ impl EditorElement {
         let line_height = layout.line_height;
         let text = layout.text;
         let scrollbar = layout.scrollbar;
+        let minimap = layout.minimap.as_ref().map(|minimap| minimap.geometry);
         let hitbox = layout.hitbox.clone();
 
         let editor = self.editor.clone();
@@ -1029,6 +1168,31 @@ impl EditorElement {
         let editor = self.editor.clone();
         window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
             if !phase.bubble() || event.button != MouseButton::Left || !hitbox.is_hovered(window) {
+                return;
+            }
+            if let Some(minimap) = minimap
+                && minimap.area.contains(&event.position)
+            {
+                editor.update(cx, |editor, cx| {
+                    if minimap.slider.contains(&event.position) {
+                        editor.minimap_grab = Some(MinimapGrab {
+                            grab: f64::from(event.position.y - minimap.slider.top()),
+                            layout: minimap.layout,
+                            top: minimap.area.top(),
+                        });
+                    } else {
+                        // A click outside the slider centers that line.
+                        let y = f64::from(event.position.y - minimap.area.top());
+                        let line = minimap.layout.line_at(y);
+                        let state = &mut editor.state;
+                        let line_height = f64::from(state.viewport.line_height);
+                        let top = f64::from(PADDING_TOP) + line as f64 * line_height;
+                        let centered = top - f64::from(state.viewport.height) / 2.0;
+                        state.scroll_y = centered.clamp(0.0, state.max_scroll_y());
+                    }
+                    cx.notify();
+                });
+                cx.stop_propagation();
                 return;
             }
             if let Some(scrollbar) = scrollbar
@@ -1089,6 +1253,17 @@ impl EditorElement {
                     }
                     return;
                 }
+                if let Some(grab) = editor.minimap_grab {
+                    if event.pressed_button == Some(MouseButton::Left) {
+                        let slider_top = f64::from(event.position.y - grab.top) - grab.grab;
+                        let fraction = grab.layout.fraction_for_slider(slider_top);
+                        editor.state.scroll_to_fraction(fraction);
+                    } else {
+                        editor.minimap_grab = None;
+                    }
+                    cx.notify();
+                    return;
+                }
                 let Some(scrollbar) = scrollbar else { return };
                 if editor.thumb_grab.is_some() {
                     if event.pressed_button == Some(MouseButton::Left) {
@@ -1104,9 +1279,12 @@ impl EditorElement {
         let editor = self.editor.clone();
         window.on_mouse_event(move |_: &MouseUpEvent, phase, _window, cx| {
             if phase.bubble() {
-                editor.update(cx, |editor, _| {
+                editor.update(cx, |editor, cx| {
                     editor.thumb_grab = None;
                     editor.selecting = false;
+                    if editor.minimap_grab.take().is_some() {
+                        cx.notify();
+                    }
                 });
             }
         });

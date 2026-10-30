@@ -122,3 +122,4 @@ display refresh rate and compositor.
 | 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | 100 000 files tree, release, XWayland: root listing / expanding `wide_0` (10 000 entries) | 6.6 ms / 8 ms, window usable at once (target 4) |
 | 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | 100 000 files tree, release, XWayland: 300 wheel steps over the 10 000 rows | 27 ticks in 2.5 s |
 | 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | Idle 10 s, focused, 100 MB log open, release, native Wayland: main thread CPU ticks, GPU render | 0 ticks, GPU unchanged (target 5) |
+| 2026-10-30 | minimap branch | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland (XWayland) | Editor prepaint with the minimap, 100 wheel steps, trace log: `views/editor.rs` (1 100 lines, Rust) / 100 MB log | avg 2.8 ms, max 3.9 ms / avg 0.9 ms, max 1.1 ms (one query per line before: avg 7 ms) |

@@ -151,6 +151,7 @@ pub fn apply_editor_settings(settings: &Settings, cx: &mut App) {
     cx.set_global(EditorDisplay {
         line_numbers: settings.line_numbers,
         current_line: settings.highlight_current_line,
+        minimap: settings.minimap,
     });
 }
 
@@ -440,10 +441,20 @@ fn text_section(weak: WeakEntity<AppView>, palette: &Palette, settings: &Setting
             t!("settings.text.current_line"),
             toggle(
                 "settings-current-line",
-                weak,
+                weak.clone(),
                 palette,
                 settings.highlight_current_line,
                 |settings, on| settings.highlight_current_line = on,
+            ),
+        ))
+        .child(LabeledRow::new(
+            t!("settings.text.minimap"),
+            toggle(
+                "settings-minimap",
+                weak,
+                palette,
+                settings.minimap,
+                |settings, on| settings.minimap = on,
             ),
         ))
         .into_any_element()

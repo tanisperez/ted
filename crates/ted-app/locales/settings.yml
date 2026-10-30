@@ -57,6 +57,9 @@ _version: 2
 "settings.text.current_line":
   en: "Highlight current line"
   es: "Resaltar la línea actual"
+"settings.text.minimap":
+  en: "Minimap"
+  es: "Minimapa"
 "settings.indent.title":
   en: "Indentation"
   es: "Sangría"

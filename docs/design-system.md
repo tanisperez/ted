@@ -328,6 +328,23 @@ explorer" with the `Ctrl+O` hint.
 - The file opened in the editor is revealed and selected. The status bar starts with the folder
   path (hard drive icon, `~` for the home folder); a click opens it in the file manager.
 
+### Minimap
+
+Not in the prototype; built in the style of VS Code and Zed (#16, `state/minimap.rs` and the
+editor element).
+
+- A 100 px column between the text and the scrollbar, on the editor's `bg`, shown when the editor
+  is wider than 480 px and the `minimap` setting is on (Settings, Editor, Text).
+- Every line is 2 px high and every character 1 px wide, from 6 px of left padding: runs of
+  characters of the same class are 1.5 px high blocks in their syntax color (or the text color)
+  at 60% alpha; spaces are left out; tabs follow the tab size; at most 120 columns.
+- The slider covers the visible part of the document in `hover`, `pressed` while dragged. When
+  the document is taller than the minimap, the minimap scrolls with the editor, so the slider
+  travels through it from the top to the bottom.
+- Dragging the slider scrolls; a click elsewhere centers that line; the wheel over it scrolls the
+  editor. The pointer is an arrow over it.
+- Only the lines the minimap shows are drawn, with one highlight query for all of them.
+
 ### Find in file
 
 Not in the prototype; ted builds it from the design's floating toolbar (`views/find.rs`).
@@ -396,7 +413,7 @@ Postino's):
 - **Appearance**: Language as a segmented control (Automatic with the language it resolves to,
   English, Español), the three theme cards, the UI font size stepper (11 to 16).
 - **Editor**: Text (editor font size stepper, 10 to 18 in 0.5 steps; line numbers; highlight
-  current line), Indentation (tab size 2, 4 or 8; insert spaces, used where the file's own
+  current line; minimap), Indentation (tab size 2, 4 or 8; insert spaces, used where the file's own
   indentation is not detected). Without line numbers the gutter keeps only its 16 px padding.
 - **Files**: Saving (trim trailing whitespace, final newline), Explorer (the exclude patterns, one
   comma separated field, applied on Enter or when the field is left).

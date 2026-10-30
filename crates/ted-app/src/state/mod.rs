@@ -7,6 +7,7 @@ pub mod explorer;
 pub mod find;
 pub mod launch;
 pub mod locale;
+pub mod minimap;
 pub mod recents;
 pub mod settings;
 pub mod status;

@@ -145,6 +145,78 @@ impl Syntax {
         self.sync(buffer)
     }
 
+    /// The spans of the start of every line in `lines` (at most `max_bytes` of each), each
+    /// relative to its line's start, for the minimap. One tree query covers all of them when they
+    /// are short; when the range is bigger than `max_range` (very long lines), each line is queried
+    /// on its own start instead.
+    pub fn lines_spans(
+        &self,
+        buffer: &Buffer,
+        lines: std::ops::Range<usize>,
+        max_bytes: usize,
+        max_range: usize,
+    ) -> Vec<Vec<HighlightSpan>> {
+        let line_window = |line: usize| 0..buffer.line_len(line).min(max_bytes);
+        let Some(tree) = self
+            .tree
+            .as_ref()
+            .filter(|_| self.language != Language::Log)
+        else {
+            return lines
+                .map(|line| self.line_spans(buffer, line, line_window(line)))
+                .collect();
+        };
+        let start = buffer.line_to_byte(lines.start);
+        let end = buffer.line_to_byte(lines.end.min(buffer.line_count()));
+        if end.saturating_sub(start) > max_range {
+            return lines
+                .map(|line| self.line_spans(buffer, line, line_window(line)))
+                .collect();
+        }
+        let spans = tree.highlights(buffer, start..end);
+        let mut spans = spans.into_iter().peekable();
+        lines
+            .map(|line| {
+                let line_start = buffer.line_to_byte(line);
+                let line_end = line_start + line_window(line).end;
+                let mut out = Vec::new();
+                while let Some(span) = spans.peek() {
+                    if span.range.start >= line_end {
+                        break;
+                    }
+                    let span = spans.next_if(|span| span.range.end <= line_end);
+                    let span = match span {
+                        Some(span) => span,
+                        // Crosses the end of this line's window: keep it for the next line.
+                        None => {
+                            let span = spans.peek().cloned();
+                            let Some(span) = span else { break };
+                            out.push(HighlightSpan {
+                                range: span.range.start.max(line_start) - line_start
+                                    ..line_end - line_start,
+                                highlight: span.highlight,
+                            });
+                            break;
+                        }
+                    };
+                    let from = span.range.start.max(line_start);
+                    if from < span.range.end {
+                        out.push(HighlightSpan {
+                            range: from - line_start..span.range.end - line_start,
+                            highlight: span.highlight,
+                        });
+                    }
+                }
+                // Spans of this line past its window are not drawn.
+                while spans
+                    .next_if(|span| span.range.end <= buffer.line_to_byte(line + 1))
+                    .is_some()
+                {}
+                out
+            })
+            .collect()
+    }
+
     /// The spans of the part of `line` that is painted, `window` (byte columns of the line),
     /// relative to `window.start`.
     pub fn line_spans(
@@ -289,6 +361,21 @@ mod tests {
         run(&mut syntax, &mut buffer, next);
         let spans = syntax.line_spans(&buffer, 1, 0..5);
         assert_eq!(spans, vec![span(0..5, Highlight::Comment)]);
+    }
+
+    #[test]
+    fn lines_spans_matches_one_query_per_line() {
+        let text = "/* a\nb */ fn x() {}\nlet s = \"long string\";\n\nfn y() {}\n";
+        let mut buffer = Buffer::from_text(text);
+        let mut syntax = Syntax::new(Language::Rust, MAX);
+        let request = syntax.sync(&mut buffer).expect("parse");
+        run(&mut syntax, &mut buffer, request);
+        let lines = 0..buffer.line_count();
+        for max_bytes in [4, 8, 100] {
+            let one_query = syntax.lines_spans(&buffer, lines.clone(), max_bytes, usize::MAX);
+            let per_line = syntax.lines_spans(&buffer, lines.clone(), max_bytes, 0);
+            assert_eq!(one_query, per_line, "max_bytes {max_bytes}");
+        }
     }
 
     #[test]

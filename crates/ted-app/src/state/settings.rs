@@ -131,6 +131,8 @@ pub struct Settings {
     pub line_numbers: bool,
     /// Whether the editor highlights the line of the cursor.
     pub highlight_current_line: bool,
+    /// Whether the editor shows the minimap at its right.
+    pub minimap: bool,
     /// Columns a tab advances to, and the width of one indentation level in spaces.
     pub tab_size: usize,
     /// Whether Tab inserts spaces in a file whose indentation is not detected (a new or flat
@@ -169,6 +171,7 @@ impl Default for Settings {
             mono_font_size: 12.5,
             line_numbers: true,
             highlight_current_line: true,
+            minimap: true,
             tab_size: 4,
             insert_spaces: true,
             trim_trailing_whitespace: true,
@@ -267,6 +270,9 @@ fn parse_settings(content: &str) -> Settings {
     }
     if let Some(value) = flag("highlight_current_line") {
         settings.highlight_current_line = value;
+    }
+    if let Some(value) = flag("minimap") {
+        settings.minimap = value;
     }
     if let Some(value) = table.get("tab_size").and_then(toml::Value::as_integer) {
         settings.tab_size = value.clamp(1, 16) as usize;
@@ -381,6 +387,7 @@ mod tests {
             mono_font_size: 14.5,
             line_numbers: false,
             highlight_current_line: false,
+            minimap: false,
             tab_size: 2,
             insert_spaces: false,
             trim_trailing_whitespace: false,
