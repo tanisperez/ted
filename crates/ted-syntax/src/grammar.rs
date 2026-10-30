@@ -95,6 +95,24 @@ const MAKE_QUERY: &str = r#"
 (string) @string
 "#;
 
+// The bundled bash query leaves out the declaration keywords, numbers, the special variables
+// (`$?`, `$@`) and the test operators (`-f`, `-eq`).
+const BASH_EXTRA: &str = r#"
+["declare" "local" "readonly" "typeset"] @keyword
+(number) @number
+(special_variable_name) @constant
+(test_operator) @constant
+[(ansi_c_string) (translated_string)] @string
+"#;
+
+// The bundled python query paints `True`, `False` and `None` as builtin constants: the booleans
+// get their own class, and decorators are attributes.
+const PYTHON_EXTRA: &str = r#"
+[(true) (false)] @boolean
+(decorator) @attribute
+(decorator (identifier) @attribute)
+"#;
+
 /// The grammar of a language, `None` for those without one (or if its query failed to compile,
 /// which the tests rule out).
 pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
@@ -105,6 +123,8 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
     static MARKDOWN: OnceLock<Option<Grammar>> = OnceLock::new();
     static HTML: OnceLock<Option<Grammar>> = OnceLock::new();
     static MAKE: OnceLock<Option<Grammar>> = OnceLock::new();
+    static BASH: OnceLock<Option<Grammar>> = OnceLock::new();
+    static PYTHON: OnceLock<Option<Grammar>> = OnceLock::new();
 
     let (cell, ts_language, query) = match language {
         Language::Rust => (
@@ -141,6 +161,16 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
             format!("{}\n{HTML_EXTRA}", tree_sitter_html::HIGHLIGHTS_QUERY),
         ),
         Language::Make => (&MAKE, tree_sitter_make::LANGUAGE, MAKE_QUERY.to_string()),
+        Language::Shell => (
+            &BASH,
+            tree_sitter_bash::LANGUAGE,
+            format!("{}\n{BASH_EXTRA}", tree_sitter_bash::HIGHLIGHT_QUERY),
+        ),
+        Language::Python => (
+            &PYTHON,
+            tree_sitter_python::LANGUAGE,
+            format!("{}\n{PYTHON_EXTRA}", tree_sitter_python::HIGHLIGHTS_QUERY),
+        ),
         Language::Log | Language::PlainText => return None,
     };
 
@@ -169,7 +199,7 @@ mod tests {
     fn has_grammar_matches_the_grammars() {
         use Language::*;
         for language in [
-            Rust, JavaScript, Json, Toml, Markdown, Xml, Html, Make, Log, PlainText,
+            Rust, JavaScript, Json, Toml, Markdown, Xml, Html, Make, Shell, Python, Log, PlainText,
         ] {
             assert_eq!(
                 language.has_grammar(),

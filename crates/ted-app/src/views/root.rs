@@ -39,6 +39,8 @@ use super::explorer::{ExplorerEvent, ExplorerView};
 const HEAD_THRESHOLD: u64 = 8 * 1024 * 1024;
 /// How much of a big file is read first: many screens, and still under a millisecond.
 const HEAD_BYTES: usize = 256 * 1024;
+/// The longest first line read for a shebang (`#!/usr/bin/env python3`).
+const SHEBANG_MAX: usize = 256;
 
 /// What the content area shows.
 enum Content {
@@ -508,7 +510,15 @@ impl AppView {
                 } else {
                     max_bytes
                 };
-                state.syntax = Syntax::new(Language::detect(&path), max_bytes);
+                // A script without an extension names its language in its first line.
+                let language = match Language::detect(&path) {
+                    Language::PlainText if state.buffer.line_len(0) <= SHEBANG_MAX => {
+                        let first_line = state.buffer.line(0).to_string();
+                        Language::from_shebang(&first_line).unwrap_or(Language::PlainText)
+                    }
+                    language => language,
+                };
+                state.syntax = Syntax::new(language, max_bytes);
                 state.path = Some(path);
                 state.disk_modified = modified;
                 let editor = cx.new(|cx| EditorView::new(state, cx));

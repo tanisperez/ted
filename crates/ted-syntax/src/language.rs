@@ -13,6 +13,8 @@ pub enum Language {
     Xml,
     Html,
     Make,
+    Shell,
+    Python,
     Log,
     PlainText,
 }
@@ -27,6 +29,8 @@ impl Language {
         match name {
             "Cargo.lock" | "Pipfile" | "poetry.lock" | "uv.lock" => return Language::Toml,
             "Makefile" | "makefile" | "GNUmakefile" => return Language::Make,
+            ".bashrc" | ".bash_profile" | ".bash_logout" | ".profile" | ".zshrc" | ".zshenv"
+            | ".zprofile" | "PKGBUILD" => return Language::Shell,
             ".babelrc" | ".prettierrc" | ".eslintrc" | "composer.lock" => return Language::Json,
             _ => {}
         }
@@ -43,8 +47,27 @@ impl Language {
             | "atom" => Language::Xml,
             "html" | "htm" | "xhtml" => Language::Html,
             "mk" | "mak" => Language::Make,
+            "sh" | "bash" | "zsh" | "ksh" => Language::Shell,
+            "py" | "pyw" | "pyi" => Language::Python,
             "log" => Language::Log,
             _ => Language::PlainText,
+        }
+    }
+
+    /// The language a script names in its first line (`#!/bin/sh`, `#!/usr/bin/env python3`),
+    /// for a file whose name says nothing. Reads only that line.
+    pub fn from_shebang(first_line: &str) -> Option<Language> {
+        let command = first_line.strip_prefix("#!")?.trim();
+        let mut words = command.split_whitespace();
+        let mut program = words.next()?.rsplit('/').next()?;
+        if program == "env" {
+            program = words.find(|word| !word.starts_with('-'))?;
+        }
+        let name = program.trim_end_matches(|ch: char| ch.is_ascii_digit() || ch == '.');
+        match name {
+            "sh" | "bash" | "zsh" | "ksh" | "dash" | "ash" => Some(Language::Shell),
+            "python" => Some(Language::Python),
+            _ => None,
         }
     }
 
@@ -64,6 +87,8 @@ impl Language {
             Language::Xml => "XML",
             Language::Html => "HTML",
             Language::Make => "Makefile",
+            Language::Shell => "Shell",
+            Language::Python => "Python",
             Language::Log => "Log",
             Language::PlainText => "Plain text",
         }

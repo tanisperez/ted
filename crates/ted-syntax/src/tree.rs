@@ -200,6 +200,8 @@ mod tests {
             Language::Xml,
             Language::Html,
             Language::Make,
+            Language::Shell,
+            Language::Python,
         ] {
             assert!(grammar(l).is_some(), "{l:?}");
         }
@@ -222,7 +224,17 @@ mod tests {
         assert_eq!(d("GNUmakefile"), Language::Make);
         assert_eq!(d("rules.mk"), Language::Make);
         assert_eq!(d("notes.txt"), Language::PlainText);
+        assert_eq!(d("run.sh"), Language::Shell);
+        assert_eq!(d("home/.bashrc"), Language::Shell);
+        assert_eq!(d("tool.PY"), Language::Python);
+        assert_eq!(d("deploy"), Language::PlainText);
         assert_eq!(Language::Rust.name(), "Rust");
+        let s = Language::from_shebang;
+        assert_eq!(s("#!/bin/sh"), Some(Language::Shell));
+        assert_eq!(s("#!/usr/bin/env -S bash -e"), Some(Language::Shell));
+        assert_eq!(s("#! /usr/bin/python3.12"), Some(Language::Python));
+        assert_eq!(s("#!/usr/bin/perl"), None);
+        assert_eq!(s("echo hi"), None);
     }
 
     #[test]
@@ -301,6 +313,36 @@ mod tests {
         has(Language::Make, src, "OBJS", Property);
         has(Language::Make, src, "$@", Constant);
         has(Language::Make, src, "wildcard", Function);
+    }
+
+    #[test]
+    fn shell_highlights() {
+        let src = "#!/bin/sh\n# setup\nlocal n=3\nif [ -f \"$HOME/x\" ]; then\n  echo $? 'done' >&2\nfi\ngreet() { printf hi; }\n";
+        has(Language::Shell, src, "# setup", Comment);
+        has(Language::Shell, src, "local", Keyword);
+        has(Language::Shell, src, "n", Property);
+        has(Language::Shell, src, "if", Keyword);
+        has(Language::Shell, src, "-f", Constant);
+        has(Language::Shell, src, "echo", Function);
+        has(Language::Shell, src, "?", Constant);
+        has(Language::Shell, src, "'done'", String);
+        has(Language::Shell, src, "fi", Keyword);
+        has(Language::Shell, src, "greet", Function);
+    }
+
+    #[test]
+    fn python_highlights() {
+        let src = "# hi\n@cached\ndef area(r: float) -> float:\n    \"\"\"Doc.\"\"\"\n    if r is None or False:\n        return 0\n    return 3.14 * r ** 2\n\nclass Shape:\n    pass\n";
+        has(Language::Python, src, "# hi", Comment);
+        has(Language::Python, src, "@cached", Attribute);
+        has(Language::Python, src, "def", Keyword);
+        has(Language::Python, src, "area", Function);
+        has(Language::Python, src, "float", Type);
+        has(Language::Python, src, "\"\"\"Doc.\"\"\"", String);
+        has(Language::Python, src, "None", Constant);
+        has(Language::Python, src, "False", Boolean);
+        has(Language::Python, src, "3.14", Number);
+        has(Language::Python, src, "Shape", Type);
     }
 
     #[test]
