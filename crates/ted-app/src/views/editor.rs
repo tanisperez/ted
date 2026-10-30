@@ -111,6 +111,8 @@ actions!(
         Undo,
         /// Redoes the last undone change.
         Redo,
+        /// Keeps only the primary cursor.
+        CollapseCursors,
     ]
 );
 
@@ -159,6 +161,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("shift-enter", Newline, context),
         KeyBinding::new("tab", Indent, context),
         KeyBinding::new("shift-tab", Outdent, context),
+        KeyBinding::new("escape", CollapseCursors, context),
     ]);
     #[cfg(target_os = "macos")]
     cx.bind_keys([
@@ -229,6 +232,9 @@ pub struct EditorView {
     minimap_grab: Option<MinimapGrab>,
     /// While the mouse button that started a selection is down.
     selecting: bool,
+    /// While the middle button is down: the line and display column where the column selection
+    /// started.
+    column_start: Option<(usize, usize)>,
     /// The text an input method is composing, as byte offsets: shown in the document, replaced
     /// as the composition changes and committed when it ends.
     marked: Option<Range<usize>>,
@@ -268,6 +274,7 @@ impl EditorView {
             thumb_grab: None,
             minimap_grab: None,
             selecting: false,
+            column_start: None,
             marked: None,
             text_origin: Point::default(),
             line_height: px(20.0),
@@ -314,14 +321,11 @@ impl EditorView {
     }
 
     fn copy(&mut self, cut: bool, cx: &mut Context<Self>) {
-        // Nothing selected: the whole line, as most editors do.
-        if self.state.selected_text().is_none() {
-            self.state.select_line(self.state.cursor.line);
-        }
+        self.state.select_lines_if_empty();
         let text = if cut {
             self.state.cut()
         } else {
-            self.state.selected_text()
+            self.state.copied_text()
         };
         if let Some(text) = text {
             cx.write_to_clipboard(ClipboardItem::new_string(text));
@@ -336,7 +340,7 @@ impl EditorView {
         // Pasted lines take the document's line ending.
         let text = text.replace("\r\n", "\n");
         let text = text.replace('\n', self.state.buffer.line_ending().as_str());
-        self.edit(cx, |state| state.insert(&text, EditKind::Other));
+        self.edit(cx, |state| state.paste(&text));
     }
 
     /// A UTF-16 range of the platform input as a byte range of the buffer.
@@ -351,6 +355,15 @@ impl EditorView {
     }
 
     /// The document position under a point relative to the text area's top left corner.
+    /// The line and display column under a point relative to the text area's top left corner,
+    /// for the column selection: past the end of a line the column keeps growing.
+    fn column_at(&self, point: Point<Pixels>) -> (usize, usize) {
+        let line = self.state.line_at_y(f32::from(point.y));
+        let char_width = self.state.viewport.char_width.max(1.0);
+        let column = ((f32::from(point.x) + self.state.scroll_x) / char_width).round();
+        (line, column.max(0.0) as usize)
+    }
+
     fn position_at(&self, point: Point<Pixels>) -> Position {
         let line = self.state.line_at_y(f32::from(point.y));
         let Some(painted) = self.painted.iter().find(|painted| painted.line == line) else {
@@ -460,6 +473,13 @@ impl Render for EditorView {
             .on_action(cx.listener(|this, _: &Paste, _, cx| this.paste(cx)))
             .on_action(cx.listener(|this, _: &Undo, _, cx| this.edit(cx, EditorState::undo)))
             .on_action(cx.listener(|this, _: &Redo, _, cx| this.edit(cx, EditorState::redo)))
+            .on_action(cx.listener(|this, _: &CollapseCursors, _, cx| {
+                if this.state.collapse_cursors() {
+                    cx.notify();
+                } else {
+                    cx.propagate();
+                }
+            }))
             .child(EditorElement {
                 editor: cx.entity(),
             });
@@ -514,11 +534,14 @@ impl EntityInputHandler for EditorView {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let range = range
-            .map(|range| self.bytes_from_utf16(&range))
-            .or(self.marked.take())
-            .unwrap_or_else(|| self.state.selection().range());
-        self.state.replace(range, text, EditKind::Typing);
+        let range = range.map(|range| self.bytes_from_utf16(&range));
+        let primary = self.state.selection().range();
+        match range.or(self.marked.take()) {
+            // Plain typing: at every cursor.
+            None => self.state.insert(text, EditKind::Typing),
+            Some(range) if range == primary => self.state.insert(text, EditKind::Typing),
+            Some(range) => self.state.replace(range, text, EditKind::Typing),
+        }
         cx.notify();
     }
 
@@ -623,8 +646,8 @@ pub struct EditorLayout {
     first_y: Pixels,
     numbers: Vec<ShapedLine>,
     painted: Vec<PaintedLine>,
-    cursor: Option<Bounds<Pixels>>,
-    current_line: Option<Bounds<Pixels>>,
+    cursors: Vec<Bounds<Pixels>>,
+    current_lines: Vec<Bounds<Pixels>>,
     /// The selected parts of the visible lines.
     selection: Vec<Bounds<Pixels>>,
     /// The find bar's matches on the visible lines.
@@ -827,27 +850,43 @@ impl Element for EditorElement {
                 bounds.top() + px(first_y) + line_height * (line - lines.start) as f32
             };
 
-            let cursor_line = state.cursor.line;
-            let current_line = (display.current_line && lines.contains(&cursor_line)).then(|| {
-                Bounds::new(
-                    point(bounds.left(), row_top(cursor_line)),
-                    size(bounds.size.width, line_height),
-                )
-            });
-            let cursor = painted
+            // The cursors on the visible lines: the primary one and a binary search of the
+            // others, so a column selection over the whole file costs the same per frame.
+            let others = state.others_on_lines(lines.clone());
+            let visible_cursors: Vec<Position> = std::iter::once(state.cursor)
+                .chain(others.iter().map(|caret| caret.cursor))
+                .filter(|cursor| lines.contains(&cursor.line))
+                .collect();
+            let mut cursor_lines: Vec<usize> =
+                visible_cursors.iter().map(|cursor| cursor.line).collect();
+            cursor_lines.sort_unstable();
+            cursor_lines.dedup();
+            let current_lines = cursor_lines
                 .iter()
-                .find(|painted| painted.line == cursor_line && focused)
-                .and_then(|painted| {
-                    let column = state.cursor.column.checked_sub(painted.start_column)?;
+                .filter(|_| display.current_line)
+                .map(|&line| {
+                    Bounds::new(
+                        point(bounds.left(), row_top(line)),
+                        size(bounds.size.width, line_height),
+                    )
+                })
+                .collect();
+            let cursors = visible_cursors
+                .iter()
+                .filter(|_| focused)
+                .filter_map(|cursor| {
+                    let painted = painted.iter().find(|painted| painted.line == cursor.line)?;
+                    let column = cursor.column.checked_sub(painted.start_column)?;
                     let column = column.min(painted.text.len());
                     let x = painted
                         .shaped
                         .x_for_index(expanded_index(&painted.text, column));
                     Some(Bounds::new(
-                        point(text_left + painted.x + x, row_top(cursor_line)),
+                        point(text_left + painted.x + x, row_top(cursor.line)),
                         size(px(CURSOR_WIDTH), line_height),
                     ))
-                });
+                })
+                .collect();
 
             // The selection, one rectangle per visible line it covers. A line whose break is
             // selected shows one more character's width.
@@ -863,11 +902,16 @@ impl Element for EditorElement {
                 })
             };
             let selection = state.selection();
-            let selection_rects = if selection.is_empty() {
-                Vec::new()
-            } else {
-                rects(selection.range())
-            };
+            let mut selection_rects = Vec::new();
+            for caret in std::iter::once((state.cursor, state.anchor))
+                .chain(others.iter().map(|caret| (caret.cursor, caret.anchor)))
+            {
+                if let (cursor, Some(anchor)) = caret {
+                    let range = state.buffer.position_to_offset(anchor.min(cursor))
+                        ..state.buffer.position_to_offset(anchor.max(cursor));
+                    selection_rects.extend(rects(range));
+                }
+            }
             // The visible matches of the find bar, searched in the painted part of each line.
             let mut match_rects = Vec::new();
             let mut current_rects = Vec::new();
@@ -899,7 +943,8 @@ impl Element for EditorElement {
                 .filter(|_| display.line_numbers)
                 .map(|line| {
                     let label = SharedString::from((line + 1).to_string());
-                    let color = if line == cursor_line && display.current_line {
+                    let color = if display.current_line && cursor_lines.binary_search(&line).is_ok()
+                    {
                         palette.fg_muted
                     } else {
                         palette.fg_subtle
@@ -1009,8 +1054,8 @@ impl Element for EditorElement {
                 first_y: px(first_y),
                 numbers,
                 painted,
-                cursor,
-                current_line,
+                cursors,
+                current_lines,
                 selection: selection_rects,
                 matches: match_rects,
                 current_match: current_rects,
@@ -1039,11 +1084,11 @@ impl Element for EditorElement {
         // A half visible row at the top or the bottom must not spill over the title bar or the
         // status bar, so everything per row is clipped to the editor.
         let editor_mask = ContentMask { bounds };
-        if let Some(current_line) = layout.current_line {
-            window.with_content_mask(Some(editor_mask), |window| {
-                window.paint_quad(fill(current_line, palette.hover));
-            });
-        }
+        window.with_content_mask(Some(editor_mask), |window| {
+            for current_line in &layout.current_lines {
+                window.paint_quad(fill(*current_line, palette.hover));
+            }
+        });
 
         let line_height = layout.line_height;
         let top = bounds.top() + layout.first_y;
@@ -1075,8 +1120,8 @@ impl Element for EditorElement {
                         cx,
                     );
                 }
-                if let Some(cursor) = layout.cursor {
-                    window.paint_quad(fill(cursor, palette.accent));
+                for cursor in &layout.cursors {
+                    window.paint_quad(fill(*cursor, palette.accent));
                 }
             },
         );
@@ -1173,6 +1218,29 @@ impl EditorElement {
         });
 
         let editor = self.editor.clone();
+        let middle_hitbox = hitbox.clone();
+        window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
+            // The middle button starts a column selection, as in IntelliJ. It never pastes the
+            // primary selection.
+            if !phase.bubble()
+                || event.button != MouseButton::Middle
+                || !middle_hitbox.is_hovered(window)
+                || !text.contains(&event.position)
+            {
+                return;
+            }
+            editor.update(cx, |editor, cx| {
+                window.focus(&editor.focus_handle, cx);
+                editor.marked = None;
+                let start = editor.column_at(event.position - text.origin);
+                editor.column_start = Some(start);
+                editor.state.select_columns(start, start);
+                cx.notify();
+            });
+            cx.stop_propagation();
+        });
+
+        let editor = self.editor.clone();
         window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
             if !phase.bubble() || event.button != MouseButton::Left || !hitbox.is_hovered(window) {
                 return;
@@ -1227,6 +1295,10 @@ impl EditorElement {
                 );
                 let position = editor.position_at(local);
                 match event.click_count {
+                    // Alt+click (Option+click on macOS) adds or removes a cursor.
+                    1 if event.modifiers.alt && !event.modifiers.shift => {
+                        editor.state.toggle_cursor(position);
+                    }
                     2 => editor.state.select_word_at(position),
                     3 => editor.state.select_line(position.line),
                     _ => {
@@ -1245,6 +1317,17 @@ impl EditorElement {
                 return;
             }
             editor.update(cx, |editor, cx| {
+                if let Some(start) = editor.column_start {
+                    if event.pressed_button == Some(MouseButton::Middle) {
+                        let end = editor.column_at(event.position - text.origin);
+                        editor.state.select_columns(start, end);
+                        editor.state.scroll_to_cursor();
+                        cx.notify();
+                    } else {
+                        editor.column_start = None;
+                    }
+                    return;
+                }
                 if editor.selecting {
                     if event.pressed_button == Some(MouseButton::Left) {
                         let local = point(
@@ -1289,6 +1372,7 @@ impl EditorElement {
                 editor.update(cx, |editor, cx| {
                     editor.thumb_grab = None;
                     editor.selecting = false;
+                    editor.column_start = None;
                     if editor.minimap_grab.take().is_some() {
                         cx.notify();
                     }

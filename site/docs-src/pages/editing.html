@@ -8,6 +8,10 @@ description: Moving, selecting, the clipboard, undo, indentation and line ending
 <p>The arrows move by character and line, <kbd>Home</kbd> and <kbd>End</kbd> to the start and end of the line, <kbd>Page Up</kbd> and <kbd>Page Down</kbd> by a screen, and <kbd>Ctrl</kbd> <kbd>Home</kbd> and <kbd>Ctrl</kbd> <kbd>End</kbd> to the start and end of the file. Hold <kbd>Shift</kbd> with any of them to select. <kbd>Ctrl</kbd> <kbd>A</kbd> selects everything.</p>
 <p>With the mouse: click to place the cursor, drag to select, <kbd>Shift</kbd> click to extend the selection, double click to select a word and triple click to select a line.</p>
 
+<h2>Multiple cursors</h2>
+<p><kbd>Alt</kbd> click (<kbd>Option</kbd> click on macOS) adds a cursor, and <kbd>Alt</kbd> click on a cursor removes it. Click with the middle button and drag to select a column: one cursor per line, each with the text between the columns where the drag started and where it is now. A line shorter than the column gets its cursor at its end. On Linux, the middle button does not paste the primary selection in the editor.</p>
+<p>Typing, deleting and moving happen at every cursor, and undo takes them back at all of them in one step. Copy takes the text of every cursor, one per line. Paste gives one line to each cursor when the clipboard has as many lines as there are cursors, and the whole text to each one otherwise. <kbd>Esc</kbd> goes back to one cursor.</p>
+
 <h2>Clipboard and undo</h2>
 <p><kbd>Ctrl</kbd> <kbd>C</kbd>, <kbd>Ctrl</kbd> <kbd>X</kbd> and <kbd>Ctrl</kbd> <kbd>V</kbd> copy, cut and paste. With nothing selected, copy and cut take the whole line. Pasted text takes the line ending of the file. <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes, and <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Z</kbd> or <kbd>Ctrl</kbd> <kbd>Y</kbd> redoes; typing a word is one step.</p>
 

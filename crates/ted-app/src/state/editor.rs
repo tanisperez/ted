@@ -77,15 +77,37 @@ pub enum Movement {
     DocumentEnd,
 }
 
+/// A cursor other than the primary one, with its selection: the same fields the primary cursor
+/// has in [`EditorState`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Caret {
+    pub cursor: Position,
+    pub anchor: Option<Position>,
+    preferred_column: Option<usize>,
+}
+
+impl Caret {
+    fn at(position: Position) -> Self {
+        Self {
+            cursor: position,
+            anchor: None,
+            preferred_column: None,
+        }
+    }
+}
+
 /// One open document in an editor.
 #[derive(Debug, Clone, Default)]
 pub struct EditorState {
     pub buffer: Buffer,
-    /// Where the cursor is.
+    /// Where the primary cursor is: the one the view scrolls to and the status bar shows.
     pub cursor: Position,
     /// Where the selection started, when there is one. The selection runs from here to the
     /// cursor.
     pub anchor: Option<Position>,
+    /// The other cursors (Alt+click, the column selection), sorted by position. No two cursors
+    /// or selections overlap.
+    pub others: Vec<Caret>,
     /// Undo and redo.
     pub history: History,
     /// The display column vertical movements try to keep, set by horizontal ones.
@@ -200,10 +222,29 @@ impl EditorState {
         line.min(self.buffer.line_count() - 1)
     }
 
-    /// Moves the cursor and scrolls it into view. With `select`, the selection extends to the new
-    /// place; without it, a selection collapses (to its start or end for Left and Right).
+    /// Moves every cursor and scrolls the primary one into view. With `select`, the selections
+    /// extend to the new places; without it, they collapse (to their start or end for Left and
+    /// Right).
     pub fn move_cursor(&mut self, movement: Movement, select: bool) {
         self.history.break_group();
+        let others = std::mem::take(&mut self.others);
+        if !others.is_empty() {
+            let primary = self.caret();
+            let mut moved = Vec::with_capacity(others.len());
+            for caret in others {
+                self.set_caret(caret);
+                self.move_one(movement, select, false);
+                moved.push(self.caret());
+            }
+            self.set_caret(primary);
+            self.others = moved;
+        }
+        self.move_one(movement, select, true);
+        self.normalize();
+    }
+
+    /// Moves the primary cursor; with `primary`, the view follows it.
+    fn move_one(&mut self, movement: Movement, select: bool, primary: bool) {
         if select {
             self.anchor.get_or_insert(self.cursor);
         } else if let Some(anchor) = self.anchor.take()
@@ -217,7 +258,9 @@ impl EditorState {
                 end
             };
             self.preferred_column = None;
-            self.scroll_to_cursor();
+            if primary {
+                self.scroll_to_cursor();
+            }
             return;
         }
         let buffer = &self.buffer;
@@ -282,6 +325,13 @@ impl EditorState {
         } else {
             self.preferred_column = None;
         }
+        self.cursor = position;
+        if self.anchor == Some(position) {
+            self.anchor = None;
+        }
+        if !primary {
+            return;
+        }
         // A page movement also scrolls by a page, so the cursor keeps its place on screen.
         let scroll_lines = match movement {
             Movement::PageUp => -(page as f64),
@@ -290,17 +340,14 @@ impl EditorState {
         };
         self.scroll_y += scroll_lines * f64::from(self.viewport.line_height);
         self.clamp_scroll();
-        self.cursor = position;
-        if self.anchor == Some(position) {
-            self.anchor = None;
-        }
         self.scroll_to_cursor();
     }
 
-    /// Puts the cursor at `position` (a click), clamped to the text. With `select` (a drag, or a
-    /// Shift click), the selection extends to it.
+    /// Puts the cursor at `position` (a click), clamped to the text, and drops the other cursors.
+    /// With `select` (a drag, or a Shift click), the selection extends to it.
     pub fn set_cursor(&mut self, position: Position, select: bool) {
         self.history.break_group();
+        self.others.clear();
         let offset = self.buffer.position_to_offset(position);
         let position = self.buffer.offset_to_position(offset);
         if select {
@@ -315,21 +362,181 @@ impl EditorState {
         self.preferred_column = None;
     }
 
-    /// The selection as byte offsets.
+    /// The primary selection as byte offsets.
     pub fn selection(&self) -> Selection {
-        let head = self.buffer.position_to_offset(self.cursor);
-        let anchor = self
+        self.caret_selection(&self.caret())
+    }
+
+    /// Sets the selection from byte offsets, dropping the other cursors.
+    pub fn set_selection(&mut self, selection: Selection) {
+        self.others.clear();
+        self.set_caret(self.caret_at(selection));
+    }
+
+    /// Every selection as byte offsets, the primary one first, then the others in order.
+    pub fn selections(&self) -> Vec<Selection> {
+        std::iter::once(self.caret())
+            .chain(self.others.iter().copied())
+            .map(|caret| self.caret_selection(&caret))
+            .collect()
+    }
+
+    /// Sets every selection from byte offsets, the primary one first. Overlapping ones merge.
+    pub fn set_selections(&mut self, selections: &[Selection]) {
+        let Some((primary, others)) = selections.split_first() else {
+            return;
+        };
+        self.set_selection(*primary);
+        self.others = others
+            .iter()
+            .map(|&selection| self.caret_at(selection))
+            .collect();
+        self.normalize();
+    }
+
+    /// Escape: keeps only the primary cursor. Returns whether there were others.
+    pub fn collapse_cursors(&mut self) -> bool {
+        let had_others = !self.others.is_empty();
+        self.others.clear();
+        had_others
+    }
+
+    /// Alt+click: adds a cursor at `position`, which becomes the primary one, or removes the
+    /// cursor already there unless it is the last one.
+    pub fn toggle_cursor(&mut self, position: Position) {
+        self.history.break_group();
+        let offset = self.buffer.position_to_offset(position);
+        let position = self.buffer.offset_to_position(offset);
+        let at = Caret::at(position);
+        if let Some(index) = self
+            .others
+            .iter()
+            .position(|caret| caret.cursor == position && caret.anchor.is_none())
+        {
+            self.others.remove(index);
+            return;
+        }
+        if self.cursor == position && self.anchor.is_none() {
+            if let Some(last) = self.others.pop() {
+                self.set_caret(last);
+            }
+            return;
+        }
+        self.others.push(self.caret());
+        self.set_caret(at);
+        self.normalize();
+    }
+
+    /// The column selection (a middle button drag): on every line from `from.0` to `to.0`, the
+    /// text between display columns `from.1` and `to.1`, clamped to each line. The primary
+    /// cursor is on the line of `to`, where the pointer is.
+    pub fn select_columns(&mut self, from: (usize, usize), to: (usize, usize)) {
+        self.history.break_group();
+        let last_line = self.buffer.line_count() - 1;
+        let (from_line, to_line) = (from.0.min(last_line), to.0.min(last_line));
+        let caret = |line: usize| {
+            let text = self.buffer.line(line).to_string();
+            let anchor = Position::new(line, byte_for_display_column(&text, from.1));
+            let cursor = Position::new(line, byte_for_display_column(&text, to.1));
+            Caret {
+                cursor,
+                anchor: (anchor != cursor).then_some(anchor),
+                preferred_column: None,
+            }
+        };
+        let lines = from_line.min(to_line)..=from_line.max(to_line);
+        self.others = lines.filter(|&line| line != to_line).map(caret).collect();
+        self.set_caret(caret(to_line));
+        self.normalize();
+    }
+
+    fn caret(&self) -> Caret {
+        Caret {
+            cursor: self.cursor,
+            anchor: self.anchor,
+            preferred_column: self.preferred_column,
+        }
+    }
+
+    fn set_caret(&mut self, caret: Caret) {
+        self.cursor = caret.cursor;
+        self.anchor = caret.anchor;
+        self.preferred_column = caret.preferred_column;
+    }
+
+    fn caret_selection(&self, caret: &Caret) -> Selection {
+        let head = self.buffer.position_to_offset(caret.cursor);
+        let anchor = caret
             .anchor
             .map_or(head, |anchor| self.buffer.position_to_offset(anchor));
         Selection { anchor, head }
     }
 
-    /// Sets the selection from byte offsets.
-    pub fn set_selection(&mut self, selection: Selection) {
-        self.cursor = self.buffer.offset_to_position(selection.head);
-        self.anchor =
-            (!selection.is_empty()).then(|| self.buffer.offset_to_position(selection.anchor));
-        self.preferred_column = None;
+    fn caret_at(&self, selection: Selection) -> Caret {
+        Caret {
+            cursor: self.buffer.offset_to_position(selection.head),
+            anchor: (!selection.is_empty())
+                .then(|| self.buffer.offset_to_position(selection.anchor)),
+            preferred_column: None,
+        }
+    }
+
+    /// Sorts the other cursors and merges the ones that overlap or meet (a merged one that held
+    /// the primary cursor stays the primary). Linear in the number of cursors.
+    fn normalize(&mut self) {
+        if self.others.is_empty() {
+            return;
+        }
+        let primary = self.caret();
+        let mut carets: Vec<(Range<usize>, Caret, bool)> = std::iter::once((primary, true))
+            .chain(
+                std::mem::take(&mut self.others)
+                    .into_iter()
+                    .map(|caret| (caret, false)),
+            )
+            .map(|(caret, is_primary)| (self.caret_selection(&caret).range(), caret, is_primary))
+            .collect();
+        carets.sort_by_key(|(range, _, _)| (range.start, range.end));
+        let mut merged: Vec<(Range<usize>, Caret, bool)> = Vec::with_capacity(carets.len());
+        for (range, caret, is_primary) in carets {
+            if let Some((last, last_caret, last_primary)) = merged.last_mut() {
+                let meets = range.start < last.end
+                    || range.start == last.start
+                    || (range.start == last.end
+                        && (range.start == range.end || last.start == last.end));
+                if meets {
+                    if range.end > last.end {
+                        last.end = last.end.max(range.end);
+                        *last_caret = self.caret_at(Selection {
+                            anchor: last.start,
+                            head: last.end,
+                        });
+                    }
+                    *last_primary |= is_primary;
+                    continue;
+                }
+            }
+            merged.push((range, caret, is_primary));
+        }
+        let primary_index = merged
+            .iter()
+            .position(|(_, _, is_primary)| *is_primary)
+            .unwrap_or(0);
+        let (_, primary, _) = merged.remove(primary_index);
+        self.set_caret(primary);
+        self.others = merged.into_iter().map(|(_, caret, _)| caret).collect();
+    }
+
+    /// The other cursors on lines `lines`, for painting: a binary search, not a scan.
+    pub fn others_on_lines(&self, lines: Range<usize>) -> &[Caret] {
+        let line_of = |caret: &Caret| caret.anchor.unwrap_or(caret.cursor).min(caret.cursor);
+        let start = self.others.partition_point(|caret| {
+            caret.cursor.max(caret.anchor.unwrap_or(caret.cursor)).line < lines.start
+        });
+        let end = self
+            .others
+            .partition_point(|caret| line_of(caret).line < lines.end);
+        &self.others[start..end.max(start)]
     }
 
     /// The selected text, `None` when nothing is selected.
@@ -373,19 +580,38 @@ impl EditorState {
         });
     }
 
-    /// Replaces the selection (or inserts at the cursor) with `text`, as typing or another edit.
+    /// Replaces every selection (or inserts at every cursor) with `text`, as typing or another
+    /// edit.
     pub fn insert(&mut self, text: &str, kind: EditKind) {
-        let selection = self.selection();
-        self.replace(selection.range(), text, kind);
+        self.edit_each(kind, |_, _, selection| {
+            Some((selection.range(), text.to_string()))
+        });
     }
 
-    /// Replaces `range` with `text` and puts the cursor after it. Does nothing on a read only
-    /// document.
+    /// Pastes `text`: when it has as many lines as there are cursors, one line at each,
+    /// otherwise all of it at every cursor.
+    pub fn paste(&mut self, text: &str) {
+        let count = self.others.len() + 1;
+        let ending = self.buffer.line_ending().as_str();
+        let body = text.strip_suffix(ending).unwrap_or(text);
+        let lines: Vec<&str> = body.split(ending).collect();
+        if count > 1 && lines.len() == count {
+            let mut lines = lines.into_iter();
+            self.edit_each(EditKind::Other, |_, _, selection| {
+                Some((selection.range(), lines.next()?.to_string()))
+            });
+        } else {
+            self.insert(text, EditKind::Other);
+        }
+    }
+
+    /// Replaces `range` with `text` and puts the only cursor after it (an input method). Does
+    /// nothing on a read only document.
     pub fn replace(&mut self, range: Range<usize>, text: &str, kind: EditKind) {
         if self.read_only {
             return;
         }
-        let before = self.selection();
+        let before = self.selections();
         let after = Selection::cursor(range.start + text.len());
         let edit = Edit {
             start: range.start,
@@ -393,54 +619,111 @@ impl EditorState {
             new_text: text.to_string(),
         };
         self.history
-            .edit(&mut self.buffer, edit, kind, before, after);
+            .edit_many(&mut self.buffer, vec![edit], kind, before, vec![after]);
         self.set_selection(after);
+        self.scroll_to_cursor();
+    }
+
+    /// The edit at every cursor, as one undo step: `edit` gets the buffer, the cursor and its
+    /// selection (in document order) and returns the range to replace and its new text, or
+    /// `None` to leave that cursor alone. Every edited cursor ends after its new text. Does
+    /// nothing on a read only document.
+    fn edit_each(
+        &mut self,
+        kind: EditKind,
+        mut edit: impl FnMut(&Buffer, &Caret, Selection) -> Option<(Range<usize>, String)>,
+    ) {
+        if self.read_only {
+            return;
+        }
+        let before = self.selections();
+        let carets: Vec<Caret> = std::iter::once(self.caret())
+            .chain(self.others.iter().copied())
+            .collect();
+        let mut order: Vec<usize> = (0..before.len()).collect();
+        order.sort_by_key(|&index| before[index].range().start);
+        let mut edits = Vec::with_capacity(order.len());
+        let mut after = before.clone();
+        // How much the edits so far moved the text after them.
+        let mut shift = 0isize;
+        let mut edited_end = 0;
+        let moved = |offset: usize, shift: isize| (offset as isize + shift) as usize;
+        for index in order {
+            let selection = before[index];
+            let change = edit(&self.buffer, &carets[index], selection)
+                .filter(|(range, _)| range.start >= edited_end || edits.is_empty());
+            let Some((range, text)) = change else {
+                after[index] = Selection {
+                    anchor: moved(selection.anchor, shift),
+                    head: moved(selection.head, shift),
+                };
+                continue;
+            };
+            after[index] = Selection::cursor(moved(range.start, shift) + text.len());
+            shift += text.len() as isize - range.len() as isize;
+            edited_end = range.end;
+            edits.push(Edit {
+                start: range.start,
+                old_text: self.buffer.text_in(range),
+                new_text: text,
+            });
+        }
+        if edits.is_empty() {
+            return;
+        }
+        self.history
+            .edit_many(&mut self.buffer, edits, kind, before, after.clone());
+        self.set_selections(&after);
         self.scroll_to_cursor();
     }
 
     /// Enter: a line break in the document's line ending, then the current line's indentation.
     pub fn newline(&mut self) {
-        let line = self.buffer.line(self.cursor.line).to_string();
-        let indent_len = line.len() - line.trim_start_matches([' ', '\t']).len();
-        let column = self.cursor.column.min(indent_len);
-        let text = format!("{}{}", self.buffer.line_ending().as_str(), &line[..column]);
-        self.insert(&text, EditKind::Other);
+        let ending = self.buffer.line_ending().as_str();
+        self.edit_each(EditKind::Other, |buffer, caret, selection| {
+            let line = buffer.line(caret.cursor.line).to_string();
+            let indent_len = line.len() - line.trim_start_matches([' ', '\t']).len();
+            let column = caret.cursor.column.min(indent_len);
+            Some((selection.range(), format!("{ending}{}", &line[..column])))
+        });
     }
 
     /// Backspace: deletes the selection, or the character (or line break) before the cursor.
     pub fn backspace(&mut self) {
-        let selection = self.selection();
-        if !selection.is_empty() {
-            return self.replace(selection.range(), "", EditKind::Deleting);
-        }
-        let end = selection.head;
-        if end == 0 {
-            return;
-        }
-        let rope = self.buffer.rope();
-        let mut start = rope.floor_char_boundary(end - 1);
-        if rope.byte(start) == b'\n' && start > 0 && rope.byte(start - 1) == b'\r' {
-            start -= 1;
-        }
-        self.replace(start..end, "", EditKind::Deleting);
+        self.edit_each(EditKind::Deleting, |buffer, _, selection| {
+            if !selection.is_empty() {
+                return Some((selection.range(), String::new()));
+            }
+            let end = selection.head;
+            if end == 0 {
+                return None;
+            }
+            let rope = buffer.rope();
+            let mut start = rope.floor_char_boundary(end - 1);
+            if rope.byte(start) == b'\n' && start > 0 && rope.byte(start - 1) == b'\r' {
+                start -= 1;
+            }
+            Some((start..end, String::new()))
+        });
     }
 
     /// Delete: deletes the selection, or the character (or line break) after the cursor.
     pub fn delete(&mut self) {
-        let selection = self.selection();
-        if !selection.is_empty() {
-            return self.replace(selection.range(), "", EditKind::Deleting);
-        }
-        let start = selection.head;
-        let rope = self.buffer.rope();
-        if start >= rope.len() {
-            return;
-        }
-        let mut end = rope.ceil_char_boundary(start + 1);
-        if rope.byte(start) == b'\r' && end < rope.len() && rope.byte(end) == b'\n' {
-            end += 1;
-        }
-        self.replace(start..end, "", EditKind::Deleting);
+        self.edit_each(EditKind::Deleting, |buffer, _, selection| {
+            if !selection.is_empty() {
+                return Some((selection.range(), String::new()));
+            }
+            let start = selection.head;
+            let rope = buffer.rope();
+            if start >= rope.len() {
+                return None;
+            }
+            let mut end = rope.ceil_char_boundary(start + 1);
+            if rope.byte(start) == b'\r' && end < rope.len() && rope.byte(end) == b'\n' {
+                end += 1;
+            }
+            Some((start..end, String::new()))
+        });
     }
 
     /// The text of one indentation level: the document's own, spaces by default.
@@ -453,25 +736,38 @@ impl EditorState {
         }
     }
 
-    /// Tab: indents the selected lines when the selection spans lines, otherwise inserts
-    /// indentation up to the next stop.
+    /// The lines each selection touches, first and last.
+    fn selected_lines(&self) -> Vec<(usize, usize)> {
+        self.selections()
+            .iter()
+            .map(|selection| {
+                let range = selection.range();
+                (
+                    self.buffer.byte_to_line(range.start),
+                    self.buffer.byte_to_line(range.end),
+                )
+            })
+            .collect()
+    }
+
+    /// Tab: indents the selected lines when a selection spans lines, otherwise inserts
+    /// indentation up to the next stop at every cursor.
     pub fn indent(&mut self) {
         let unit = self.indent_unit();
-        let selection = self.selection();
-        let range = selection.range();
-        let first = self.buffer.byte_to_line(range.start);
-        let last = self.buffer.byte_to_line(range.end);
-        if first == last {
-            let text = if unit == "\t" {
-                unit
-            } else {
-                let line = self.buffer.line(self.cursor.line).to_string();
-                let column = display_column(&line, self.cursor.column);
-                " ".repeat(unit.len() - column % unit.len())
-            };
-            return self.insert(&text, EditKind::Other);
+        let lines = self.selected_lines();
+        if lines.iter().all(|(first, last)| first == last) {
+            return self.edit_each(EditKind::Other, |buffer, caret, selection| {
+                let text = if unit == "\t" {
+                    unit.clone()
+                } else {
+                    let line = buffer.line(caret.cursor.line).to_string();
+                    let column = display_column(&line, caret.cursor.column);
+                    " ".repeat(unit.len() - column % unit.len())
+                };
+                Some((selection.range(), text))
+            });
         }
-        self.change_lines(first, last, |line| {
+        self.change_lines(&lines, |line| {
             if line.is_empty() {
                 line.to_string()
             } else {
@@ -480,13 +776,11 @@ impl EditorState {
         });
     }
 
-    /// Shift+Tab: removes one indentation level from the lines of the selection or the cursor.
+    /// Shift+Tab: removes one indentation level from the lines of the selections or the cursors.
     pub fn outdent(&mut self) {
         let unit = self.indent_unit();
-        let range = self.selection().range();
-        let first = self.buffer.byte_to_line(range.start);
-        let last = self.buffer.byte_to_line(range.end);
-        self.change_lines(first, last, |line| {
+        let lines = self.selected_lines();
+        self.change_lines(&lines, |line| {
             if let Some(rest) = line.strip_prefix(unit.as_str()) {
                 rest.to_string()
             } else {
@@ -495,59 +789,113 @@ impl EditorState {
         });
     }
 
-    /// Rewrites lines `first..=last` (without their line breaks) as one undo step, and selects
-    /// them whole when they were more than one.
-    fn change_lines(&mut self, first: usize, last: usize, change: impl Fn(&str) -> String) {
+    /// Rewrites the lines in `lines` (first and last of each selection, without their line
+    /// breaks) as one undo step. With one cursor and more than one line, selects them whole;
+    /// otherwise the selections follow the text.
+    fn change_lines(&mut self, lines: &[(usize, usize)], change: impl Fn(&str) -> String) {
         if self.read_only {
             return;
         }
-        let start = self.buffer.line_to_byte(first);
-        let end = self.buffer.line_to_byte(last) + self.buffer.line_len(last);
-        let old_text = self.buffer.text_in(start..end);
-        let new_text = old_text
-            .split('\n')
-            .map(|line| {
-                let (body, cr) = match line.strip_suffix('\r') {
-                    Some(body) => (body, "\r"),
-                    None => (line, ""),
-                };
-                format!("{}{cr}", change(body))
+        let mut numbers: Vec<usize> = lines
+            .iter()
+            .flat_map(|&(first, last)| first..=last)
+            .collect();
+        numbers.sort_unstable();
+        numbers.dedup();
+        let edits: Vec<Edit> = numbers
+            .iter()
+            .filter_map(|&line| {
+                let start = self.buffer.line_to_byte(line);
+                let old_text = self
+                    .buffer
+                    .text_in(start..start + self.buffer.line_len(line));
+                let new_text = change(&old_text);
+                (new_text != old_text).then(|| trimmed_edit(start, &old_text, &new_text))
             })
-            .collect::<Vec<_>>()
-            .join("\n");
-        if new_text == old_text {
+            .collect();
+        if edits.is_empty() {
             return;
         }
-        let before = self.selection();
-        let after = if first == last {
-            let delta = new_text.len() as isize - old_text.len() as isize;
-            let head = (before.head as isize + delta).max(start as isize) as usize;
-            Selection::cursor(head)
-        } else {
-            Selection {
-                anchor: start,
-                head: start + new_text.len(),
+        let before = self.selections();
+        let after: Vec<Selection> = match lines {
+            [(first, last)] if first != last => {
+                let start = self.buffer.line_to_byte(*first);
+                let end = self.buffer.line_to_byte(*last) + self.buffer.line_len(*last);
+                let delta: isize = edits
+                    .iter()
+                    .map(|edit| edit.new_text.len() as isize - edit.old_text.len() as isize)
+                    .sum();
+                vec![Selection {
+                    anchor: start,
+                    head: (end as isize + delta) as usize,
+                }]
             }
+            _ => before
+                .iter()
+                .map(|selection| Selection {
+                    anchor: shift_offset(selection.anchor, &edits),
+                    head: shift_offset(selection.head, &edits),
+                })
+                .collect(),
         };
-        let edit = Edit {
-            start,
-            old_text,
-            new_text,
-        };
-        self.history
-            .edit(&mut self.buffer, edit, EditKind::Other, before, after);
-        self.set_selection(after);
+        self.history.edit_many(
+            &mut self.buffer,
+            edits,
+            EditKind::Other,
+            before,
+            after.clone(),
+        );
+        self.set_selections(&after);
         self.scroll_to_cursor();
     }
 
-    /// Cut: removes the selection and returns it.
+    /// Selects the whole line of every cursor when nothing is selected, for Copy and Cut
+    /// without a selection, as most editors do.
+    pub fn select_lines_if_empty(&mut self) {
+        let selections = self.selections();
+        if selections.iter().any(|selection| !selection.is_empty()) {
+            return;
+        }
+        let lines: Vec<Selection> = selections
+            .iter()
+            .map(|selection| {
+                let line = self.buffer.byte_to_line(selection.head);
+                Selection {
+                    anchor: self.buffer.line_to_byte(line),
+                    head: self.buffer.line_to_byte(line + 1),
+                }
+            })
+            .collect();
+        self.history.break_group();
+        self.set_selections(&lines);
+    }
+
+    /// The selected text of every cursor in document order, for the clipboard: one per line,
+    /// unless a selection already ends its line. `None` when nothing is selected.
+    pub fn copied_text(&self) -> Option<String> {
+        let mut selections = self.selections();
+        selections.retain(|selection| !selection.is_empty());
+        selections.sort_by_key(|selection| selection.range().start);
+        let ending = self.buffer.line_ending().as_str();
+        let mut text = String::new();
+        for (index, selection) in selections.iter().enumerate() {
+            if index > 0 && !text.ends_with('\n') {
+                text.push_str(ending);
+            }
+            text.push_str(&self.buffer.text_in(selection.range()));
+        }
+        (!selections.is_empty()).then_some(text)
+    }
+
+    /// Cut: removes every selection and returns their text.
     pub fn cut(&mut self) -> Option<String> {
         if self.read_only {
             return None;
         }
-        let text = self.selected_text()?;
-        let range = self.selection().range();
-        self.replace(range, "", EditKind::Other);
+        let text = self.copied_text()?;
+        self.edit_each(EditKind::Other, |_, _, selection| {
+            (!selection.is_empty()).then(|| (selection.range(), String::new()))
+        });
         Some(text)
     }
 
@@ -556,34 +904,28 @@ impl EditorState {
         self.history.is_dirty()
     }
 
-    /// Applies the save cleanup (`ted_core::cleanup_edits`) as one undo step, keeping the cursor
-    /// on its line.
+    /// Applies the save cleanup (`ted_core::cleanup_edits`) as one undo step, keeping the cursors
+    /// on their lines.
     pub fn apply_cleanup(&mut self, edits: Vec<Edit>) {
         if edits.is_empty() || self.read_only {
             return;
         }
-        let before = self.selection();
-        let shift = |offset: usize| {
-            let mut shifted = offset as isize;
-            for edit in &edits {
-                if edit.start >= offset {
-                    break;
-                }
-                let removed_end = (edit.start + edit.old_text.len()).min(offset);
-                shifted -= (removed_end - edit.start) as isize;
-                if edit.start + edit.old_text.len() <= offset {
-                    shifted += edit.new_text.len() as isize;
-                }
-            }
-            shifted.max(0) as usize
-        };
-        let after = Selection {
-            anchor: shift(before.anchor),
-            head: shift(before.head),
-        };
-        self.history
-            .edit_many(&mut self.buffer, edits, before, after);
-        self.set_selection(after);
+        let before = self.selections();
+        let after: Vec<Selection> = before
+            .iter()
+            .map(|selection| Selection {
+                anchor: keep_offset(selection.anchor, &edits),
+                head: keep_offset(selection.head, &edits),
+            })
+            .collect();
+        self.history.edit_many(
+            &mut self.buffer,
+            edits,
+            EditKind::Other,
+            before,
+            after.clone(),
+        );
+        self.set_selections(&after);
     }
 
     /// Replaces the text with the file's new content (changed by another program), keeping the
@@ -600,15 +942,15 @@ impl EditorState {
     }
 
     pub fn undo(&mut self) {
-        if let Some(selection) = self.history.undo(&mut self.buffer) {
-            self.set_selection(selection);
+        if let Some(selections) = self.history.undo(&mut self.buffer) {
+            self.set_selections(&selections);
             self.scroll_to_cursor();
         }
     }
 
     pub fn redo(&mut self) {
-        if let Some(selection) = self.history.redo(&mut self.buffer) {
-            self.set_selection(selection);
+        if let Some(selections) = self.history.redo(&mut self.buffer) {
+            self.set_selections(&selections);
             self.scroll_to_cursor();
         }
     }
@@ -636,6 +978,66 @@ impl EditorState {
         }
         self.clamp_scroll();
     }
+}
+
+/// The edit that turns `old` (at `start`) into `new`, without the text both share at their start
+/// and end, so the cursors outside the changed part keep their place.
+fn trimmed_edit(start: usize, old: &str, new: &str) -> Edit {
+    let prefix = old
+        .char_indices()
+        .zip(new.chars())
+        .find(|((_, a), b)| a != b)
+        .map_or(old.len().min(new.len()), |((index, _), _)| index);
+    let (old_rest, new_rest) = (&old[prefix..], &new[prefix..]);
+    let suffix = old_rest
+        .chars()
+        .rev()
+        .zip(new_rest.chars().rev())
+        .take_while(|(a, b)| a == b)
+        .map(|(a, _)| a.len_utf8())
+        .sum::<usize>();
+    Edit {
+        start: start + prefix,
+        old_text: old_rest[..old_rest.len() - suffix].to_string(),
+        new_text: new_rest[..new_rest.len() - suffix].to_string(),
+    }
+}
+
+/// Where `offset` lands after `edits` (sorted, in the coordinates of the text before them): an
+/// offset inside a replaced range goes to its start, one at or after its end moves with it. Text
+/// inserted at the offset itself stays after it, so the save cleanup's final line break does not
+/// move a cursor at the end.
+fn keep_offset(offset: usize, edits: &[Edit]) -> usize {
+    let mut shifted = offset as isize;
+    for edit in edits {
+        if edit.start >= offset {
+            break;
+        }
+        let removed_end = (edit.start + edit.old_text.len()).min(offset);
+        shifted -= (removed_end - edit.start) as isize;
+        if edit.start + edit.old_text.len() <= offset {
+            shifted += edit.new_text.len() as isize;
+        }
+    }
+    shifted.max(0) as usize
+}
+
+/// As [`keep_offset`], but text inserted at the offset itself goes before it, so a cursor at the
+/// start of a line moves with the indentation added there.
+fn shift_offset(offset: usize, edits: &[Edit]) -> usize {
+    let mut shifted = offset as isize;
+    for edit in edits {
+        let end = edit.start + edit.old_text.len();
+        if edit.start > offset || (edit.start == offset && !edit.old_text.is_empty()) {
+            break;
+        }
+        let removed_end = end.min(offset);
+        shifted -= (removed_end - edit.start) as isize;
+        if end <= offset {
+            shifted += edit.new_text.len() as isize;
+        }
+    }
+    shifted.max(0) as usize
 }
 
 /// The display column of byte `column` of `line`: characters before it, with tabs advancing to
@@ -1028,5 +1430,181 @@ mod tests {
         assert_eq!(column_for_expanded("a\tñb", 6), 4);
         assert_eq!(column_for_expanded("a\tb", 1), 1);
         assert_eq!(column_for_expanded("a\tb", 3), 2);
+    }
+
+    fn cursors(state: &EditorState) -> Vec<usize> {
+        let mut offsets: Vec<usize> = state
+            .selections()
+            .iter()
+            .map(|selection| selection.head)
+            .collect();
+        offsets.sort_unstable();
+        offsets
+    }
+
+    #[test]
+    fn alt_click_adds_and_removes_cursors() {
+        let mut state = editor("one\ntwo\nthree");
+        at(&mut state, 0, 1);
+        state.toggle_cursor(Position::new(1, 1));
+        state.toggle_cursor(Position::new(2, 1));
+        assert_eq!(state.cursor, Position::new(2, 1));
+        assert_eq!(cursors(&state), vec![1, 5, 9]);
+        // On a cursor again: it goes, and the primary one is never left without a cursor.
+        state.toggle_cursor(Position::new(1, 1));
+        assert_eq!(cursors(&state), vec![1, 9]);
+        state.toggle_cursor(Position::new(2, 1));
+        assert_eq!(cursors(&state), vec![1]);
+        state.toggle_cursor(Position::new(0, 1));
+        assert_eq!(cursors(&state), vec![1]);
+        // A plain click drops the others.
+        state.toggle_cursor(Position::new(1, 0));
+        at(&mut state, 2, 0);
+        assert_eq!(cursors(&state), vec![8]);
+    }
+
+    #[test]
+    fn typing_edits_every_cursor_and_undoes_at_once() {
+        let mut state = editor("ab\ncd\nef");
+        at(&mut state, 0, 1);
+        state.toggle_cursor(Position::new(1, 1));
+        state.toggle_cursor(Position::new(2, 2));
+        for ch in ["x", "y"] {
+            state.insert(ch, EditKind::Typing);
+        }
+        assert_eq!(state.buffer.to_text(), "axyb\ncxyd\nefxy");
+        state.backspace();
+        assert_eq!(state.buffer.to_text(), "axb\ncxd\nefx");
+        state.newline();
+        assert_eq!(state.buffer.to_text(), "ax\nb\ncx\nd\nefx\n");
+        state.undo();
+        state.undo();
+        state.undo();
+        assert_eq!(state.buffer.to_text(), "ab\ncd\nef");
+        assert_eq!(cursors(&state), vec![1, 4, 8]);
+        assert_eq!(state.cursor, Position::new(2, 2));
+    }
+
+    #[test]
+    fn cursors_that_meet_merge() {
+        let mut state = editor("abc");
+        at(&mut state, 0, 1);
+        state.toggle_cursor(Position::new(0, 2));
+        state.move_cursor(Movement::Left, false);
+        assert_eq!(cursors(&state), vec![0, 1]);
+        state.move_cursor(Movement::Left, false);
+        assert_eq!(cursors(&state), vec![0]);
+        assert!(state.others.is_empty());
+    }
+
+    #[test]
+    fn the_column_selection_spans_lines_and_clamps_to_short_ones() {
+        let mut state = editor("abcdef\nab\nabcdef\n\tx");
+        state.select_columns((0, 1), (3, 4));
+        let selected: Vec<String> = {
+            let mut selections = state.selections();
+            selections.sort_by_key(|selection| selection.range().start);
+            selections
+                .iter()
+                .map(|selection| state.buffer.text_in(selection.range()))
+                .collect()
+        };
+        // The tab advances to column 4, so the last line has nothing between columns 1 and 4
+        // but the tab itself.
+        assert_eq!(selected, vec!["bcd", "b", "bcd", "\t"]);
+        assert_eq!(state.cursor.line, 3);
+        // Upwards, from the end of a line: one cursor per line.
+        state.select_columns((2, 6), (0, 6));
+        assert_eq!(cursors(&state), vec![6, 9, 16]);
+        assert_eq!(state.cursor, Position::new(0, 6));
+        assert_eq!(state.others_on_lines(1..2).len(), 1);
+        assert!(state.collapse_cursors());
+        assert!(!state.collapse_cursors());
+    }
+
+    #[test]
+    fn copy_and_paste_with_several_cursors() {
+        let mut state = editor("one\ntwo\n");
+        state.select_columns((0, 0), (1, 3));
+        assert_eq!(state.copied_text().as_deref(), Some("one\ntwo"));
+        // As many lines as cursors: one each.
+        state.move_cursor(Movement::LineEnd, false);
+        state.paste("1\n2");
+        assert_eq!(state.buffer.to_text(), "one1\ntwo2\n");
+        // Otherwise all of it at every cursor.
+        state.paste("-");
+        assert_eq!(state.buffer.to_text(), "one1-\ntwo2-\n");
+        // Cut without a selection takes every cursor's line.
+        state.select_lines_if_empty();
+        assert_eq!(state.cut().as_deref(), Some("one1-\ntwo2-\n"));
+        assert_eq!(state.buffer.to_text(), "");
+    }
+
+    #[test]
+    fn tab_and_shift_tab_at_several_cursors() {
+        let mut state = editor("a\n    b\n");
+        at(&mut state, 0, 1);
+        state.toggle_cursor(Position::new(1, 5));
+        state.outdent();
+        assert_eq!(state.buffer.to_text(), "a\nb\n");
+        assert_eq!(cursors(&state), vec![1, 3]);
+        state.indent();
+        assert_eq!(state.buffer.to_text(), "a   \nb   \n");
+    }
+
+    /// Random typing, Backspace and Delete at random cursors against the same edits on a
+    /// `String`, then undo everything back to the start.
+    #[test]
+    fn several_cursors_match_a_string_model() {
+        let mut rng = fastrand::Rng::with_seed(20);
+        let start = "fn main() {\n    let ñ = 1;\n}\n";
+        let mut state = editor(start);
+        for _ in 0..300 {
+            let mut model = state.buffer.to_text();
+            if rng.u8(..4) == 0 {
+                at(&mut state, 0, 0);
+                for _ in 0..rng.usize(1..4) {
+                    let offset = model.floor_char_boundary(rng.usize(..=model.len()));
+                    let position = state.buffer.offset_to_position(offset);
+                    state.toggle_cursor(position);
+                }
+            }
+            let mut offsets = cursors(&state);
+            match rng.u8(..3) {
+                0 => {
+                    let text = ["x", "ñ", " ", "\n"][rng.usize(..4)];
+                    state.insert(text, EditKind::Typing);
+                    for &offset in offsets.iter().rev() {
+                        model.insert_str(offset, text);
+                    }
+                }
+                1 => {
+                    state.backspace();
+                    offsets.dedup();
+                    for &offset in offsets.iter().rev() {
+                        if offset > 0 {
+                            let start = model.floor_char_boundary(offset - 1);
+                            model.replace_range(start..offset, "");
+                        }
+                    }
+                }
+                _ => {
+                    state.delete();
+                    let mut last_end = usize::MAX;
+                    for &offset in offsets.iter().rev() {
+                        if offset < model.len() && offset < last_end {
+                            let end = model.ceil_char_boundary(offset + 1);
+                            model.replace_range(offset..end, "");
+                            last_end = offset;
+                        }
+                    }
+                }
+            }
+            assert_eq!(state.buffer.to_text(), model);
+        }
+        while state.history.can_undo() {
+            state.undo();
+        }
+        assert_eq!(state.buffer.to_text(), start);
     }
 }

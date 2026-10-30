@@ -1,6 +1,6 @@
 //! Undo and redo. Every change to a buffer is recorded as an [`Edit`] (the replaced text and its
 //! replacement), grouped into transactions so that typing a word, or deleting a run of characters,
-//! undoes in one step.
+//! undoes in one step. With several cursors, one transaction holds an edit per cursor.
 
 use crate::Buffer;
 
@@ -74,8 +74,9 @@ struct Transaction {
     /// the transaction.
     edits: Vec<Edit>,
     kind: EditKind,
-    before: Selection,
-    after: Selection,
+    /// The selections to restore on undo and on redo, the primary one first.
+    before: Vec<Selection>,
+    after: Vec<Selection>,
 }
 
 impl Transaction {
@@ -125,47 +126,59 @@ impl History {
         before: Selection,
         after: Selection,
     ) {
-        if edit.old_text.is_empty() && edit.new_text.is_empty() {
-            return;
-        }
-        edit.apply(buffer);
-        self.redo.clear();
-        if !self.broken
-            && let Some(last) = self.undo.last_mut()
-            && last.edits.len() == 1
-            && merge(last, &edit, kind)
-        {
-            last.after = after;
-            return;
-        }
-        self.push(vec![edit], kind, before, after);
+        self.edit_many(buffer, vec![edit], kind, vec![before], vec![after]);
     }
 
-    /// Applies several edits to `buffer` as one step: `edits` sorted by start, not overlapping,
-    /// in the coordinates of the current text (trimming whitespace on save).
+    /// Applies several edits to `buffer` as one step (one per cursor, or trimming whitespace on
+    /// save): `edits` sorted by start, not overlapping, in the coordinates of the current text.
+    /// `before` and `after` are the selections to restore on undo and redo, the primary first.
+    /// Typing or deleting at every cursor groups with the previous step as for one cursor.
     pub fn edit_many(
         &mut self,
         buffer: &mut Buffer,
         edits: Vec<Edit>,
-        before: Selection,
-        after: Selection,
+        kind: EditKind,
+        before: Vec<Selection>,
+        after: Vec<Selection>,
     ) {
+        let edits: Vec<Edit> = edits
+            .into_iter()
+            .filter(|edit| !(edit.old_text.is_empty() && edit.new_text.is_empty()))
+            .collect();
         if edits.is_empty() {
             return;
         }
         let transaction = Transaction {
             id: 0,
             edits,
-            kind: EditKind::Other,
+            kind,
             before,
             after,
         };
         transaction.apply(buffer);
         self.redo.clear();
-        self.push(transaction.edits, EditKind::Other, before, after);
+        if !self.broken
+            && let Some(last) = self.undo.last_mut()
+            && merge(last, &transaction.edits, kind)
+        {
+            last.after = transaction.after;
+            return;
+        }
+        self.push(
+            transaction.edits,
+            kind,
+            transaction.before,
+            transaction.after,
+        );
     }
 
-    fn push(&mut self, edits: Vec<Edit>, kind: EditKind, before: Selection, after: Selection) {
+    fn push(
+        &mut self,
+        edits: Vec<Edit>,
+        kind: EditKind,
+        before: Vec<Selection>,
+        after: Vec<Selection>,
+    ) {
         self.broken = false;
         self.next_id += 1;
         self.undo.push(Transaction {
@@ -200,24 +213,24 @@ impl History {
         self.undo.last().map(|transaction| transaction.id) != self.saved
     }
 
-    /// Undoes the last step and returns the selection from before it.
-    pub fn undo(&mut self, buffer: &mut Buffer) -> Option<Selection> {
+    /// Undoes the last step and returns the selections from before it, the primary first.
+    pub fn undo(&mut self, buffer: &mut Buffer) -> Option<Vec<Selection>> {
         let transaction = self.undo.pop()?;
         transaction.revert(buffer);
-        let selection = transaction.before;
+        let selections = transaction.before.clone();
         self.redo.push(transaction);
         self.broken = true;
-        Some(selection)
+        Some(selections)
     }
 
-    /// Redoes the last undone step and returns the selection from after it.
-    pub fn redo(&mut self, buffer: &mut Buffer) -> Option<Selection> {
+    /// Redoes the last undone step and returns the selections from after it, the primary first.
+    pub fn redo(&mut self, buffer: &mut Buffer) -> Option<Vec<Selection>> {
         let transaction = self.redo.pop()?;
         transaction.apply(buffer);
-        let selection = transaction.after;
+        let selections = transaction.after.clone();
         self.undo.push(transaction);
         self.broken = true;
-        Some(selection)
+        Some(selections)
     }
 
     pub fn can_undo(&self) -> bool {
@@ -229,40 +242,80 @@ impl History {
     }
 }
 
-/// Folds `edit` into `last` when both are part of the same typing or deleting run.
-fn merge(last: &mut Transaction, edit: &Edit, kind: EditKind) -> bool {
-    if kind != last.kind {
+/// Folds `edits` into `last` when they continue its typing or deleting run at every cursor:
+/// the same number of edits, each one next to the edit of `last` at the same index.
+///
+/// `edits` are in the coordinates of the text after `last`, whose edits are in the coordinates of
+/// the text before it, so edit `i` of `last` ends, in the new text, `shift` bytes later than its
+/// start: the growth of the edits before it plus its own new text.
+fn merge(last: &mut Transaction, edits: &[Edit], kind: EditKind) -> bool {
+    if kind != last.kind || kind == EditKind::Other || edits.len() != last.edits.len() {
         return false;
     }
-    let previous = &mut last.edits[0];
-    match kind {
-        EditKind::Typing => {
-            // A word typed after whitespace starts a new step, so undo goes back a word at a time.
-            let starts_word = previous.new_text.ends_with(char::is_whitespace)
-                && edit.new_text.starts_with(|ch: char| !ch.is_whitespace());
-            let follows = edit.old_text.is_empty()
-                && edit.start == previous.start + previous.new_text.len()
-                && !edit.new_text.contains('\n')
-                && !starts_word;
-            if follows {
-                previous.new_text.push_str(&edit.new_text);
-            }
-            follows
-        }
-        EditKind::Deleting if !edit.new_text.is_empty() || !previous.new_text.is_empty() => false,
-        // Backspace: the deleted text ends where the previous one started.
-        EditKind::Deleting if edit.start + edit.old_text.len() == previous.start => {
-            previous.old_text.insert_str(0, &edit.old_text);
-            previous.start = edit.start;
-            true
-        }
-        // Delete: the same start, the text after it goes.
-        EditKind::Deleting if edit.start == previous.start => {
-            previous.old_text.push_str(&edit.old_text);
-            true
-        }
-        _ => false,
+    // Where each edit of `last` starts in the current text.
+    let mut starts = Vec::with_capacity(edits.len());
+    let mut shift = 0isize;
+    for previous in &last.edits {
+        starts.push((previous.start as isize + shift) as usize);
+        shift += previous.new_text.len() as isize - previous.old_text.len() as isize;
     }
+    let mut plan = Vec::with_capacity(edits.len());
+    for (index, (previous, edit)) in last.edits.iter().zip(edits).enumerate() {
+        let at = starts[index];
+        let step = match kind {
+            EditKind::Typing => {
+                // A word typed after whitespace starts a new step, so undo goes back a word at a
+                // time.
+                let starts_word = previous.new_text.ends_with(char::is_whitespace)
+                    && edit.new_text.starts_with(|ch: char| !ch.is_whitespace());
+                let follows = edit.old_text.is_empty()
+                    && edit.start == at + previous.new_text.len()
+                    && !edit.new_text.contains('\n')
+                    && !starts_word;
+                follows.then_some(Fold::Append)
+            }
+            _ if !edit.new_text.is_empty() || !previous.new_text.is_empty() => None,
+            // Backspace: the deleted text ends where the previous one started, after the edit
+            // before it.
+            _ if edit.start + edit.old_text.len() == at
+                && (index == 0 || edit.start >= starts[index - 1]) =>
+            {
+                Some(Fold::Prepend(previous.start - edit.old_text.len()))
+            }
+            // Delete: the same start, the text after it goes, up to the next edit.
+            _ if edit.start == at
+                && starts
+                    .get(index + 1)
+                    .is_none_or(|&next| edit.start + edit.old_text.len() <= next) =>
+            {
+                Some(Fold::Append)
+            }
+            _ => None,
+        };
+        match step {
+            Some(step) => plan.push(step),
+            None => return false,
+        }
+    }
+    for ((previous, edit), step) in last.edits.iter_mut().zip(edits).zip(plan) {
+        match step {
+            Fold::Append if kind == EditKind::Typing => previous.new_text.push_str(&edit.new_text),
+            Fold::Append => previous.old_text.push_str(&edit.old_text),
+            Fold::Prepend(start) => {
+                previous.old_text.insert_str(0, &edit.old_text);
+                previous.start = start;
+            }
+        }
+    }
+    true
+}
+
+/// How one edit folds into the edit of the previous step at the same index.
+enum Fold {
+    /// Typing after it, or Delete at its start.
+    Append,
+    /// Backspace before it: the merged edit starts at this offset of the text before the step.
+    Prepend(usize),
 }
 
 #[cfg(test)]
@@ -299,9 +352,9 @@ mod tests {
             typed(&mut history, &mut buffer, at, &ch.to_string());
         }
         assert_eq!(buffer.to_text(), "hey");
-        assert_eq!(history.undo(&mut buffer), Some(Selection::cursor(0)));
+        assert_eq!(history.undo(&mut buffer), Some(vec![Selection::cursor(0)]));
         assert_eq!(buffer.to_text(), "");
-        assert_eq!(history.redo(&mut buffer), Some(Selection::cursor(3)));
+        assert_eq!(history.redo(&mut buffer), Some(vec![Selection::cursor(3)]));
         assert_eq!(buffer.to_text(), "hey");
     }
 
@@ -387,13 +440,79 @@ mod tests {
                 new_text: "\n".into(),
             },
         ];
-        let cursor = Selection::cursor(0);
-        history.edit_many(&mut buffer, edits, cursor, cursor);
+        let cursor = vec![Selection::cursor(0)];
+        history.edit_many(&mut buffer, edits, EditKind::Other, cursor.clone(), cursor);
         assert_eq!(buffer.to_text(), "a\nb\nc\n");
         history.undo(&mut buffer);
         assert_eq!(buffer.to_text(), "a  \nb\t\nc");
         history.redo(&mut buffer);
         assert_eq!(buffer.to_text(), "a\nb\nc\n");
+    }
+
+    /// Inserts `text` at every offset of `at` (sorted, in the current text) as one step.
+    fn typed_at_each(history: &mut History, buffer: &mut Buffer, at: &[usize], text: &str) {
+        let edits = at
+            .iter()
+            .map(|&start| Edit {
+                start,
+                old_text: String::new(),
+                new_text: text.to_string(),
+            })
+            .collect();
+        let before = at.iter().map(|&at| Selection::cursor(at)).collect();
+        let after = at
+            .iter()
+            .enumerate()
+            .map(|(index, &at)| Selection::cursor(at + (index + 1) * text.len()))
+            .collect();
+        history.edit_many(buffer, edits, EditKind::Typing, before, after);
+    }
+
+    #[test]
+    fn typing_at_several_cursors_undoes_a_word_at_a_time() {
+        let mut buffer = Buffer::from_text("a\nb\n");
+        let mut history = History::default();
+        // Cursors after "a" and after "b": each keystroke shifts the second one by the first.
+        typed_at_each(&mut history, &mut buffer, &[1, 3], "x");
+        typed_at_each(&mut history, &mut buffer, &[2, 5], "y");
+        typed_at_each(&mut history, &mut buffer, &[3, 7], " ");
+        typed_at_each(&mut history, &mut buffer, &[4, 9], "z");
+        assert_eq!(buffer.to_text(), "axy z\nbxy z\n");
+        history.undo(&mut buffer);
+        assert_eq!(buffer.to_text(), "axy \nbxy \n");
+        assert_eq!(
+            history.undo(&mut buffer),
+            Some(vec![Selection::cursor(1), Selection::cursor(3)])
+        );
+        assert_eq!(buffer.to_text(), "a\nb\n");
+        assert!(!history.can_undo());
+    }
+
+    #[test]
+    fn backspace_and_delete_at_several_cursors_group() {
+        let mut buffer = Buffer::from_text("abc\ndef");
+        let mut history = History::default();
+        let step = |history: &mut History, buffer: &mut Buffer, ranges: [(usize, usize); 2]| {
+            let edits = ranges
+                .iter()
+                .map(|&(start, end)| Edit {
+                    start,
+                    old_text: buffer.text_in(start..end),
+                    new_text: String::new(),
+                })
+                .collect();
+            let cursors = vec![Selection::cursor(0); 2];
+            history.edit_many(buffer, edits, EditKind::Deleting, cursors.clone(), cursors);
+        };
+        // Backspace at the ends of both lines, twice.
+        step(&mut history, &mut buffer, [(2, 3), (6, 7)]);
+        step(&mut history, &mut buffer, [(1, 2), (4, 5)]);
+        assert_eq!(buffer.to_text(), "a\nd");
+        // A third backspace on each line: "a" and "d" go, still the same step.
+        step(&mut history, &mut buffer, [(0, 1), (2, 3)]);
+        assert_eq!(buffer.to_text(), "\n");
+        history.undo(&mut buffer);
+        assert_eq!(buffer.to_text(), "abc\ndef");
     }
 
     #[test]
@@ -451,6 +570,62 @@ mod tests {
                 Selection::cursor(a),
                 Selection::cursor(a),
             );
+        }
+        let end = buffer.to_text();
+        while history.undo(&mut buffer).is_some() {}
+        assert_eq!(buffer.to_text(), start);
+        while history.redo(&mut buffer).is_some() {}
+        assert_eq!(buffer.to_text(), end);
+    }
+
+    /// The same round trip with several edits per step, as several cursors make, so that
+    /// grouping runs at every cursor keeps undo exact.
+    #[test]
+    fn undo_all_and_redo_all_round_trip_with_several_cursors() {
+        let mut rng = fastrand::Rng::with_seed(29);
+        let start = "one\ntwo ñ\nthree 😀\nfour\n";
+        let mut buffer = Buffer::from_text(start);
+        let mut history = History::default();
+        for _ in 0..500 {
+            let len = buffer.len();
+            let mut cuts: Vec<usize> = (0..rng.usize(1..=6))
+                .map(|_| buffer.rope().floor_char_boundary(rng.usize(..=len)))
+                .collect();
+            cuts.sort_unstable();
+            cuts.dedup();
+            let kind = [EditKind::Typing, EditKind::Deleting, EditKind::Other][rng.usize(..3)];
+            let mut edits = Vec::new();
+            let mut previous_end = 0;
+            for &cut in &cuts {
+                if cut < previous_end {
+                    continue;
+                }
+                let end = if kind == EditKind::Typing {
+                    cut
+                } else {
+                    let limit = cuts
+                        .iter()
+                        .find(|&&next| next > cut)
+                        .copied()
+                        .unwrap_or(len);
+                    buffer.rope().floor_char_boundary(rng.usize(cut..=limit))
+                };
+                let new_text = match kind {
+                    EditKind::Deleting => String::new(),
+                    _ => ["x", " ", "\n", "ñ"][rng.usize(..4)].to_string(),
+                };
+                edits.push(Edit {
+                    start: cut,
+                    old_text: buffer.text_in(cut..end),
+                    new_text,
+                });
+                previous_end = end;
+            }
+            if rng.u8(..10) == 0 {
+                history.break_group();
+            }
+            let cursors = vec![Selection::cursor(0); edits.len()];
+            history.edit_many(&mut buffer, edits, kind, cursors.clone(), cursors);
         }
         let end = buffer.to_text();
         while history.undo(&mut buffer).is_some() {}

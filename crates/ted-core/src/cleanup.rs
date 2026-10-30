@@ -52,14 +52,14 @@ pub fn cleanup_edits(buffer: &Buffer, trim: bool, final_newline: bool) -> Vec<Ed
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{History, Selection};
+    use crate::{EditKind, History, Selection};
     use pretty_assertions::assert_eq;
 
     fn cleaned(text: &str, trim: bool, final_newline: bool) -> String {
         let mut buffer = Buffer::from_text(text);
         let edits = cleanup_edits(&buffer, trim, final_newline);
-        let cursor = Selection::cursor(0);
-        History::default().edit_many(&mut buffer, edits, cursor, cursor);
+        let cursor = vec![Selection::cursor(0)];
+        History::default().edit_many(&mut buffer, edits, EditKind::Other, cursor.clone(), cursor);
         buffer.to_text()
     }
 
