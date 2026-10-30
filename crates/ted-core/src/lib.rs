@@ -9,9 +9,11 @@ mod buffer;
 mod cleanup;
 mod detect;
 mod history;
+mod search;
 
 pub use buffer::{Buffer, Position, TextChange};
 pub use cleanup::cleanup_edits;
 pub use detect::{Indent, LineEnding, SAMPLE_LEN, detect_indent, detect_line_ending};
 pub use history::{Edit, EditKind, History, Selection};
 pub use ropey::{Rope, RopeSlice};
+pub use search::SearchQuery;

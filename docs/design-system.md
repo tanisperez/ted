@@ -328,6 +328,22 @@ explorer" with the `Ctrl+O` hint.
 - The file opened in the editor is revealed and selected. The status bar starts with the folder
   path (hard drive icon, `~` for the home folder); a click opens it in the file manager.
 
+### Find in file
+
+Not in the prototype; ted builds it from the design's floating toolbar (`views/find.rs`).
+
+- `Ctrl+F` opens a bar at the top right of the editor (top 10, right 22, `overlay`, `border`,
+  radius 8, the shadow token, padding 4, gap 4), with the selected text when it is on one line:
+  a 240 px field, the counter in 12 px `fg_muted` (`3 of 120`, `No results`, `120…` while
+  counting), the case toggle (24 px, `accent_subtle` and `accent_text` when on), previous and
+  next (`ChevronUp`, `ChevronDown`) and close.
+- Typing selects the first match after the cursor. Enter and `F3` go to the next match,
+  Shift+Enter and `Shift+F3` to the previous one, wrapping around. Escape closes the bar and gives
+  the focus back to the text.
+- Matches are tinted with `warning` at 22% alpha; the selected match at 50%, over the selection.
+- The whole text is counted in the background in 8 MB steps. Only the first 100 000 matches are
+  kept; past them next and previous search the text near the cursor.
+
 ### Saving and unsaved changes
 
 - `Ctrl+S` saves. A document with unsaved changes shows `●` before its name in the window title

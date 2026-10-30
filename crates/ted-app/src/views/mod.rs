@@ -4,6 +4,7 @@ mod choice;
 mod document;
 mod editor;
 mod explorer;
+mod find;
 mod logo;
 mod root;
 mod settings;
@@ -14,5 +15,6 @@ mod welcome;
 
 pub use editor::bind_keys;
 pub use explorer::bind_keys as bind_explorer_keys;
+pub use find::bind_keys as bind_find_keys;
 pub use root::AppView;
 pub use settings::apply_editor_settings;

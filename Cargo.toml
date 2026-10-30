@@ -41,6 +41,8 @@ tree-sitter-html = "=0.23.2"
 # Not built by gpui-component by default, but the version it pins behind its `tree-sitter-make`
 # feature.
 tree-sitter-make = "=1.1.1"
+# Find in file: a literal searched with the case rules of Unicode. The version gpui already builds.
+regex = "1.13"
 # Folder explorer: gitignore matching, file watching and the batched channel. The exact versions
 # gpui already builds.
 ignore = "0.4.33"

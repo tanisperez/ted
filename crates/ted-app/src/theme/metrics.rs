@@ -17,6 +17,10 @@ pub const STATUS_BAR_HEIGHT: f32 = 30.0;
 pub const STATUS_TOGGLE_HEIGHT: f32 = 24.0;
 /// Narrowest a panel toggle can be (the icon alone, without a count).
 pub const STATUS_TOGGLE_MIN_WIDTH: f32 = 28.0;
+/// Width of the field of the find bar.
+pub const FIND_BAR_FIELD_WIDTH: f32 = 240.0;
+/// Width of the match counter of the find bar (`120 of 4,500`).
+pub const FIND_COUNT_WIDTH: f32 = 84.0;
 /// Side of the settings gear button in the title bar.
 pub const SETTINGS_GEAR_SIZE: f32 = 26.0;
 /// Side of the app icon in the title bar.

@@ -6299,6 +6299,7 @@ version = "0.1.0-dev"
 dependencies = [
  "fastrand",
  "pretty_assertions",
+ "regex",
  "ropey",
 ]
 

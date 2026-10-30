@@ -1,0 +1,23 @@
+# Find in file.
+_version: 2
+"find.placeholder":
+  en: "Find"
+  es: "Buscar"
+"find.no_results":
+  en: "No results"
+  es: "Sin resultados"
+"find.position":
+  en: "%{index} of %{total}"
+  es: "%{index} de %{total}"
+"find.case":
+  en: "Match case"
+  es: "Distinguir mayúsculas"
+"find.previous":
+  en: "Previous match"
+  es: "Coincidencia anterior"
+"find.next":
+  en: "Next match"
+  es: "Coincidencia siguiente"
+"find.close":
+  en: "Close"
+  es: "Cerrar"

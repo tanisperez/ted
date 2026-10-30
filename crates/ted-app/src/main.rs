@@ -66,6 +66,7 @@ fn main() -> ExitCode {
         actions::bind_keys(cx);
         views::bind_keys(cx);
         views::bind_explorer_keys(cx);
+        views::bind_find_keys(cx);
         theme::install(cx, &settings);
         views::apply_editor_settings(&settings, cx);
 

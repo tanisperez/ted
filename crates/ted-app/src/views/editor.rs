@@ -15,6 +15,7 @@
 //! Backspace, the clipboard, undo) are actions bound in the `Editor` key context.
 
 use gpui_kit::component::ActiveTheme;
+use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use std::ops::Range;
@@ -24,6 +25,7 @@ use ted_core::{EditKind, Position, Selection};
 use crate::state::editor::{
     EditorState, Movement, Viewport, column_for_expanded, expand_tabs, expanded_index,
 };
+use crate::state::find::Find;
 use crate::state::syntax::{ParseRequest, line_runs};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
@@ -108,8 +110,12 @@ actions!(
     ]
 );
 
+/// Alpha of the `warning` color behind the find bar's matches, and behind the selected one.
+const MATCH_ALPHA: f32 = 0.22;
+const CURRENT_MATCH_ALPHA: f32 = 0.5;
+
 /// The key context of the editor, for its bindings.
-const KEY_CONTEXT: &str = "Editor";
+pub(crate) const KEY_CONTEXT: &str = "Editor";
 
 /// Registers the editor's key bindings.
 pub fn bind_keys(cx: &mut App) {
@@ -211,6 +217,15 @@ pub struct EditorView {
     /// candidate window.
     text_origin: Point<Pixels>,
     line_height: Pixels,
+    /// The find bar's query and matches (`views/find.rs`).
+    pub(crate) find: Find,
+    /// Whether the find bar shows.
+    pub(crate) find_open: bool,
+    /// The find bar's field, made the first time it opens.
+    pub(crate) find_input: Option<Entity<InputState>>,
+    /// Select the first match after the cursor as soon as the search finds one (the query just
+    /// changed).
+    pub(crate) find_jump: bool,
 }
 
 /// A line as painted in the last frame.
@@ -236,6 +251,10 @@ impl EditorView {
             marked: None,
             text_origin: Point::default(),
             line_height: px(20.0),
+            find: Find::default(),
+            find_open: false,
+            find_input: None,
+            find_jump: false,
         }
     }
 
@@ -331,7 +350,7 @@ impl Focusable for EditorView {
 
 impl Render for EditorView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
+        let editor = div()
             .id("editor")
             .key_context(KEY_CONTEXT)
             .track_focus(&self.focus_handle)
@@ -423,7 +442,8 @@ impl Render for EditorView {
             .on_action(cx.listener(|this, _: &Redo, _, cx| this.edit(cx, EditorState::redo)))
             .child(EditorElement {
                 editor: cx.entity(),
-            })
+            });
+        self.with_find_bar(editor, cx)
     }
 }
 
@@ -585,6 +605,10 @@ pub struct EditorLayout {
     current_line: Option<Bounds<Pixels>>,
     /// The selected parts of the visible lines.
     selection: Vec<Bounds<Pixels>>,
+    /// The find bar's matches on the visible lines.
+    matches: Vec<Bounds<Pixels>>,
+    /// The selected match, painted stronger and over the selection.
+    current_match: Vec<Bounds<Pixels>>,
     /// The whole element: the mouse acts on the editor only while this is hovered, so a modal
     /// or a menu drawn over it keeps its clicks and wheel.
     hitbox: Hitbox,
@@ -680,6 +704,10 @@ impl Element for EditorElement {
             if let Some(request) = state.syntax.sync(&mut state.buffer) {
                 editor.parse(request, cx);
             }
+            // The text changed under an open find bar: count its matches again.
+            if editor.find_open && editor.find.version != editor.state.buffer.version() {
+                editor.search(cx);
+            }
             let state = &mut editor.state;
             state.set_viewport(viewport);
             let (lines, first_y) = state.visible_lines();
@@ -765,41 +793,46 @@ impl Element for EditorElement {
 
             // The selection, one rectangle per visible line it covers. A line whose break is
             // selected shows one more character's width.
-            let selection = state.selection();
-            let mut selection_rects = Vec::new();
-            if !selection.is_empty() {
-                let range = selection.range();
+            let rects = |range: Range<usize>| {
                 let start = state.buffer.offset_to_position(range.start);
                 let end = state.buffer.offset_to_position(range.end);
-                for painted in &painted {
-                    if painted.line < start.line || painted.line > end.line {
-                        continue;
-                    }
-                    let x_at = |column: usize| {
-                        let column = column.saturating_sub(painted.start_column);
-                        let column = column.min(painted.text.len());
-                        painted.x
-                            + painted
-                                .shaped
-                                .x_for_index(expanded_index(&painted.text, column))
-                    };
-                    let left = if painted.line == start.line {
-                        x_at(start.column)
-                    } else {
-                        painted.x
-                    };
-                    let mut right = if painted.line == end.line {
-                        x_at(end.column)
-                    } else {
-                        x_at(usize::MAX) + char_width
-                    };
-                    if right <= left {
-                        right = left + char_width * 0.5;
-                    }
-                    selection_rects.push(Bounds::from_corners(
-                        point(text_left + left, row_top(painted.line)),
-                        point(text_left + right, row_top(painted.line) + line_height),
-                    ));
+                range_rects(&painted, start, end, char_width, |painted, left, right| {
+                    let top = row_top(painted.line);
+                    Bounds::from_corners(
+                        point(text_left + left, top),
+                        point(text_left + right, top + line_height),
+                    )
+                })
+            };
+            let selection = state.selection();
+            let selection_rects = if selection.is_empty() {
+                Vec::new()
+            } else {
+                rects(selection.range())
+            };
+            // The visible matches of the find bar, searched in the painted part of each line.
+            let mut match_rects = Vec::new();
+            let mut current_rects = Vec::new();
+            let selected = selection.range();
+            if let Some(query) = editor
+                .find_open
+                .then_some(editor.find.query.as_ref())
+                .flatten()
+            {
+                for line in &painted {
+                    let start = state.buffer.line_to_byte(line.line) + line.start_column;
+                    query.find_in(
+                        state.buffer.rope(),
+                        start..start + line.text.len(),
+                        |found| {
+                            if found == selected {
+                                current_rects.extend(rects(found));
+                            } else {
+                                match_rects.extend(rects(found));
+                            }
+                            true
+                        },
+                    );
                 }
             }
 
@@ -864,6 +897,8 @@ impl Element for EditorElement {
                 cursor,
                 current_line,
                 selection: selection_rects,
+                matches: match_rects,
+                current_match: current_rects,
                 hitbox: window.insert_hitbox(bounds, HitboxBehavior::Normal),
                 text_hitbox: window.insert_hitbox(text, HitboxBehavior::Normal),
                 gutter_hitbox: window.insert_hitbox(gutter, HitboxBehavior::Normal),
@@ -897,8 +932,14 @@ impl Element for EditorElement {
                 bounds: layout.text,
             }),
             |window| {
+                for rect in &layout.matches {
+                    window.paint_quad(fill(*rect, palette.warning.opacity(MATCH_ALPHA)));
+                }
                 for rect in &layout.selection {
                     window.paint_quad(fill(*rect, palette.accent_subtle));
+                }
+                for rect in &layout.current_match {
+                    window.paint_quad(fill(*rect, palette.warning.opacity(CURRENT_MATCH_ALPHA)));
                 }
                 for (row, painted) in layout.painted.iter().enumerate() {
                     let origin = point(
@@ -1081,4 +1122,42 @@ fn drag_thumb(editor: &mut EditorView, scrollbar: Scrollbar, pointer_y: Pixels) 
     }
     let top = f32::from(pointer_y - scrollbar.track.top()) - grab;
     editor.state.scroll_to_fraction(f64::from(top / range));
+}
+
+/// The rectangles that cover the text from `start` to `end` on the painted lines, one per line,
+/// built by `rect` from a line and its left and right x. A line whose break is covered shows
+/// one more character's width; an empty range shows half a character.
+fn range_rects(
+    painted: &[PaintedLine],
+    start: Position,
+    end: Position,
+    char_width: Pixels,
+    rect: impl Fn(&PaintedLine, Pixels, Pixels) -> Bounds<Pixels>,
+) -> Vec<Bounds<Pixels>> {
+    let mut rects = Vec::new();
+    for line in painted {
+        if line.line < start.line || line.line > end.line {
+            continue;
+        }
+        let x_at = |column: usize| {
+            let column = column.saturating_sub(line.start_column);
+            let column = column.min(line.text.len());
+            line.x + line.shaped.x_for_index(expanded_index(&line.text, column))
+        };
+        let left = if line.line == start.line {
+            x_at(start.column)
+        } else {
+            line.x
+        };
+        let mut right = if line.line == end.line {
+            x_at(end.column)
+        } else {
+            x_at(usize::MAX) + char_width
+        };
+        if right <= left {
+            right = left + char_width * 0.5;
+        }
+        rects.push(rect(line, left, right));
+    }
+    rects
 }
