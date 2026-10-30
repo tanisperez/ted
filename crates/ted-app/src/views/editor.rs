@@ -24,10 +24,12 @@ use ted_core::{EditKind, Position, Selection};
 use crate::state::editor::{
     EditorState, Movement, Viewport, column_for_expanded, expand_tabs, expanded_index,
 };
+use crate::state::syntax::{ParseRequest, line_runs};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
     EDITOR_GUTTER_PADDING, EDITOR_GUTTER_RIGHT, EDITOR_SCROLLBAR_WIDTH, EDITOR_TEXT_PADDING,
 };
+use crate::theme::syntax::SyntaxColors;
 
 /// Lines longer than this, in bytes, are shaped only around the visible columns.
 const LONG_LINE: usize = 2_000;
@@ -220,6 +222,24 @@ impl EditorView {
 
     pub fn focus_handle(&self) -> &FocusHandle {
         &self.focus_handle
+    }
+
+    /// Runs a parse on the background executor and hands its tree to the state, which may ask
+    /// for the next one (the text changed meanwhile).
+    fn parse(&self, request: ParseRequest, cx: &mut Context<Self>) {
+        cx.spawn(async move |this, cx| {
+            let started = std::time::Instant::now();
+            let tree = cx.background_spawn(async move { request.run() }).await;
+            log::debug!("parsed in {:?}", started.elapsed());
+            let _ = this.update(cx, |editor, cx| {
+                let state = &mut editor.state;
+                if let Some(next) = state.syntax.parsed(tree, &mut state.buffer) {
+                    editor.parse(next, cx);
+                }
+                cx.notify();
+            });
+        })
+        .detach();
     }
 
     fn move_cursor(&mut self, movement: Movement, select: bool, cx: &mut Context<Self>) {
@@ -622,8 +642,13 @@ impl Element for EditorElement {
             char_width: f32::from(char_width),
         };
         let focused = self.editor.read(cx).focus_handle.is_focused(window);
+        let colors = SyntaxColors::new(&cx.theme().highlight_theme);
 
-        self.editor.update(cx, |editor, _| {
+        self.editor.update(cx, |editor, cx| {
+            let state = &mut editor.state;
+            if let Some(request) = state.syntax.sync(&mut state.buffer) {
+                editor.parse(request, cx);
+            }
             let state = &mut editor.state;
             state.set_viewport(viewport);
             let (lines, first_y) = state.visible_lines();
@@ -652,15 +677,25 @@ impl Element for EditorElement {
                 };
                 let display = expand_tabs(&line_text);
                 widest = widest.max(start_display + display.chars().count());
-                let run = TextRun {
-                    len: display.len(),
-                    font: font.clone(),
-                    color: text_color,
-                    background_color: None,
-                    underline: None,
-                    strikethrough: None,
-                };
-                let shaped = text_system.shape_line(display.into(), font_size, &[run], None);
+                let spans = state.syntax.line_spans(
+                    &state.buffer,
+                    line,
+                    start_column..start_column + line_text.len(),
+                );
+                let runs: Vec<TextRun> = line_runs(&line_text, &spans)
+                    .into_iter()
+                    .map(|(len, highlight)| TextRun {
+                        len,
+                        font: font.clone(),
+                        color: highlight
+                            .and_then(|highlight| colors.get(highlight))
+                            .unwrap_or(text_color),
+                        background_color: None,
+                        underline: None,
+                        strikethrough: None,
+                    })
+                    .collect();
+                let shaped = text_system.shape_line(display.into(), font_size, &runs, None);
                 painted.push(PaintedLine {
                     line,
                     text: line_text,

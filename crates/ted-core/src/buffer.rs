@@ -1,7 +1,9 @@
 //! [`Buffer`]: the text of one open document, a rope plus what the views need to cache against
-//! it (a version counter) and what was detected when it was loaded.
+//! it (a version counter), what was detected when it was loaded and, on request, the list of its
+//! changes ([`TextChange`]) for an incremental parser.
 
 use std::ops::Range;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use ropey::{LineType, Rope, RopeSlice};
 
@@ -9,6 +11,69 @@ use crate::detect::{Indent, LineEnding, SAMPLE_LEN, detect_indent, detect_line_e
 
 /// Lines are split on `\n`; a CRLF line keeps its `\r`, which [`Buffer::line`] leaves out.
 const LINES: LineType = LineType::LF;
+
+/// The source of every buffer version, one counter for the whole process: two buffers never
+/// share a version, so a file reloaded into a new buffer never looks like its old text.
+static NEXT_VERSION: AtomicU64 = AtomicU64::new(1);
+
+fn next_version() -> u64 {
+    NEXT_VERSION.fetch_add(1, Ordering::Relaxed)
+}
+
+/// Most changes kept between two [`Buffer::take_changes`]. Past it the list is dropped and the
+/// next take reports that the changes were lost, so nobody keeps an unbounded list.
+const MAX_CHANGES: usize = 4096;
+
+/// One change of the text, in the terms an incremental parser (tree-sitter) needs to reuse the
+/// tree of the text before it: byte offsets and `(row, column)` points, columns in bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TextChange {
+    pub start_byte: usize,
+    pub old_end_byte: usize,
+    pub new_end_byte: usize,
+    pub start_position: (usize, usize),
+    pub old_end_position: (usize, usize),
+    pub new_end_position: (usize, usize),
+}
+
+impl TextChange {
+    /// The change that replaces `range` of `before` with `new_text` (an insertion has an empty
+    /// range, a removal an empty text). Reads only the line index of `before`, so it is cheap.
+    pub fn new(before: &Buffer, range: Range<usize>, new_text: &str) -> TextChange {
+        let point = |offset: usize| {
+            let row = before.byte_to_line(offset);
+            (row, offset - before.line_to_byte(row))
+        };
+        let start_position = point(range.start);
+        let old_end_position = point(range.end);
+        let new_end_position = match new_text.rfind('\n') {
+            None => (start_position.0, start_position.1 + new_text.len()),
+            Some(last) => (
+                start_position.0 + new_text.bytes().filter(|&b| b == b'\n').count(),
+                new_text.len() - (last + 1),
+            ),
+        };
+        TextChange {
+            start_byte: range.start,
+            old_end_byte: range.end,
+            new_end_byte: range.start + new_text.len(),
+            start_position,
+            old_end_position,
+            new_end_position,
+        }
+    }
+}
+
+/// Whether a buffer lists its changes.
+#[derive(Debug, Clone, Default)]
+enum Changes {
+    #[default]
+    Off,
+    /// The changes since the last take, in order.
+    On(Vec<TextChange>),
+    /// More than [`MAX_CHANGES`] since the last take: they were dropped.
+    Lost,
+}
 
 /// A place in the text: a zero based line and a byte offset inside that line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
@@ -36,6 +101,7 @@ pub struct Buffer {
     version: u64,
     line_ending: LineEnding,
     indent: Option<Indent>,
+    changes: Changes,
 }
 
 impl Default for Buffer {
@@ -58,7 +124,8 @@ impl Buffer {
             line_ending: detect_line_ending(&sample),
             indent: detect_indent(&sample),
             rope,
-            version: 0,
+            version: next_version(),
+            changes: Changes::Off,
         }
     }
 
@@ -67,7 +134,8 @@ impl Buffer {
         &self.rope
     }
 
-    /// Changes on every edit. Two equal versions of the same buffer have the same text.
+    /// Changes on every edit. Versions are unique in the process: two buffers with the same
+    /// version have the same text.
     pub fn version(&self) -> u64 {
         self.version
     }
@@ -155,8 +223,9 @@ impl Buffer {
         if text.is_empty() {
             return;
         }
+        self.record(offset..offset, text);
         self.rope.insert(offset, text);
-        self.version += 1;
+        self.version = next_version();
     }
 
     /// Removes the bytes in `range`, whose ends must be char boundaries.
@@ -164,8 +233,9 @@ impl Buffer {
         if range.is_empty() {
             return;
         }
+        self.record(range.clone(), "");
         self.rope.remove(range);
-        self.version += 1;
+        self.version = next_version();
     }
 
     /// Replaces the bytes in `range` with `text`, as one change.
@@ -173,13 +243,56 @@ impl Buffer {
         if range.is_empty() && text.is_empty() {
             return;
         }
+        self.record(range.clone(), text);
         if !range.is_empty() {
             self.rope.remove(range.clone());
         }
         if !text.is_empty() {
             self.rope.insert(range.start, text);
         }
-        self.version += 1;
+        self.version = next_version();
+    }
+
+    /// Starts listing the changes, for [`Self::take_changes`]. Returns whether it was already
+    /// on: when it was not, the changes before this call are unknown.
+    pub fn track_changes(&mut self) -> bool {
+        if matches!(self.changes, Changes::Off) {
+            self.changes = Changes::On(Vec::new());
+            return false;
+        }
+        true
+    }
+
+    /// The changes since the last take, in the order they happened, and starts a new list.
+    /// `None` when they were not tracked or too many piled up: the caller must start over from
+    /// the whole text.
+    pub fn take_changes(&mut self) -> Option<Vec<TextChange>> {
+        match std::mem::take(&mut self.changes) {
+            Changes::Off => None,
+            Changes::On(changes) => {
+                self.changes = Changes::On(Vec::new());
+                Some(changes)
+            }
+            Changes::Lost => {
+                self.changes = Changes::On(Vec::new());
+                None
+            }
+        }
+    }
+
+    /// Lists the change about to replace `range` with `text`, when tracking.
+    fn record(&mut self, range: Range<usize>, text: &str) {
+        let Changes::On(changes) = &self.changes else {
+            return;
+        };
+        if changes.len() >= MAX_CHANGES {
+            self.changes = Changes::Lost;
+            return;
+        }
+        let change = TextChange::new(self, range, text);
+        if let Changes::On(changes) = &mut self.changes {
+            changes.push(change);
+        }
     }
 
     /// The text in `range` (byte offsets, clamped to char boundaries).
@@ -289,17 +402,61 @@ mod tests {
     }
 
     #[test]
-    fn edits_bump_the_version_and_empty_ones_do_not() {
+    fn edits_change_the_version_and_empty_ones_do_not() {
         let mut buffer = Buffer::from_text("hello");
+        let mut seen = vec![buffer.version()];
         buffer.insert(5, " world");
+        seen.push(buffer.version());
         buffer.remove(0..1);
+        seen.push(buffer.version());
         buffer.replace(0..4, "J");
+        seen.push(buffer.version());
         assert_eq!(buffer.to_text(), "J world");
-        assert_eq!(buffer.version(), 3);
+        let unique: std::collections::HashSet<_> = seen.iter().collect();
+        assert_eq!(unique.len(), 4);
+        let version = buffer.version();
         buffer.insert(0, "");
         buffer.remove(2..2);
         buffer.replace(1..1, "");
-        assert_eq!(buffer.version(), 3);
+        assert_eq!(buffer.version(), version);
+    }
+
+    #[test]
+    fn two_buffers_never_share_a_version() {
+        let first = Buffer::from_text("same");
+        let second = Buffer::from_text("same");
+        assert_ne!(first.version(), second.version());
+    }
+
+    #[test]
+    fn changes_are_listed_only_when_tracked() {
+        let mut buffer = Buffer::from_text("ab\ncd\n");
+        buffer.insert(0, "x");
+        assert_eq!(buffer.take_changes(), None);
+
+        let _ = buffer.track_changes();
+        buffer.replace(5..6, "x\nyz");
+        buffer.remove(0..1);
+        let changes = buffer.take_changes().unwrap();
+        assert_eq!(changes.len(), 2);
+        assert_eq!(changes[0].start_position, (1, 1));
+        assert_eq!(changes[0].old_end_position, (1, 2));
+        assert_eq!(changes[0].new_end_position, (2, 2));
+        assert_eq!(changes[0].new_end_byte, 9);
+        assert_eq!(changes[1].old_end_byte, 1);
+        assert_eq!(buffer.take_changes(), Some(Vec::new()));
+    }
+
+    #[test]
+    fn too_many_changes_are_reported_as_lost() {
+        let mut buffer = Buffer::from_text("");
+        let _ = buffer.track_changes();
+        for _ in 0..=MAX_CHANGES {
+            buffer.insert(0, "a");
+        }
+        assert_eq!(buffer.take_changes(), None);
+        buffer.insert(0, "b");
+        assert_eq!(buffer.take_changes().map(|changes| changes.len()), Some(1));
     }
 
     #[test]

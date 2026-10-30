@@ -13,6 +13,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
+use ted_syntax::Language;
 use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
 use telaio_ui::components::EmptyState;
 
@@ -21,6 +22,7 @@ use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::launch::{self, LaunchError, Target};
 use crate::state::recents::{self, Recents};
 use crate::state::settings::Settings;
+use crate::state::syntax::Syntax;
 use crate::state::tabs::Tabs;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
@@ -427,6 +429,14 @@ impl AppView {
                 state.bom = bom;
                 // Only the start of a big file: no editing until the whole text replaces it.
                 state.read_only = lossy || expected_lines.is_some();
+                // A file over the limit is never parsed, not even the start shown first.
+                let max_bytes = self.settings.highlight_max_bytes();
+                let max_bytes = if file_size > max_bytes as u64 {
+                    0
+                } else {
+                    max_bytes
+                };
+                state.syntax = Syntax::new(Language::detect(&path), max_bytes);
                 state.path = Some(path);
                 state.disk_modified = modified;
                 let editor = cx.new(|cx| EditorView::new(state, cx));

@@ -45,6 +45,11 @@ impl Language {
         }
     }
 
+    /// Whether a tree-sitter grammar highlights it (not logs nor plain text).
+    pub fn has_grammar(self) -> bool {
+        !matches!(self, Language::Log | Language::PlainText)
+    }
+
     /// The label of the status bar.
     pub fn name(self) -> &'static str {
         match self {

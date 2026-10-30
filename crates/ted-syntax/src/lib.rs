@@ -7,9 +7,10 @@
 //! 1. [`Language::detect`] from the path, shown in the status bar with [`Language::name`].
 //! 2. [`SyntaxTree::parse`] on a background thread with a clone of the buffer (cloning is O(1)).
 //! 3. On every frame, [`SyntaxTree::highlights`] for the visible byte range.
-//! 4. On every edit, build an [`Edit`] from the buffer *before* the change, call
-//!    [`SyntaxTree::edited`] to get a tree the editor can paint at once (its ranges follow the
-//!    text), and reparse in the background passing that tree as `previous`.
+//! 4. After edits, take the buffer's changes (`Buffer::track_changes` once, then
+//!    `Buffer::take_changes`), call [`SyntaxTree::edited`] to get a tree the editor can paint at
+//!    once (its ranges follow the text), and reparse in the background passing that tree as
+//!    `previous`.
 //!
 //! Logs have no tree: [`highlight_log_line`] works on the text of one line.
 
@@ -22,4 +23,4 @@ mod tree;
 pub use highlight::{Highlight, HighlightSpan};
 pub use language::Language;
 pub use log::highlight_log_line;
-pub use tree::{Edit, SyntaxTree};
+pub use tree::SyntaxTree;

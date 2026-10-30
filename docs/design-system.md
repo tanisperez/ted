@@ -106,9 +106,14 @@ Notes:
 
 - The prototype draws comments upright. Geist Mono has no italic face, so ted does the same and
   does not set `.italic()`.
-- Markdown headings are `keyword` at weight 600; other tokens are weight 400.
+- Markdown headings are `keyword` at weight 600; other tokens are weight 400. ted paints headings
+  in `keyword` at the normal weight for now, and inline markdown (code spans, emphasis, links) is
+  plain: the bundled grammar covers only the blocks.
 - The log highlighter is not tree-sitter: dates are `comment`, `ERROR`/`FATAL` `tag`, `WARN`
-  `number`, `INFO` `function`, `DEBUG`/`TRACE` `comment`, `[context]` `property`.
+  `number`, `INFO` `function`, `DEBUG`/`TRACE` `comment`, `[context]` `property`. ted does not
+  color `[context]` yet.
+- The status bar shows the language at its right: `Rust`, `JavaScript`, `JSON`, `TOML`,
+  `Markdown`, `XML`, `HTML`, `Log` or "Plain text".
 
 ### Semantic mappings
 

@@ -3,6 +3,7 @@
 
 use rust_i18n::t;
 use ted_core::Indent;
+use ted_syntax::Language;
 
 use super::editor::EditorState;
 
@@ -17,6 +18,8 @@ pub struct DocumentStatus {
     pub encoding: String,
     /// `LF` or `CRLF`.
     pub line_ending: &'static str,
+    /// `Rust`, `JSON`, `Log`, `Plain text`, ...
+    pub language: String,
 }
 
 impl DocumentStatus {
@@ -41,6 +44,10 @@ impl DocumentStatus {
             indent,
             encoding,
             line_ending: state.buffer.line_ending().label(),
+            language: match state.syntax.language {
+                Language::PlainText => t!("status.plain_text").into_owned(),
+                language => language.name().to_string(),
+            },
         }
     }
 }
@@ -60,6 +67,13 @@ mod tests {
         assert_eq!(status.encoding, "UTF-8");
         assert!(status.position.contains('2') && status.position.contains('3'));
         assert!(status.indent.is_some_and(|indent| indent.contains('2')));
+    }
+
+    #[test]
+    fn the_language_is_named() {
+        let mut state = EditorState::new(Buffer::from_text("{}"));
+        state.syntax = crate::state::syntax::Syntax::new(Language::Json, 0);
+        assert_eq!(DocumentStatus::of(&state).language, "JSON");
     }
 
     #[test]

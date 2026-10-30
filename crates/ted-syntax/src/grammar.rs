@@ -136,3 +136,22 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
     })
     .as_ref()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn has_grammar_matches_the_grammars() {
+        use Language::*;
+        for language in [
+            Rust, JavaScript, Json, Toml, Markdown, Xml, Html, Log, PlainText,
+        ] {
+            assert_eq!(
+                language.has_grammar(),
+                grammar(language).is_some(),
+                "{language:?}"
+            );
+        }
+    }
+}

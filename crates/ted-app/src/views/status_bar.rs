@@ -1,8 +1,8 @@
 //! The status bar at the bottom of the main window. In folder mode it starts with the panel
 //! toggles (Files for now, Git joins it with its panel), a separator and the folder path (a click
 //! opens it in the file manager); with a document open, the cursor position, the indentation, the
-//! encoding and the line ending, right aligned as in the design. The language joins them with
-//! highlighting (#9), the branch with the Git panel.
+//! encoding, the line ending and the language, right aligned as in the design. The branch joins
+//! them with the Git panel.
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::tooltip::Tooltip;
@@ -74,6 +74,7 @@ impl AppView {
                     .children(status.indent)
                     .child(status.encoding)
                     .child(status.line_ending)
+                    .child(status.language)
             }))
             .into_any_element()
     }

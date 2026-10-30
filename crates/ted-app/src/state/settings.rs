@@ -80,8 +80,19 @@ pub struct Settings {
     pub trim_trailing_whitespace: bool,
     /// Whether saving ends the file with a line break.
     pub insert_final_newline: bool,
+    /// Files bigger than this many MB are not parsed for highlighting and stay plain, so a huge
+    /// generated file never costs a long parse nor the memory of its tree. Logs are highlighted
+    /// at any size: they need no parse.
+    pub highlight_max_size_mb: u32,
     /// How much is written to the log file.
     pub log_level: LogLevel,
+}
+
+impl Settings {
+    /// [`Self::highlight_max_size_mb`] in bytes.
+    pub fn highlight_max_bytes(&self) -> usize {
+        self.highlight_max_size_mb as usize * 1024 * 1024
+    }
 }
 
 impl Default for Settings {
@@ -95,6 +106,7 @@ impl Default for Settings {
             mono_font_size: 12.5,
             trim_trailing_whitespace: true,
             insert_final_newline: true,
+            highlight_max_size_mb: 4,
             log_level: LogLevel::default(),
         }
     }
@@ -164,6 +176,12 @@ fn parse_settings(content: &str) -> Settings {
     {
         settings.insert_final_newline = value;
     }
+    if let Some(value) = table
+        .get("highlight_max_size_mb")
+        .and_then(toml::Value::as_integer)
+    {
+        settings.highlight_max_size_mb = value.clamp(0, 1024) as u32;
+    }
     if let Some(value) = text("log_level").and_then(LogLevel::parse) {
         settings.log_level = value;
     }
@@ -214,6 +232,22 @@ mod tests {
         let settings = parse_settings("ui_font_size = 40\nmono_font_size = 2.0\n");
         assert_eq!(settings.ui_font_size, 16.0);
         assert_eq!(settings.mono_font_size, 10.0);
+    }
+
+    #[test]
+    fn the_highlight_size_limit_is_clamped() {
+        assert_eq!(
+            parse_settings("highlight_max_size_mb = 16").highlight_max_size_mb,
+            16
+        );
+        assert_eq!(
+            parse_settings("highlight_max_size_mb = -3").highlight_max_size_mb,
+            0
+        );
+        assert_eq!(
+            parse_settings("highlight_max_size_mb = \"big\"").highlight_max_size_mb,
+            Settings::default().highlight_max_size_mb
+        );
     }
 
     #[test]

@@ -8,62 +8,19 @@ use tree_sitter::{InputEdit, Parser, Point, QueryCursor, StreamingIterator, Text
 use crate::grammar::grammar;
 use crate::highlight::resolve;
 use crate::{HighlightSpan, Language};
-use ted_core::{Buffer, Rope};
+use ted_core::{Buffer, Rope, TextChange};
 
-/// One text change, in the terms tree-sitter needs to reuse the tree of the text before it.
-///
-/// Build it with [`Edit::new`] from the buffer **before** the change is applied; one `Edit` per
-/// `Buffer::insert`, `remove` or `replace`, in the order they happened.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Edit {
-    pub start_byte: usize,
-    pub old_end_byte: usize,
-    pub new_end_byte: usize,
-    /// `(row, column)` of `start_byte`, with the column in bytes.
-    pub start_position: (usize, usize),
-    pub old_end_position: (usize, usize),
-    pub new_end_position: (usize, usize),
-}
-
-impl Edit {
-    /// The edit that replaces `range` of `before` with `new_text` (an insertion has an empty
-    /// range, a removal an empty text). Reads only the line index of `before`, so it is cheap.
-    pub fn new(before: &Buffer, range: Range<usize>, new_text: &str) -> Edit {
-        let start_position = point(before, range.start);
-        let old_end_position = point(before, range.end);
-        let new_end_position = match new_text.rfind('\n') {
-            None => (start_position.0, start_position.1 + new_text.len()),
-            Some(last) => (
-                start_position.0 + new_text.bytes().filter(|&b| b == b'\n').count(),
-                new_text.len() - (last + 1),
-            ),
-        };
-        Edit {
-            start_byte: range.start,
-            old_end_byte: range.end,
-            new_end_byte: range.start + new_text.len(),
-            start_position,
-            old_end_position,
-            new_end_position,
-        }
+/// A [`TextChange`] in tree-sitter's terms.
+fn input_edit(change: &TextChange) -> InputEdit {
+    let p = |(row, column): (usize, usize)| Point { row, column };
+    InputEdit {
+        start_byte: change.start_byte,
+        old_end_byte: change.old_end_byte,
+        new_end_byte: change.new_end_byte,
+        start_position: p(change.start_position),
+        old_end_position: p(change.old_end_position),
+        new_end_position: p(change.new_end_position),
     }
-
-    fn input_edit(&self) -> InputEdit {
-        let p = |(row, column): (usize, usize)| Point { row, column };
-        InputEdit {
-            start_byte: self.start_byte,
-            old_end_byte: self.old_end_byte,
-            new_end_byte: self.new_end_byte,
-            start_position: p(self.start_position),
-            old_end_position: p(self.old_end_position),
-            new_end_position: p(self.new_end_position),
-        }
-    }
-}
-
-fn point(buffer: &Buffer, offset: usize) -> (usize, usize) {
-    let row = buffer.byte_to_line(offset);
-    (row, offset - buffer.line_to_byte(row))
 }
 
 struct Inner {
@@ -134,10 +91,10 @@ impl SyntaxTree {
     /// painted at once while that parse runs, because its ranges already follow the new text
     /// (only what is inside the edits is out of date). Edits must be given in the order they were
     /// applied to the buffer.
-    pub fn edited(&self, edits: &[Edit], new_version: u64) -> SyntaxTree {
+    pub fn edited(&self, edits: &[TextChange], new_version: u64) -> SyntaxTree {
         let mut tree = self.inner.tree.clone();
         for edit in edits {
-            tree.edit(&edit.input_edit());
+            tree.edit(&input_edit(edit));
         }
         SyntaxTree {
             inner: Arc::new(Inner {
@@ -378,9 +335,10 @@ mod tests {
         for (start, end, text) in edits {
             let end = end.min(buffer.len());
             let start = start.min(end);
-            let edit = Edit::new(&buffer, start..end, text);
+            let _ = buffer.track_changes();
             buffer.replace(start..end, text);
-            let edited = tree.edited(&[edit], buffer.version());
+            let changes = buffer.take_changes().expect("tracked");
+            let edited = tree.edited(&changes, buffer.version());
             let inc = SyntaxTree::parse(Language::Rust, &buffer, Some(&edited), MAX).expect("inc");
             let full = SyntaxTree::parse(Language::Rust, &buffer, None, MAX).expect("full");
             assert_eq!(inc.version(), buffer.version());
@@ -395,16 +353,6 @@ mod tests {
             );
             tree = inc;
         }
-    }
-
-    #[test]
-    fn edit_positions() {
-        let buffer = Buffer::from_text("ab\ncd\n");
-        let e = Edit::new(&buffer, 4..5, "x\nyz");
-        assert_eq!(e.start_position, (1, 1));
-        assert_eq!(e.old_end_position, (1, 2));
-        assert_eq!(e.new_end_position, (2, 2));
-        assert_eq!(e.new_end_byte, 8);
     }
 
     #[test]

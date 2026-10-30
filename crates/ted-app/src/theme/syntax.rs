@@ -7,8 +7,61 @@
 //!
 //! Comments ask for italics, but the bundled Geist Mono has no italic face, so they show
 //! upright until it gets one.
+//!
+//! The editor paints `ted_syntax`'s classes with [`SyntaxColors`]: each class takes the color of
+//! one capture of the theme, and the log classes borrow theirs as the design says (dates and
+//! `DEBUG`/`TRACE` as comments, `ERROR` as tags, `WARN` as numbers, `INFO` as functions).
 
+use gpui_kit::Hsla;
+use gpui_kit::component::highlighter::HighlightTheme;
+use ted_syntax::Highlight;
 use telaio_ui::{SyntaxStyle, SyntaxTheme};
+
+/// The captures the editor paints with, in the order of [`capture_index`].
+const CAPTURES: [&str; 11] = [
+    "comment",
+    "keyword",
+    "function",
+    "property",
+    "attribute",
+    "string",
+    "number",
+    "type",
+    "boolean",
+    "constant",
+    "tag",
+];
+
+/// The position in [`CAPTURES`] of the capture that colors `highlight`.
+fn capture_index(highlight: Highlight) -> usize {
+    match highlight {
+        Highlight::Comment | Highlight::LogDate | Highlight::LogDebug | Highlight::LogTrace => 0,
+        Highlight::Keyword => 1,
+        Highlight::Function | Highlight::LogInfo => 2,
+        Highlight::Property => 3,
+        Highlight::Attribute => 4,
+        Highlight::String => 5,
+        Highlight::Number | Highlight::LogWarn => 6,
+        Highlight::Type => 7,
+        Highlight::Boolean => 8,
+        Highlight::Constant => 9,
+        Highlight::Tag | Highlight::LogError => 10,
+    }
+}
+
+/// The color of every class in the current theme, looked up once per frame.
+pub struct SyntaxColors([Option<Hsla>; CAPTURES.len()]);
+
+impl SyntaxColors {
+    pub fn new(theme: &HighlightTheme) -> Self {
+        Self(CAPTURES.map(|name| theme.style(name).and_then(|style| style.color)))
+    }
+
+    /// The color of `highlight`, `None` for the plain text color.
+    pub fn get(&self, highlight: Highlight) -> Option<Hsla> {
+        self.0[capture_index(highlight)]
+    }
+}
 
 /// The light mode syntax colors.
 pub const LIGHT: SyntaxTheme = SyntaxTheme(&[
@@ -44,6 +97,14 @@ pub const DARK: SyntaxTheme = SyntaxTheme(&[
 mod tests {
     use super::{DARK, LIGHT};
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn every_capture_the_editor_paints_has_a_color() {
+        for name in super::CAPTURES {
+            assert!(LIGHT.get(name).is_some(), "{name}");
+            assert!(DARK.get(name).is_some(), "{name}");
+        }
+    }
 
     #[test]
     fn both_modes_color_the_same_captures() {

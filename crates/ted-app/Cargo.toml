@@ -21,6 +21,7 @@ telaio-ui = { workspace = true }
 telaio-app = { workspace = true }
 ted-cli = { path = "../ted-cli" }
 ted-core = { path = "../ted-core" }
+ted-syntax = { path = "../ted-syntax" }
 ted-workspace = { path = "../ted-workspace" }
 
 [dev-dependencies]

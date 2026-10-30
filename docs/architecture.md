@@ -82,9 +82,14 @@ highlighting more than the visible range, searching a whole file.
 - Opening a file: the first chunk is read and shown (first screen in under 100 ms after the window
   has opened), and the rest loads in the background in chunks into the rope, each chunk applied
   under the document's generation.
-- Highlighting: tree-sitter parses incrementally off the main thread. The viewport shows plain
-  text until its highlight arrives, then repaints with the colors; stale results for an older
-  buffer version are dropped.
+- Highlighting (`ted-app/src/state/syntax.rs`): tree-sitter parses off the main thread, one parse
+  at a time. The viewport shows plain text until the first tree arrives. After that, every edit
+  is recorded by the buffer (`Buffer::track_changes`, `take_changes`) and moves the tree at once
+  (`SyntaxTree::edited`), so typing keeps its colors, and an incremental parse from that moved
+  tree replaces it. A result for an older buffer version is dropped and the next parse starts.
+  Buffer versions are unique in the process, so a reloaded file never matches the old tree.
+  Files above `highlight_max_size_mb` (`settings.toml`, 4 by default) are never parsed; logs use
+  the line highlighter at any size, on the visible lines only.
 - Folder listing: one directory at a time, only for expanded folders, each listing tagged with the
   folder's generation.
 

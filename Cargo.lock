@@ -6278,6 +6278,7 @@ dependencies = [
  "serde_json",
  "ted-cli",
  "ted-core",
+ "ted-syntax",
  "ted-workspace",
  "telaio-app",
  "telaio-ui",

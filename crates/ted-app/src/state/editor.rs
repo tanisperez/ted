@@ -12,6 +12,8 @@ use std::time::SystemTime;
 
 use ted_core::{Buffer, Edit, EditKind, History, Indent, Position, Selection};
 
+use super::syntax::Syntax;
+
 /// Empty space above the first line, in pixels.
 pub const PADDING_TOP: f32 = 10.0;
 /// How far the document scrolls past its last line, as a fraction of the viewport height.
@@ -95,6 +97,8 @@ pub struct EditorState {
     /// The file's modification time when it was loaded or saved, to notice other programs'
     /// changes.
     pub disk_modified: Option<SystemTime>,
+    /// The language and the syntax tree of the text.
+    pub syntax: Syntax,
 }
 
 impl EditorState {
@@ -754,7 +758,8 @@ pub fn word_range(line: &str, column: usize) -> (usize, usize) {
     (start, end)
 }
 
-fn advance(display: usize, ch: char) -> usize {
+/// The display column after `ch` at display column `display`.
+pub(crate) fn advance(display: usize, ch: char) -> usize {
     if ch == '\t' {
         (display / TAB_SIZE + 1) * TAB_SIZE
     } else {
