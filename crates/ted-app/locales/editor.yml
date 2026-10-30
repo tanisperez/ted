@@ -3,3 +3,27 @@ _version: 2
 "editor.binary":
   en: "This is a binary file and cannot be shown as text."
   es: "Es un archivo binario y no se puede mostrar como texto."
+"editor.menu.undo":
+  en: "Undo"
+  es: "Deshacer"
+"editor.menu.redo":
+  en: "Redo"
+  es: "Rehacer"
+"editor.menu.cut":
+  en: "Cut"
+  es: "Cortar"
+"editor.menu.copy":
+  en: "Copy"
+  es: "Copiar"
+"editor.menu.paste":
+  en: "Paste"
+  es: "Pegar"
+"editor.menu.select_all":
+  en: "Select all"
+  es: "Seleccionar todo"
+"editor.menu.duplicate_line":
+  en: "Duplicate line"
+  es: "Duplicar línea"
+"editor.menu.delete_line":
+  en: "Delete line"
+  es: "Eliminar línea"

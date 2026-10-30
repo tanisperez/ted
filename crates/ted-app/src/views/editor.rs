@@ -16,8 +16,10 @@
 
 use gpui_kit::component::ActiveTheme;
 use gpui_kit::component::input::InputState;
+use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 use std::ops::Range;
 
 use ted_core::{EditKind, Position, Selection};
@@ -201,15 +203,16 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-shift-home", SelectToDocumentStart, context),
         KeyBinding::new("ctrl-shift-end", SelectToDocumentEnd, context),
         KeyBinding::new("ctrl-a", SelectAll, context),
-        KeyBinding::new("ctrl-c", Copy, context),
+        // The context menu shows the last binding of each action: the usual ones go last.
         KeyBinding::new("ctrl-insert", Copy, context),
-        KeyBinding::new("ctrl-x", Cut, context),
+        KeyBinding::new("ctrl-c", Copy, context),
         KeyBinding::new("shift-delete", Cut, context),
-        KeyBinding::new("ctrl-v", Paste, context),
+        KeyBinding::new("ctrl-x", Cut, context),
         KeyBinding::new("shift-insert", Paste, context),
+        KeyBinding::new("ctrl-v", Paste, context),
         KeyBinding::new("ctrl-z", Undo, context),
-        KeyBinding::new("ctrl-shift-z", Redo, context),
         KeyBinding::new("ctrl-y", Redo, context),
+        KeyBinding::new("ctrl-shift-z", Redo, context),
         KeyBinding::new("alt-j", SelectNextOccurrence, context),
         KeyBinding::new("alt-shift-j", UnselectOccurrence, context),
         KeyBinding::new("ctrl-d", DuplicateLine, context),
@@ -549,8 +552,57 @@ impl Render for EditorView {
             .child(EditorElement {
                 editor: cx.entity(),
             });
+        let this = cx.entity().downgrade();
+        let editor = editor.context_menu(move |menu, _, cx| match this.upgrade() {
+            Some(editor) => edit_menu(menu, editor.read(cx)),
+            None => menu,
+        });
         self.with_find_bar(editor, cx)
     }
+}
+
+/// The right-click menu of the editor, with the rules of telaio's `edit_menu`: Cut and Copy need
+/// a selection, the edits need a document that is not read only, Undo and Redo need history.
+/// Its actions go to the editor, which shows their shortcuts.
+fn edit_menu(menu: PopupMenu, editor: &EditorView) -> PopupMenu {
+    let state = &editor.state;
+    let editable = !state.read_only;
+    let selected = state
+        .selections()
+        .iter()
+        .any(|selection| !selection.is_empty());
+    menu.action_context(editor.focus_handle.clone())
+        .menu_with_disabled(
+            t!("editor.menu.undo"),
+            Box::new(Undo),
+            !(editable && state.history.can_undo()),
+        )
+        .menu_with_disabled(
+            t!("editor.menu.redo"),
+            Box::new(Redo),
+            !(editable && state.history.can_redo()),
+        )
+        .separator()
+        .menu_with_disabled(
+            t!("editor.menu.cut"),
+            Box::new(Cut),
+            !(editable && selected),
+        )
+        .menu_with_disabled(t!("editor.menu.copy"), Box::new(Copy), !selected)
+        .menu_with_disabled(t!("editor.menu.paste"), Box::new(Paste), !editable)
+        .separator()
+        .menu(t!("editor.menu.select_all"), Box::new(SelectAll))
+        .separator()
+        .menu_with_disabled(
+            t!("editor.menu.duplicate_line"),
+            Box::new(DuplicateLine),
+            !editable,
+        )
+        .menu_with_disabled(
+            t!("editor.menu.delete_line"),
+            Box::new(DeleteLine),
+            !editable,
+        )
 }
 
 impl EntityInputHandler for EditorView {
@@ -1281,6 +1333,30 @@ impl EditorElement {
                 }
             });
             cx.stop_propagation();
+        });
+
+        // A right click outside the selections moves the cursor there first, as other editors
+        // do. The event goes on to the context menu, which opens on it.
+        let editor = self.editor.clone();
+        let right_hitbox = hitbox.clone();
+        window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
+            if !phase.bubble()
+                || event.button != MouseButton::Right
+                || !right_hitbox.is_hovered(window)
+                || !text.contains(&event.position)
+            {
+                return;
+            }
+            editor.update(cx, |editor, cx| {
+                window.focus(&editor.focus_handle, cx);
+                editor.marked = None;
+                let position = editor.position_at(event.position - text.origin);
+                let offset = editor.state.buffer.position_to_offset(position);
+                if !editor.state.is_selected(offset) {
+                    editor.state.set_cursor(position, false);
+                }
+                cx.notify();
+            });
         });
 
         let editor = self.editor.clone();

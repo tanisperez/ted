@@ -401,6 +401,13 @@ impl EditorState {
         had_others
     }
 
+    /// Whether byte `offset` is inside one of the selections, for a right click that keeps them.
+    pub fn is_selected(&self, offset: usize) -> bool {
+        self.selections()
+            .iter()
+            .any(|selection| selection.range().contains(&offset))
+    }
+
     /// Alt+click: adds a cursor at `position`, which becomes the primary one, or removes the
     /// cursor already there unless it is the last one.
     pub fn toggle_cursor(&mut self, position: Position) {
