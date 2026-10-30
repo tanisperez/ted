@@ -61,7 +61,7 @@ pub struct AppView {
     focus_handle: FocusHandle,
     /// The explorer of folder mode, with the subscription to its events.
     pub(crate) explorer: Option<(Entity<ExplorerView>, Subscription)>,
-    /// Whether the explorer panel is shown (`Ctrl+B`).
+    /// Whether the explorer panel is shown (`Alt 1`).
     pub(crate) explorer_visible: bool,
     /// The explorer panel's width, changed by dragging its edge.
     explorer_width: f32,

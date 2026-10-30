@@ -13,7 +13,8 @@ actions!(
         OpenFile,
         /// Opens a folder with the native dialog (`Ctrl+Shift+O`).
         OpenFolder,
-        /// Shows or hides the explorer in folder mode (`Ctrl+B`).
+        /// Shows or hides the explorer in folder mode, like its status bar toggle (`Alt 1`, `Ctrl 1`
+        /// on macOS, as Postino's first panel).
         ToggleExplorer,
         /// Saves the open document (`Ctrl+S`).
         Save,
@@ -40,14 +41,14 @@ pub fn bind_keys(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("cmd-o", OpenFile, None),
         KeyBinding::new("cmd-shift-o", OpenFolder, None),
-        KeyBinding::new("cmd-b", ToggleExplorer, None),
+        KeyBinding::new("ctrl-1", ToggleExplorer, None),
         KeyBinding::new("cmd-s", Save, None),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
         KeyBinding::new("ctrl-o", OpenFile, None),
         KeyBinding::new("ctrl-shift-o", OpenFolder, None),
-        KeyBinding::new("ctrl-b", ToggleExplorer, None),
+        KeyBinding::new("alt-1", ToggleExplorer, None),
         KeyBinding::new("ctrl-s", Save, None),
     ]);
 }

@@ -11,6 +11,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
+use crate::actions::ToggleExplorer;
 use crate::state::launch::{Target, shorten_path};
 use crate::state::status::DocumentStatus;
 use crate::theme::metrics::{
@@ -77,7 +78,7 @@ impl AppView {
             .into_any_element()
     }
 
-    /// The Files toggle: shows or hides the explorer, as `Ctrl+B`. While the explorer shows it has
+    /// The Files toggle: shows or hides the explorer, as `Alt 1`. While the explorer shows it has
     /// an `accent_subtle` background and `accent_text` icon.
     fn render_files_toggle(&self, palette: &Palette, cx: &mut Context<Self>) -> impl IntoElement {
         let active = self.explorer_visible;
@@ -106,7 +107,9 @@ impl AppView {
                     })
                     .hover(move |style| style.bg(hover).text_color(hover_fg))
                     .tooltip(|window, cx| {
-                        Tooltip::new(SharedString::from(t!("explorer.title"))).build(window, cx)
+                        Tooltip::new(SharedString::from(t!("explorer.title")))
+                            .action(&ToggleExplorer, None)
+                            .build(window, cx)
                     })
                     .child(Icon::new(IconName::Files).with_size(px(15.0)))
                     .on_click(cx.listener(|this, _, _, cx| {

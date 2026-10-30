@@ -295,7 +295,7 @@ folder path.
 #8 and the Git panel later. Until a file is opened the content area shows "Pick a file in the
 explorer" with the `Ctrl+O` hint.
 
-- **Files toggle**: first in the status bar (files icon 15). A click, or `Ctrl+B`, shows or hides
+- **Files toggle**: first in the status bar (files icon 15). A click, or `Alt+1` (`Ctrl+1` on macOS), shows or hides
   the explorer; it takes the active look while the explorer shows.
 - **Explorer**: `surface`, right border, 260 px by default, resized by dragging its right edge (a
   4 px strip with the `col-resize` cursor) between 180 and 520 px. Header 36 px: the folder name as
@@ -357,7 +357,7 @@ name, directory detail in 11.5 px, count and status letter. At the bottom, a 10 
 with a 76 px message box (`raised`, radius 8, `accent` border on focus), an Amend checkbox, the
 staged count with `+n` in `success` and `-n` in `danger`, and the Commit (`accent`) and "Commit
 and push..." buttons (30 px). Its toggle sits next to Files in the status bar, with the change count
-in Geist Mono 11/500 beside the icon (`Ctrl+Shift+G`).
+in Geist Mono 11/500 beside the icon (`Alt+2`, `Ctrl+2` on macOS, as Postino).
 
 ### Markdown preview (later milestone)
 
