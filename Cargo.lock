@@ -6267,7 +6267,7 @@ dependencies = [
 
 [[package]]
 name = "ted-app"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "async-channel",
  "embed-resource",
@@ -6289,14 +6289,14 @@ dependencies = [
 
 [[package]]
 name = "ted-cli"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "telaio-app",
 ]
 
 [[package]]
 name = "ted-core"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "fastrand",
  "pretty_assertions",
@@ -6306,7 +6306,7 @@ dependencies = [
 
 [[package]]
 name = "ted-syntax"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "pretty_assertions",
  "ropey",
@@ -6323,7 +6323,7 @@ dependencies = [
 
 [[package]]
 name = "ted-workspace"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "async-channel",
  "fastrand",
