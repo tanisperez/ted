@@ -24,6 +24,7 @@ use ted_core::{EditKind, Position, Selection};
 
 use crate::state::editor::{
     EditorState, Movement, PADDING_TOP, Viewport, column_for_expanded, expand_tabs, expanded_index,
+    next_occurrence,
 };
 use crate::state::find::Find;
 use crate::state::minimap::{
@@ -113,6 +114,10 @@ actions!(
         Redo,
         /// Keeps only the primary cursor.
         CollapseCursors,
+        /// Selects the word at the cursor, or adds the next occurrence of the selection.
+        SelectNextOccurrence,
+        /// Removes the last occurrence added.
+        UnselectOccurrence,
     ]
 );
 
@@ -179,6 +184,9 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-v", Paste, context),
         KeyBinding::new("cmd-z", Undo, context),
         KeyBinding::new("cmd-shift-z", Redo, context),
+        // Option+J types a character on macOS, so Control takes its place.
+        KeyBinding::new("ctrl-j", SelectNextOccurrence, context),
+        KeyBinding::new("ctrl-shift-j", UnselectOccurrence, context),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
@@ -196,6 +204,8 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-z", Undo, context),
         KeyBinding::new("ctrl-shift-z", Redo, context),
         KeyBinding::new("ctrl-y", Redo, context),
+        KeyBinding::new("alt-j", SelectNextOccurrence, context),
+        KeyBinding::new("alt-shift-j", UnselectOccurrence, context),
     ]);
 }
 
@@ -232,6 +242,8 @@ pub struct EditorView {
     minimap_grab: Option<MinimapGrab>,
     /// While the mouse button that started a selection is down.
     selecting: bool,
+    /// While Alt+J searches the next occurrence: further presses wait for it.
+    searching_occurrence: bool,
     /// While the middle button is down: the line and display column where the column selection
     /// started.
     column_start: Option<(usize, usize)>,
@@ -275,6 +287,7 @@ impl EditorView {
             minimap_grab: None,
             selecting: false,
             column_start: None,
+            searching_occurrence: false,
             marked: None,
             text_origin: Point::default(),
             line_height: px(20.0),
@@ -341,6 +354,37 @@ impl EditorView {
         let text = text.replace("\r\n", "\n");
         let text = text.replace('\n', self.state.buffer.line_ending().as_str());
         self.edit(cx, |state| state.paste(&text));
+    }
+
+    /// Alt+J: selects the word at the cursor, or searches the next occurrence of the selection
+    /// in the background and adds it if the text has not changed meanwhile.
+    fn select_next_occurrence(&mut self, cx: &mut Context<Self>) {
+        if self.searching_occurrence {
+            return;
+        }
+        self.marked = None;
+        let Some((query, from, selected)) = self.state.occurrence_search() else {
+            cx.notify();
+            return;
+        };
+        let rope = self.state.buffer.rope().clone();
+        let version = self.state.buffer.version();
+        self.searching_occurrence = true;
+        cx.spawn(async move |this, cx| {
+            let found = cx
+                .background_spawn(async move { next_occurrence(&rope, &query, from, &selected) })
+                .await;
+            let _ = this.update(cx, |editor, cx| {
+                editor.searching_occurrence = false;
+                if let Some(found) = found
+                    && editor.state.buffer.version() == version
+                {
+                    editor.state.add_occurrence(found);
+                    cx.notify();
+                }
+            });
+        })
+        .detach();
     }
 
     /// A UTF-16 range of the platform input as a byte range of the buffer.
@@ -473,6 +517,14 @@ impl Render for EditorView {
             .on_action(cx.listener(|this, _: &Paste, _, cx| this.paste(cx)))
             .on_action(cx.listener(|this, _: &Undo, _, cx| this.edit(cx, EditorState::undo)))
             .on_action(cx.listener(|this, _: &Redo, _, cx| this.edit(cx, EditorState::redo)))
+            .on_action(
+                cx.listener(|this, _: &SelectNextOccurrence, _, cx| {
+                    this.select_next_occurrence(cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &UnselectOccurrence, _, cx| {
+                this.edit(cx, EditorState::unselect_occurrence)
+            }))
             .on_action(cx.listener(|this, _: &CollapseCursors, _, cx| {
                 if this.state.collapse_cursors() {
                     cx.notify();

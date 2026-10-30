@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::SystemTime;
 
-use ted_core::{Buffer, Edit, EditKind, History, Indent, Position, Selection};
+use ted_core::{Buffer, Edit, EditKind, History, Indent, Position, Rope, SearchQuery, Selection};
 
 use super::syntax::Syntax;
 
@@ -448,6 +448,66 @@ impl EditorState {
         self.others = lines.filter(|&line| line != to_line).map(caret).collect();
         self.set_caret(caret(to_line));
         self.normalize();
+    }
+
+    /// Alt+J, first half: without a selection, selects the word at the primary cursor and
+    /// returns `None`. With one, returns the query for its text and where the search starts:
+    /// the next occurrence is searched by [`next_occurrence`], off the main thread.
+    pub fn occurrence_search(&mut self) -> Option<(SearchQuery, usize, Vec<Range<usize>>)> {
+        let primary = self.selection();
+        if primary.is_empty() {
+            let line = self.buffer.line(self.cursor.line).to_string();
+            let start_of_line = primary.head - self.cursor.column;
+            let (start, end) = word_range(&line, self.cursor.column);
+            if start < end {
+                self.history.break_group();
+                self.set_caret(self.caret_at(Selection {
+                    anchor: start_of_line + start,
+                    head: start_of_line + end,
+                }));
+                self.normalize();
+            }
+            return None;
+        }
+        let query = SearchQuery::new(&self.buffer.text_in(primary.range()), true)?;
+        let mut selected: Vec<Range<usize>> = self
+            .selections()
+            .iter()
+            .map(|selection| selection.range())
+            .collect();
+        selected.sort_by_key(|range| range.start);
+        Some((query, primary.range().end, selected))
+    }
+
+    /// Alt+J, second half: adds `found` as a selection, which becomes the primary one, and
+    /// scrolls to it.
+    pub fn add_occurrence(&mut self, found: Range<usize>) {
+        self.history.break_group();
+        self.others.push(self.caret());
+        self.set_caret(self.caret_at(Selection {
+            anchor: found.start,
+            head: found.end,
+        }));
+        self.normalize();
+        self.scroll_to_cursor();
+    }
+
+    /// Alt+Shift+J: removes the primary selection, the last occurrence added, and makes the one
+    /// before it (in the document, wrapping around) the primary one.
+    pub fn unselect_occurrence(&mut self) {
+        if self.others.is_empty() {
+            return;
+        }
+        self.history.break_group();
+        let cursor = self.cursor;
+        let index = self
+            .others
+            .iter()
+            .rposition(|caret| caret.cursor < cursor)
+            .unwrap_or(self.others.len() - 1);
+        let previous = self.others.remove(index);
+        self.set_caret(previous);
+        self.scroll_to_cursor();
     }
 
     fn caret(&self) -> Caret {
@@ -978,6 +1038,37 @@ impl EditorState {
         }
         self.clamp_scroll();
     }
+}
+
+/// The first match of `query` from `from` to the end of `rope`, then from its start, that is not
+/// one of the `selected` ranges (sorted) nor overlaps them. `None` when every match is selected.
+/// It may read the whole text, so it runs on the background executor.
+pub fn next_occurrence(
+    rope: &Rope,
+    query: &SearchQuery,
+    from: usize,
+    selected: &[Range<usize>],
+) -> Option<Range<usize>> {
+    let free = |found: &Range<usize>| {
+        let index = selected.partition_point(|range| range.end <= found.start);
+        selected
+            .get(index)
+            .is_none_or(|range| range.start >= found.end)
+    };
+    let mut result = None;
+    for range in [from..rope.len(), 0..from] {
+        query.find_in(rope, range, |found| {
+            if free(&found) {
+                result = Some(found);
+                return false;
+            }
+            true
+        });
+        if result.is_some() {
+            break;
+        }
+    }
+    result
 }
 
 /// The edit that turns `old` (at `start`) into `new`, without the text both share at their start
@@ -1606,5 +1697,66 @@ mod tests {
             state.undo();
         }
         assert_eq!(state.buffer.to_text(), start);
+    }
+
+    fn occurrence(state: &mut EditorState) -> bool {
+        match state.occurrence_search() {
+            None => true,
+            Some((query, from, selected)) => {
+                match next_occurrence(state.buffer.rope(), &query, from, &selected) {
+                    Some(found) => {
+                        state.add_occurrence(found);
+                        true
+                    }
+                    None => false,
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn alt_j_selects_the_word_then_its_next_occurrences() {
+        let mut state = editor("foo bar foo\nfoo");
+        at(&mut state, 0, 9);
+        assert!(occurrence(&mut state));
+        assert_eq!(state.selected_text().as_deref(), Some("foo"));
+        assert_eq!(state.others.len(), 0);
+        // After the last one, the search wraps to the start.
+        assert!(occurrence(&mut state));
+        assert_eq!(state.cursor, Position::new(1, 3));
+        assert!(occurrence(&mut state));
+        assert_eq!(state.cursor, Position::new(0, 3));
+        assert_eq!(cursors(&state), vec![3, 11, 15]);
+        // Every occurrence is selected: nothing more.
+        assert!(!occurrence(&mut state));
+        // Typing replaces all of them.
+        state.insert("x", EditKind::Typing);
+        assert_eq!(state.buffer.to_text(), "x bar x\nx");
+    }
+
+    #[test]
+    fn alt_shift_j_unselects_the_last_occurrence() {
+        let mut state = editor("ab ab ab");
+        state.set_selection(Selection { anchor: 0, head: 2 });
+        occurrence(&mut state);
+        occurrence(&mut state);
+        assert_eq!(state.cursor, Position::new(0, 8));
+        state.unselect_occurrence();
+        assert_eq!(state.cursor, Position::new(0, 5));
+        state.unselect_occurrence();
+        assert_eq!(state.cursor, Position::new(0, 2));
+        assert!(state.others.is_empty());
+        state.unselect_occurrence();
+        assert_eq!(state.selected_text().as_deref(), Some("ab"));
+    }
+
+    #[test]
+    #[allow(clippy::expect_used)]
+    fn occurrences_are_case_sensitive_and_skip_overlaps() {
+        let rope = Rope::from_str("aaa Aa aa");
+        let query = SearchQuery::new("aa", true).expect("a query");
+        // "aa" at 1 overlaps the selected one at 0, and "Aa" is another case.
+        assert_eq!(next_occurrence(&rope, &query, 1, &[0..2, 9..9]), Some(7..9));
+        assert_eq!(next_occurrence(&rope, &query, 9, &[0..2, 7..9]), None);
     }
 }
