@@ -1,4 +1,4 @@
-//! The title bar: the "t" logo, "ted" and the switcher with what is open (the folder or the file),
+//! The title bar: the app icon, "ted" and the switcher with what is open (the folder or the file),
 //! whose menu lists the recent folders and files and the two Open actions. At the right, the
 //! settings gear, then the window controls drawn by gpui-kit's `TitleBar`.
 
@@ -20,6 +20,7 @@ use crate::theme::metrics::{
 };
 use crate::theme::{Palette, PaletteExt};
 
+use super::logo::logo;
 use super::root::AppView;
 
 /// Width of the switcher's menu.
@@ -42,7 +43,7 @@ impl AppView {
                     .size_full()
                     .items_center()
                     .gap_2()
-                    .child(render_logo(&palette))
+                    .child(logo(LOGO_SIZE))
                     .child(div().font_weight(FontWeight::SEMIBOLD).child("ted"))
                     .child(div().w(px(1.0)).h(px(16.0)).mx(px(4.0)).bg(palette.border))
                     .child(no_drag(self.render_switcher(&palette, cx)))
@@ -182,21 +183,6 @@ fn render_settings_gear(palette: &Palette, cx: &mut Context<AppView>) -> impl In
         })
         .child(Icon::new(IconName::Settings).with_size(px(16.0)))
         .on_click(cx.listener(|view, _, window, cx| view.open_settings(window, cx)))
-}
-
-/// The "t" logo square: `accent` background, `accent_fg` text.
-fn render_logo(palette: &Palette) -> impl IntoElement {
-    div()
-        .size(px(LOGO_SIZE))
-        .rounded(px(5.0))
-        .bg(palette.accent)
-        .text_color(palette.accent_fg)
-        .text_size(px(11.0))
-        .font_weight(FontWeight::BOLD)
-        .flex()
-        .items_center()
-        .justify_center()
-        .child("t")
 }
 
 /// Wraps an interactive title bar control so the mouse reaches it: `TitleBar` marks the whole bar

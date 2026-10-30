@@ -18,6 +18,9 @@ adds only the syntax colors and the metrics of its own layout.
   `DEFAULT_DARK`. Do not copy the hex values into ted; add a token in telaio, not here.
 - Panels are flat (border only). Inputs and cards use `raised` plus a border. Menus, popovers and
   modals use `overlay` plus the shadow token. The explorer never has a shadow.
+- The app icon is the indigo text file of the v2 design (`design_system/ted-icon.svg`, copied
+  without its metadata to `crates/ted-app/assets/ted.svg`). It is painted as an image
+  (`views/logo.rs`), not a gpui `svg`, which would draw it in one color.
 - Icons are Lucide, through `gpui_kit::assets::IconName`. The app must keep
   `.with_assets(gpui_kit::assets::AllAssets)` or icons render empty.
 - Hover is the translucent `hover` token and pressed is `hover` at 2.2x alpha (telaio derives it),
@@ -215,7 +218,7 @@ count and the measured advance of Geist Mono, not from the 0.62 constant.
   Right border `border` between tabs. "New file" button 24 at the end of the strip.
 - Tree row: padding left `8 + 16 * depth`, right 6, gap 4, chevron column 13, icon 14, radius 6,
   1 px gap between rows, list padding 0 6 8.
-- Title bar: 12 px left padding, logo square 18 (radius 5, `accent`, white "t" 11/700), "ted" 600, 1x16
+- Title bar: 12 px left padding, app icon 18 (`assets/ted.svg`), "ted" 600, 1x16
   separator. Settings gear at the right, before the window controls: 26 x 26, 4 px right margin,
   radius 6, icon 16 `fg_muted`, `hover` and `pressed` backgrounds.
 - Status bar: padding 0 12 0 4, gap 16, 11.5 px, `fg_subtle`. Panel toggles first (gap 2 between
@@ -262,7 +265,7 @@ No argument on the command line, or nothing opened yet (`views/welcome.rs`). No 
 no explorer. A column of 440 px (`WELCOME_WIDTH`), centered horizontally, 64 px from the top, that
 scrolls when the recents do not fit. Its sections are 24 px apart:
 
-1. **Header**: a 40 px logo square (radius 10, `accent`, "t" 22/700 in `accent_fg`), "ted" 20/600
+1. **Header**: the app icon at 40 px, "ted" 20/600
    and the tagline in `fg_muted`.
 2. **Start**: Open file and Open folder rows, the shortcut at the right in Geist Mono 11
    `fg_subtle` (`Ctrl+O`, `Ctrl+Shift+O`; the macOS glyphs on macOS).
@@ -377,7 +380,8 @@ Postino's):
   indentation is not detected). Without line numbers the gutter keeps only its 16 px padding.
 - **Files**: Saving (trim trailing whitespace, final newline), Explorer (the exclude patterns, one
   comma separated field, applied on Enter or when the field is left).
-- **About**: telaio's About header (version, platform, telaio, release notes and GitHub). ted has
+- **About**: telaio's About header (version, platform, telaio, release notes and GitHub), drawn
+  by ted with the app icon at 48 px in place of telaio's initial square. ted has
   no updater: the footer says new versions are published on GitHub.
 - Font families, word wrap, autosave, encoding and line ending of new files, Git and Languages
   are not in 0.1.0; the families can still be set in `settings.toml`.

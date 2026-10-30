@@ -10,6 +10,8 @@ use gpui_kit::*;
 use rust_i18n::t;
 use telaio_ui::components::{SecondaryButton, SectionLabel};
 
+use super::logo::logo;
+
 use crate::actions::hints;
 use crate::state::launch::{display_name, shorten_path};
 use crate::theme::metrics::{
@@ -172,36 +174,20 @@ impl AppView {
 
 /// The large logo, the name and the tagline.
 fn render_header(palette: &Palette) -> impl IntoElement {
-    h_flex()
-        .gap_3()
-        .child(
-            div()
-                .size(px(WELCOME_LOGO_SIZE))
-                .flex_none()
-                .rounded(px(10.0))
-                .bg(palette.accent)
-                .text_color(palette.accent_fg)
-                .text_size(px(22.0))
-                .font_weight(FontWeight::BOLD)
-                .flex()
-                .items_center()
-                .justify_center()
-                .child("t"),
-        )
-        .child(
-            v_flex()
-                .child(
-                    div()
-                        .text_size(px(20.0))
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .child("ted"),
-                )
-                .child(
-                    div()
-                        .text_color(palette.fg_muted)
-                        .child(t!("welcome.tagline")),
-                ),
-        )
+    h_flex().gap_3().child(logo(WELCOME_LOGO_SIZE)).child(
+        v_flex()
+            .child(
+                div()
+                    .text_size(px(20.0))
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .child("ted"),
+            )
+            .child(
+                div()
+                    .text_color(palette.fg_muted)
+                    .child(t!("welcome.tagline")),
+            ),
+    )
 }
 
 /// A section: its label, then its rows.

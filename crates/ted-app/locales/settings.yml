@@ -90,3 +90,12 @@ _version: 2
 "settings.about.footer":
   en: "ted does not update itself yet: new versions are published on GitHub."
   es: "ted aún no se actualiza solo: las versiones nuevas se publican en GitHub."
+"settings.about.version":
+  en: "Version"
+  es: "Versión"
+"settings.about.design_system":
+  en: "Design system"
+  es: "Sistema de diseño"
+"settings.about.release_notes":
+  en: "Release notes"
+  es: "Notas de la versión"

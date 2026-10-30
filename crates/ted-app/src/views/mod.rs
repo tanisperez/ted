@@ -4,6 +4,7 @@ mod choice;
 mod document;
 mod editor;
 mod explorer;
+mod logo;
 mod root;
 mod settings;
 mod status_bar;

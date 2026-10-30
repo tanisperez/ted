@@ -14,9 +14,9 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 use telaio_ui::components::{
-    GhostButton, LabeledRow, NumberStepper, SectionHeading, SegmentedControl, SegmentedItem,
-    SettingsCategory as NavCategory, SettingsLayout, ThemeCard, settings_dialog, switch_halo,
-    text_field,
+    GhostButton, LabeledRow, NumberStepper, SecondaryButton, SectionHeading, SegmentedControl,
+    SegmentedItem, SettingsCategory as NavCategory, SettingsLayout, ThemeCard, settings_dialog,
+    switch_halo, text_field,
 };
 
 use crate::state::editor::set_indentation;
@@ -29,8 +29,11 @@ use crate::state::settings::{
 use crate::theme::{self, Palette, PaletteExt};
 
 use super::editor::EditorDisplay;
+use super::logo::logo;
 use super::root::AppView;
 
+/// Side of the app icon in the About header.
+const ABOUT_ICON_SIZE: f32 = 48.0;
 /// Width of the exclude patterns field.
 const EXCLUDE_FIELD_WIDTH: f32 = 260.0;
 
@@ -201,12 +204,7 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
             saving_section(weak.clone(), &palette, &settings),
             explorer_section(exclude_input.as_ref(), cx),
         ],
-        SettingsCategory::About => vec![telaio_app::about::header(
-            &ted_cli::display_identity(),
-            &platform_label(),
-            &palette,
-            &mono_font,
-        )],
+        SettingsCategory::About => vec![about_header(&palette, &mono_font)],
     };
 
     let layout = SettingsLayout::new("settings")
@@ -241,6 +239,82 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
             )
             .into_any_element()
     }
+}
+
+/// The About header: telaio's (`telaio_app::about::header`), with ted's icon in place of the
+/// initial in a square, as the design draws it.
+fn about_header(palette: &Palette, mono_font: &SharedString) -> AnyElement {
+    let identity = ted_cli::display_identity();
+    let notes_url = identity.release_notes_url();
+    let repository = identity.repository;
+    h_flex()
+        .items_center()
+        .gap(px(14.0))
+        .child(logo(ABOUT_ICON_SIZE))
+        .child(
+            v_flex()
+                .flex_1()
+                .min_w_0()
+                .gap(px(3.0))
+                .child(
+                    div()
+                        .text_size(px(16.0))
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .child(identity.name),
+                )
+                .child(
+                    // Wraps instead of running under the buttons when the platform does not fit.
+                    h_flex()
+                        .flex_wrap()
+                        .gap(px(4.0))
+                        .text_color(palette.fg_muted)
+                        .child(t!("settings.about.version"))
+                        .child(
+                            div()
+                                .font_family(mono_font.clone())
+                                .text_color(palette.fg)
+                                .child(identity.version),
+                        )
+                        .child(format!("\u{b7} {}", platform_label())),
+                )
+                .child(
+                    h_flex()
+                        .gap(px(4.0))
+                        .text_size(px(12.0))
+                        .text_color(palette.fg_muted)
+                        .child(t!("settings.about.design_system"))
+                        .child(
+                            div()
+                                .id("about-telaio")
+                                .cursor_pointer()
+                                .text_color(palette.accent_text)
+                                .hover(|style| style.underline())
+                                .child("telaio")
+                                .on_click(|_, _, cx| cx.open_url(telaio_ui::REPOSITORY)),
+                        )
+                        .child(
+                            div()
+                                .font_family(mono_font.clone())
+                                .child(telaio_ui::VERSION),
+                        ),
+                ),
+        )
+        .child(
+            h_flex()
+                .flex_none()
+                .gap(px(6.0))
+                .child(
+                    SecondaryButton::new("about-release-notes", t!("settings.about.release_notes"))
+                        .icon(Icon::new(IconName::FileText))
+                        .on_click(move |_, _, cx| cx.open_url(&notes_url)),
+                )
+                .child(
+                    SecondaryButton::new("about-github", "GitHub")
+                        .icon(Icon::new(IconName::Github))
+                        .on_click(move |_, _, cx| cx.open_url(repository)),
+                ),
+        )
+        .into_any_element()
 }
 
 /// The OS and architecture as the About header shows them, for example "Linux x86_64".

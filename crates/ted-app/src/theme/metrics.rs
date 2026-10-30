@@ -19,7 +19,7 @@ pub const STATUS_TOGGLE_HEIGHT: f32 = 24.0;
 pub const STATUS_TOGGLE_MIN_WIDTH: f32 = 28.0;
 /// Side of the settings gear button in the title bar.
 pub const SETTINGS_GEAR_SIZE: f32 = 26.0;
-/// Side length of the "t" logo in the title bar.
+/// Side of the app icon in the title bar.
 pub const LOGO_SIZE: f32 = 18.0;
 /// Width of the line number gutter beyond its digits: the left padding plus
 /// [`EDITOR_GUTTER_RIGHT`].
@@ -32,7 +32,7 @@ pub const EDITOR_TEXT_PADDING: f32 = 4.0;
 pub const EDITOR_SCROLLBAR_WIDTH: f32 = 10.0;
 /// Width of the empty state's column.
 pub const WELCOME_WIDTH: f32 = 440.0;
-/// Side of the large logo of the empty state.
+/// Side of the app icon in the empty state.
 pub const WELCOME_LOGO_SIZE: f32 = 40.0;
 /// Height of a row of the empty state (actions and recents), as the design's menu rows.
 pub const WELCOME_ROW_HEIGHT: f32 = 30.0;
