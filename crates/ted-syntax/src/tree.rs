@@ -199,6 +199,7 @@ mod tests {
             Language::Markdown,
             Language::Xml,
             Language::Html,
+            Language::Make,
         ] {
             assert!(grammar(l).is_some(), "{l:?}");
         }
@@ -217,7 +218,9 @@ mod tests {
         assert_eq!(d("icon.svg"), Language::Xml);
         assert_eq!(d("index.html"), Language::Html);
         assert_eq!(d("server.log"), Language::Log);
-        assert_eq!(d("Makefile"), Language::PlainText);
+        assert_eq!(d("Makefile"), Language::Make);
+        assert_eq!(d("GNUmakefile"), Language::Make);
+        assert_eq!(d("rules.mk"), Language::Make);
         assert_eq!(d("notes.txt"), Language::PlainText);
         assert_eq!(Language::Rust.name(), "Rust");
     }
@@ -284,6 +287,20 @@ mod tests {
             has(l, src, "class", Attribute);
             has(l, src, "\"a\"", String);
         }
+    }
+
+    #[test]
+    fn make_highlights() {
+        let src = "# build\nCC := gcc\n.PHONY: all\nifdef DEBUG\nFLAGS = -g\nendif\nall: $(OBJS)\n\t$(CC) -o $@ $(wildcard *.c)\n";
+        has(Language::Make, src, "# build", Comment);
+        has(Language::Make, src, "CC", Property);
+        has(Language::Make, src, ".PHONY", Constant);
+        has(Language::Make, src, "ifdef", Keyword);
+        has(Language::Make, src, "endif", Keyword);
+        has(Language::Make, src, "all", Function);
+        has(Language::Make, src, "OBJS", Property);
+        has(Language::Make, src, "$@", Constant);
+        has(Language::Make, src, "wildcard", Function);
     }
 
     #[test]

@@ -116,7 +116,11 @@ Notes:
   `number`, `INFO` `function`, `DEBUG`/`TRACE` `comment`, `[context]` `property`. ted does not
   color `[context]` yet.
 - The status bar shows the language at its right: `Rust`, `JavaScript`, `JSON`, `TOML`,
-  `Markdown`, `XML`, `HTML`, `Log` or "Plain text".
+  `Markdown`, `XML`, `HTML`, `Makefile`, `Log` or "Plain text".
+- Makefiles (`Makefile`, `makefile`, `GNUmakefile`, `*.mk`, `*.mak`) are not in the prototype.
+  ted colors directives (`ifdef`, `include`, `define`) as `keyword`, rule targets and make
+  functions (`wildcard`, `shell`) as `function`, variables as `property`, automatic variables
+  (`$@`) and special targets (`.PHONY`) as `constant`, and leaves the recipes plain.
 
 ### Semantic mappings
 

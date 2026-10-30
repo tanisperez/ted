@@ -38,6 +38,9 @@ tree-sitter-json = "=0.24.8"
 tree-sitter-toml-ng = "=0.7.0"
 tree-sitter-md = "=0.5.1"
 tree-sitter-html = "=0.23.2"
+# Not built by gpui-component by default, but the version it pins behind its `tree-sitter-make`
+# feature.
+tree-sitter-make = "=1.1.1"
 # Folder explorer: gitignore matching, file watching and the batched channel. The exact versions
 # gpui already builds.
 ignore = "0.4.33"

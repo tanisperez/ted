@@ -98,8 +98,9 @@ highlighting more than the visible range, searching a whole file.
 - **Rope**: `ropey` at the version `gpui-component` already builds (2.0.0-beta.1 with
   `gpui-kit` 0.8.0), so it is not compiled twice. The same goes for `tree-sitter` and its
   grammars: reuse the versions and, where it fits, the highlighter of `gpui-component`
-  (`src/highlighter/`, Apache licensed) before adding new crates. `cargo tree -d --depth 0 |
-  grep gpui` must stay empty.
+  (`src/highlighter/`, Apache licensed) before adding new crates. `tree-sitter-make` is the one
+  grammar gpui-component does not build by default; ted pins the version of its
+  `tree-sitter-make` feature (1.1.1). `cargo tree -d --depth 0 | grep gpui` must stay empty.
 - **gpui-kit** 0.8.0 and **telaio** (`telaio-ui`, `telaio-app`) pinned to one tag in
   `[workspace.dependencies]`, as in Postino.
 - **Settings** in `settings.toml` under the config dir, applied at once.

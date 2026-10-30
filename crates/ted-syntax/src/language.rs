@@ -12,6 +12,7 @@ pub enum Language {
     Markdown,
     Xml,
     Html,
+    Make,
     Log,
     PlainText,
 }
@@ -25,6 +26,7 @@ impl Language {
         };
         match name {
             "Cargo.lock" | "Pipfile" | "poetry.lock" | "uv.lock" => return Language::Toml,
+            "Makefile" | "makefile" | "GNUmakefile" => return Language::Make,
             ".babelrc" | ".prettierrc" | ".eslintrc" | "composer.lock" => return Language::Json,
             _ => {}
         }
@@ -40,6 +42,7 @@ impl Language {
             "xml" | "svg" | "xsd" | "xsl" | "xslt" | "plist" | "csproj" | "xaml" | "rss"
             | "atom" => Language::Xml,
             "html" | "htm" | "xhtml" => Language::Html,
+            "mk" | "mak" => Language::Make,
             "log" => Language::Log,
             _ => Language::PlainText,
         }
@@ -60,6 +63,7 @@ impl Language {
             Language::Markdown => "Markdown",
             Language::Xml => "XML",
             Language::Html => "HTML",
+            Language::Make => "Makefile",
             Language::Log => "Log",
             Language::PlainText => "Plain text",
         }

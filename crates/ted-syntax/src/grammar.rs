@@ -73,6 +73,28 @@ const HTML_EXTRA: &str = r#"
 (attribute_name) @attribute
 "#;
 
+// The bundled make query paints every recipe line as a string and uses captures ted has no class
+// for (`@conditional`, `@include`, `@repeat`), so ted uses its own: directives as keywords, rule
+// targets and make functions as functions, variables as properties, automatic variables and the
+// special targets (`.PHONY`) as constants. Recipes stay plain: they are shell.
+const MAKE_QUERY: &str = r#"
+(comment) @comment
+[
+  "ifeq" "ifneq" "ifdef" "ifndef" "else" "endif"
+  "define" "endef" "include" "sinclude" "-include"
+  "export" "unexport" "override" "private" "undefine" "vpath"
+] @keyword
+(rule (targets (word) @function))
+((targets (word) @constant)
+  (#match? @constant "^\.[A-Z_]+$"))
+(variable_assignment name: (word) @property)
+(variable_reference (word) @property)
+(automatic_variable) @constant
+(function_call function: _ @function)
+(shell_function function: _ @function)
+(string) @string
+"#;
+
 /// The grammar of a language, `None` for those without one (or if its query failed to compile,
 /// which the tests rule out).
 pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
@@ -82,6 +104,7 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
     static TOML: OnceLock<Option<Grammar>> = OnceLock::new();
     static MARKDOWN: OnceLock<Option<Grammar>> = OnceLock::new();
     static HTML: OnceLock<Option<Grammar>> = OnceLock::new();
+    static MAKE: OnceLock<Option<Grammar>> = OnceLock::new();
 
     let (cell, ts_language, query) = match language {
         Language::Rust => (
@@ -117,6 +140,7 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
             tree_sitter_html::LANGUAGE,
             format!("{}\n{HTML_EXTRA}", tree_sitter_html::HIGHLIGHTS_QUERY),
         ),
+        Language::Make => (&MAKE, tree_sitter_make::LANGUAGE, MAKE_QUERY.to_string()),
         Language::Log | Language::PlainText => return None,
     };
 
@@ -145,7 +169,7 @@ mod tests {
     fn has_grammar_matches_the_grammars() {
         use Language::*;
         for language in [
-            Rust, JavaScript, Json, Toml, Markdown, Xml, Html, Log, PlainText,
+            Rust, JavaScript, Json, Toml, Markdown, Xml, Html, Make, Log, PlainText,
         ] {
             assert_eq!(
                 language.has_grammar(),
