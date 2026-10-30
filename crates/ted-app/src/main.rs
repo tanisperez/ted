@@ -61,7 +61,14 @@ fn main() -> ExitCode {
     let path = std::env::args_os().nth(1).map(PathBuf::from);
     let theme_choice = settings.theme;
 
-    window::application().run(move |cx| {
+    // Files the OS hands over while running (Finder's Open with, a drop on the Dock icon: macOS
+    // Apple Events). They can arrive before the window exists, so they wait in this queue until
+    // the window's task drains it.
+    let open_queue = state::open_queue::OpenQueue::default();
+    let app = window::application();
+    let url_queue = open_queue.clone();
+    app.on_open_urls(move |urls| url_queue.push(state::launch::paths_from_urls(&urls)));
+    app.run(move |cx| {
         window::init(cx, &IDENTITY);
         actions::bind_keys(cx);
         views::bind_keys(cx);
@@ -80,6 +87,26 @@ fn main() -> ExitCode {
                 telaio_ui::ThemeChoice::from(theme_choice).apply(Some(window), cx);
 
                 let view = cx.new(|cx| AppView::new(settings, path, window, cx));
+
+                // Opens the files the OS delivers. Sleeps on the queue, so an idle window does no
+                // work; files queued before this point are delivered right away.
+                let queue = open_queue.clone();
+                let weak_view = view.downgrade();
+                window
+                    .spawn(cx, async move |cx| {
+                        loop {
+                            let paths = queue.next().await;
+                            let result = weak_view.update_in(cx, |view, window, cx| {
+                                for path in &paths {
+                                    view.open_path(path, window, cx);
+                                }
+                            });
+                            if result.is_err() {
+                                break;
+                            }
+                        }
+                    })
+                    .detach();
 
                 // Always listening, whatever the theme choice at startup: Settings can switch to
                 // "System" at any time (see `window::follow_system_appearance`).

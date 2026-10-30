@@ -1,0 +1,4 @@
+// Windows resources for ted.exe. gpui loads the window and taskbar icon from the icon resource
+// with ID 1, and Explorer shows it as the file icon. ted.ico is packaging/icons/ted.svg at 16 to
+// 256 px.
+1 ICON "ted.ico"

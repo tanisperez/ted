@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=ted
+GenericName=Text Editor
+GenericName[es]=Editor de texto
+Comment=A fast, lightweight text editor
+Comment[es]=Un editor de texto ligero y rápido
+Exec=ted %F
+Icon=codes.tanis.ted
+Terminal=false
+Categories=Utility;TextEditor;
+MimeType=text/plain;text/markdown;text/x-markdown;text/x-log;text/x-rust;application/json;application/toml;text/x-toml;application/xml;text/xml;text/html;text/javascript;application/javascript;text/x-makefile;text/x-csrc;text/x-chdr;text/x-python;text/x-shellscript;application/x-yaml;text/csv;inode/directory;
+Keywords=text;editor;code;log;notes;
+StartupNotify=true
+StartupWMClass=codes.tanis.ted

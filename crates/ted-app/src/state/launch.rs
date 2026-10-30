@@ -64,6 +64,50 @@ pub fn shorten_path(path: &Path, home: Option<&Path>) -> String {
     path.display().to_string()
 }
 
+/// Converts the `file://` URLs macOS hands over (Finder's Open with, a drop on the Dock icon)
+/// into paths, dropping anything else.
+pub fn paths_from_urls(urls: &[String]) -> Vec<PathBuf> {
+    urls.iter()
+        .filter_map(|url| file_url_to_path(url))
+        .collect()
+}
+
+/// Converts one `file://` URL (percent-encoded, optional `localhost` host) into a path.
+pub fn file_url_to_path(url: &str) -> Option<PathBuf> {
+    let rest = url.strip_prefix("file://")?;
+    let rest = rest.strip_prefix("localhost").unwrap_or(rest);
+    if !rest.starts_with('/') {
+        return None;
+    }
+    let decoded = percent_decode(rest)?;
+    // `file:///C:/dir/file` carries a leading slash that is not part of a Windows path.
+    let bytes = decoded.as_bytes();
+    let path = if bytes.len() > 2 && bytes[2] == b':' && bytes[1].is_ascii_alphabetic() {
+        &decoded[1..]
+    } else {
+        decoded.as_str()
+    };
+    Some(PathBuf::from(path))
+}
+
+/// Decodes `%XX` escapes as UTF-8. `None` when an escape is malformed or the result is not UTF-8.
+fn percent_decode(text: &str) -> Option<String> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%' {
+            let hex = text.get(index + 1..index + 3)?;
+            out.push(u8::from_str_radix(hex, 16).ok()?);
+            index += 3;
+        } else {
+            out.push(bytes[index]);
+            index += 1;
+        }
+    }
+    String::from_utf8(out).ok()
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
@@ -105,5 +149,30 @@ mod tests {
             shorten_path(Path::new("/etc/hosts"), Some(home)),
             "/etc/hosts"
         );
+    }
+
+    #[test]
+    fn file_urls_are_percent_decoded() {
+        assert_eq!(
+            file_url_to_path("file:///Users/ana/My%20Notes/to%20do.md"),
+            Some(PathBuf::from("/Users/ana/My Notes/to do.md"))
+        );
+        assert_eq!(
+            file_url_to_path("file://localhost/tmp/a.txt"),
+            Some(PathBuf::from("/tmp/a.txt"))
+        );
+        assert_eq!(
+            file_url_to_path("file:///tmp/%C3%B1.txt"),
+            Some(PathBuf::from("/tmp/\u{f1}.txt"))
+        );
+    }
+
+    #[test]
+    fn non_file_or_malformed_urls_are_dropped() {
+        assert_eq!(file_url_to_path("https://example.com/a.txt"), None);
+        assert_eq!(file_url_to_path("file:///tmp/%zz"), None);
+        assert_eq!(file_url_to_path("file://remote/tmp/a"), None);
+        let urls = vec!["ted://x".to_string(), "file:///tmp/a.txt".to_string()];
+        assert_eq!(paths_from_urls(&urls), vec![PathBuf::from("/tmp/a.txt")]);
     }
 }

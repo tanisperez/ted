@@ -8,6 +8,7 @@ pub mod find;
 pub mod launch;
 pub mod locale;
 pub mod minimap;
+pub mod open_queue;
 pub mod recents;
 pub mod settings;
 pub mod status;

@@ -1,0 +1,131 @@
+# nfpm config for the deb and rpm packages. Driven by package.sh, which sets:
+# Content entries use "expand: true" so nfpm expands the variables in src.
+#   TED_VERSION  e.g. 0.1.0 or 0.1.0-rc.1 (nfpm maps the pre-release to 0.1.0~rc.1)
+#   TED_ARCH     amd64 or arm64 (Go style, nfpm converts it for rpm)
+#   TED_BIN      path to the ted binary
+#   TED_ROOT     repo root
+name: ted
+arch: ${TED_ARCH}
+platform: linux
+version: ${TED_VERSION}
+version_schema: semver
+section: editors
+priority: optional
+maintainer: Estanislao Pérez Nartallo <tanisperez@gmail.com>
+description: |
+  A fast, lightweight text editor.
+  ted is a native text editor written in Rust. It opens big files and folders at once,
+  highlights code and logs, and stays idle when nothing changes.
+vendor: ted
+homepage: https://github.com/tanisperez/ted
+license: Apache-2.0
+
+contents:
+  # /usr/bin is on the PATH: `ted file.txt` and `ted folder` work from any terminal.
+  - src: ${TED_BIN}
+    dst: /usr/bin/ted
+    expand: true
+    file_info:
+      mode: 0755
+  - src: ${TED_ROOT}/packaging/linux/codes.tanis.ted.desktop
+    dst: /usr/share/applications/codes.tanis.ted.desktop
+    expand: true
+    file_info:
+      mode: 0644
+  - src: ${TED_ROOT}/packaging/icons/ted.svg
+    dst: /usr/share/icons/hicolor/scalable/apps/codes.tanis.ted.svg
+    expand: true
+    file_info:
+      mode: 0644
+  - src: ${TED_ROOT}/packaging/icons/png/ted-16.png
+    dst: /usr/share/icons/hicolor/16x16/apps/codes.tanis.ted.png
+    expand: true
+    file_info:
+      mode: 0644
+  - src: ${TED_ROOT}/packaging/icons/png/ted-24.png
+    dst: /usr/share/icons/hicolor/24x24/apps/codes.tanis.ted.png
+    expand: true
+    file_info:
+      mode: 0644
+  - src: ${TED_ROOT}/packaging/icons/png/ted-32.png
+    dst: /usr/share/icons/hicolor/32x32/apps/codes.tanis.ted.png
+    expand: true
+    file_info:
+      mode: 0644
+  - src: ${TED_ROOT}/packaging/icons/png/ted-48.png
+    dst: /usr/share/icons/hicolor/48x48/apps/codes.tanis.ted.png
+    expand: true
+    file_info:
+      mode: 0644
+  - src: ${TED_ROOT}/packaging/icons/png/ted-64.png
+    dst: /usr/share/icons/hicolor/64x64/apps/codes.tanis.ted.png
+    expand: true
+    file_info:
+      mode: 0644
+  - src: ${TED_ROOT}/packaging/icons/png/ted-128.png
+    dst: /usr/share/icons/hicolor/128x128/apps/codes.tanis.ted.png
+    expand: true
+    file_info:
+      mode: 0644
+  - src: ${TED_ROOT}/packaging/icons/png/ted-256.png
+    dst: /usr/share/icons/hicolor/256x256/apps/codes.tanis.ted.png
+    expand: true
+    file_info:
+      mode: 0644
+  - src: ${TED_ROOT}/packaging/icons/png/ted-512.png
+    dst: /usr/share/icons/hicolor/512x512/apps/codes.tanis.ted.png
+    expand: true
+    file_info:
+      mode: 0644
+  # deb convention: the license under /usr/share/doc/<name>/.
+  - src: ${TED_ROOT}/LICENSE
+    dst: /usr/share/doc/ted/LICENSE
+    expand: true
+    file_info:
+      mode: 0644
+    packager: deb
+  - src: ${TED_ROOT}/NOTICE
+    dst: /usr/share/doc/ted/NOTICE
+    expand: true
+    file_info:
+      mode: 0644
+    packager: deb
+  # rpm convention: /usr/share/licenses/<name>/, flagged as a license file.
+  - src: ${TED_ROOT}/LICENSE
+    dst: /usr/share/licenses/ted/LICENSE
+    expand: true
+    type: license
+    file_info:
+      mode: 0644
+    packager: rpm
+  - src: ${TED_ROOT}/NOTICE
+    dst: /usr/share/licenses/ted/NOTICE
+    expand: true
+    type: license
+    file_info:
+      mode: 0644
+    packager: rpm
+
+# Runtime libraries the binary links (libxcb, libxkbcommon, libxkbcommon-x11) or loads with
+# dlopen (wayland-client, wayland-egl, EGL), as Postino's. Vulkan is only a recommendation: wgpu
+# can use it, but the binary does not name it. Names differ between deb and rpm.
+depends:
+  - libxkbcommon0
+  - libxkbcommon-x11-0
+  - libxcb1
+  - libwayland-client0
+  - libwayland-egl1
+  - libegl1
+recommends:
+  - libvulkan1
+overrides:
+  rpm:
+    depends:
+      - libxkbcommon
+      - libxkbcommon-x11
+      - libxcb
+      - libwayland-client
+      - libwayland-egl
+      - libglvnd-egl
+    recommends:
+      - vulkan-loader

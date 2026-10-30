@@ -6270,6 +6270,7 @@ name = "ted-app"
 version = "0.1.0-dev"
 dependencies = [
  "async-channel",
+ "embed-resource",
  "gpui-kit",
  "log",
  "pretty_assertions",

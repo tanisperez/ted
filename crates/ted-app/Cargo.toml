@@ -24,6 +24,9 @@ ted-core = { path = "../ted-core" }
 ted-syntax = { path = "../ted-syntax" }
 ted-workspace = { path = "../ted-workspace" }
 
+[target.'cfg(windows)'.build-dependencies]
+embed-resource = "3"
+
 [dev-dependencies]
 serde_json = { workspace = true }
 tempfile = { workspace = true }

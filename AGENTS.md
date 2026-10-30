@@ -49,10 +49,13 @@ Expo/React Native conventions here.
   runs) is fine; write our own code. Only `gpui` itself is Apache-2.0.
 - Languages of the UI: **English** (source and fallback) and **Spanish**. Not Galician nor
   Italian.
-- No website, no `site/`, no package repositories, no updater and no release workflow for now.
-  The user docs live as Markdown under `docs/user/` until a website is decided. Sections 13, 15
-  and 16 of the shared rules apply only where they do not need a website (README, developer docs,
-  the `build.yml` CI workflow).
+- No website, no `site/`, no package repositories and no updater for now. The user docs live
+  as Markdown under `docs/user/` until a website is decided. Sections 13, 15 and 16 of the shared
+  rules apply only where they do not need a website or the updater.
+- Releases (decided on 2026-10-30): the `release.yml` workflow and `packaging/` of Postino, with
+  the same packages minus `latest.json` (deb, rpm, Arch, AppImage, tarball, macOS dmg and app
+  tarball, Windows installer and portable zip, `SHA256SUMS`). The installers put `ted` on the
+  `PATH` where the platform allows it. See `docs/releasing.md`.
 - Settings: `settings.toml` under the config dir (`~/.config/ted/settings.toml` on Linux), plain
   text, applied at once, as in the design.
 - Design: the Claude Design prototype is in `design_system/` (`ted.dc.html`, open it in a
