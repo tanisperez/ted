@@ -84,6 +84,9 @@ scrolling through it.
 
 ## Results
 
+The 0.1.0 pass (#15, 2026-10-30, commit 82c12b8) met every target; its rows carry that commit.
+XWayland rows were driven with `xdotool`, so their timings include its event pacing.
+
 Fill one row per metric and run. The date is `YYYY-MM-DD`; the machine names the CPU, GPU, RAM,
 display refresh rate and compositor.
 
@@ -108,3 +111,14 @@ display refresh rate and compositor.
 | 2026-10-30 | syntax-highlighting branch | i5-1235U, Iris Xe, 32 GB, KDE Wayland (XWayland) | 100 MB log with the log highlighter, release: 300 wheel steps down, jump to the end, 150 up; editor prepaint per frame (41 lines, trace log) | 453 frames, avg 0.28 ms, p95 0.40 ms, max 1.2 ms |
 | 2026-10-30 | syntax-highlighting branch | i5-1235U, Iris Xe, 32 GB, KDE Wayland (XWayland) | Opening the samples of every language (Rust 7 KB, TOML, JSON, Markdown, HTML, JS, XML), background parse | 0.1 to 15 ms |
 | 2026-10-30 | find-in-file branch | i5-1235U, Iris Xe, 32 GB, KDE Wayland (XWayland) | 100 MB log, release: counting every match of `ERROR` in the background (`searched` debug line) | 30 to 36 ms, 18 821 matches; `queue` finds 489 383 |
+| 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | 100 MB log, release, native Wayland, median of 5: from opening the file to the first painted frame (head loaded in 15 ms) | 77 ms (target 1: under 100 ms) |
+| 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | 100 MB log, release, native Wayland, median of 5: from opening the file to the whole text loaded | 146 ms, the UI responsive meanwhile |
+| 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | RSS: empty window / small file / 100 MB log loaded | 136 MB / 139 MB / 247 MB (the log adds about 110 MB) |
+| 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | 100 MB log, release, XWayland: 300 wheel steps 8 ms apart, main thread CPU | 35 ticks in 2.5 s, about 1.2 ms per step (target 2) |
+| 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | 100 MB log, release, XWayland: 200 page downs 8 ms apart (every visible line new), main thread CPU | 60 ticks in 1.8 s, about 3 ms per page |
+| 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | 100 MB log, release, XWayland: dragging the scrollbar thumb, 120 moves | 6 ticks in 0.2 s |
+| 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | 100 MB log, release, XWayland: Ctrl+End and Ctrl+Home five times, editor prepaint | max 6 ms (a 16.6 ms frame at 60 Hz) |
+| 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | 100 MB log, release, XWayland: typing 200 characters 10 ms apart at the start and at the end | 39 and 36 ticks, about 1.9 ms per keystroke, painted in the next frame (target 3) |
+| 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | 100 000 files tree, release, XWayland: root listing / expanding `wide_0` (10 000 entries) | 6.6 ms / 8 ms, window usable at once (target 4) |
+| 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | 100 000 files tree, release, XWayland: 300 wheel steps over the 10 000 rows | 27 ticks in 2.5 s |
+| 2026-10-30 | 82c12b8 | i5-1235U, Iris Xe, 32 GB, 2560x1440 at 60 Hz, KDE Wayland | Idle 10 s, focused, 100 MB log open, release, native Wayland: main thread CPU ticks, GPU render | 0 ticks, GPU unchanged (target 5) |
