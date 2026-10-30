@@ -118,6 +118,10 @@ actions!(
         SelectNextOccurrence,
         /// Removes the last occurrence added.
         UnselectOccurrence,
+        /// Duplicates the line, or the selection.
+        DuplicateLine,
+        /// Deletes the whole line.
+        DeleteLine,
     ]
 );
 
@@ -187,6 +191,8 @@ pub fn bind_keys(cx: &mut App) {
         // Option+J types a character on macOS, so Control takes its place.
         KeyBinding::new("ctrl-j", SelectNextOccurrence, context),
         KeyBinding::new("ctrl-shift-j", UnselectOccurrence, context),
+        KeyBinding::new("cmd-d", DuplicateLine, context),
+        KeyBinding::new("cmd-alt-d", DeleteLine, context),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
@@ -206,6 +212,8 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-y", Redo, context),
         KeyBinding::new("alt-j", SelectNextOccurrence, context),
         KeyBinding::new("alt-shift-j", UnselectOccurrence, context),
+        KeyBinding::new("ctrl-d", DuplicateLine, context),
+        KeyBinding::new("ctrl-alt-d", DeleteLine, context),
     ]);
 }
 
@@ -525,6 +533,12 @@ impl Render for EditorView {
             .on_action(cx.listener(|this, _: &UnselectOccurrence, _, cx| {
                 this.edit(cx, EditorState::unselect_occurrence)
             }))
+            .on_action(
+                cx.listener(|this, _: &DuplicateLine, _, cx| this.edit(cx, EditorState::duplicate)),
+            )
+            .on_action(
+                cx.listener(|this, _: &DeleteLine, _, cx| this.edit(cx, EditorState::delete_lines)),
+            )
             .on_action(cx.listener(|this, _: &CollapseCursors, _, cx| {
                 if this.state.collapse_cursors() {
                     cx.notify();

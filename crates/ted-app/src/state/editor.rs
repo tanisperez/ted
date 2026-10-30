@@ -693,6 +693,23 @@ impl EditorState {
         kind: EditKind,
         mut edit: impl FnMut(&Buffer, &Caret, Selection) -> Option<(Range<usize>, String)>,
     ) {
+        self.edit_each_to(kind, |buffer, caret, selection| {
+            edit(buffer, caret, selection).map(|(range, text)| (range, text, None))
+        });
+    }
+
+    /// As [`Self::edit_each`], but `edit` may also say where the cursor's selection ends: its
+    /// anchor and head relative to the start of the edit, in the text after it.
+    #[allow(clippy::type_complexity)]
+    fn edit_each_to(
+        &mut self,
+        kind: EditKind,
+        mut edit: impl FnMut(
+            &Buffer,
+            &Caret,
+            Selection,
+        ) -> Option<(Range<usize>, String, Option<(isize, isize)>)>,
+    ) {
         if self.read_only {
             return;
         }
@@ -711,15 +728,22 @@ impl EditorState {
         for index in order {
             let selection = before[index];
             let change = edit(&self.buffer, &carets[index], selection)
-                .filter(|(range, _)| range.start >= edited_end || edits.is_empty());
-            let Some((range, text)) = change else {
+                .filter(|(range, _, _)| range.start >= edited_end || edits.is_empty());
+            let Some((range, text, to)) = change else {
                 after[index] = Selection {
                     anchor: moved(selection.anchor, shift),
                     head: moved(selection.head, shift),
                 };
                 continue;
             };
-            after[index] = Selection::cursor(moved(range.start, shift) + text.len());
+            let start = moved(range.start, shift);
+            after[index] = match to {
+                Some((anchor, head)) => Selection {
+                    anchor: moved(start, anchor),
+                    head: moved(start, head),
+                },
+                None => Selection::cursor(start + text.len()),
+            };
             shift += text.len() as isize - range.len() as isize;
             edited_end = range.end;
             edits.push(Edit {
@@ -898,6 +922,126 @@ impl EditorState {
                 })
                 .collect(),
         };
+        self.history.edit_many(
+            &mut self.buffer,
+            edits,
+            EditKind::Other,
+            before,
+            after.clone(),
+        );
+        self.set_selections(&after);
+        self.scroll_to_cursor();
+    }
+
+    /// Ctrl+D: duplicates the selection right after it, or, with no selection or one that spans
+    /// lines, the whole lines below them. The cursor or the selection moves to the copy.
+    pub fn duplicate(&mut self) {
+        let ending = self.buffer.line_ending().as_str();
+        // Cursors are visited in document order: two on the same lines duplicate them once.
+        let mut done_until = None;
+        self.edit_each_to(EditKind::Other, |buffer, _, selection| {
+            let range = selection.range();
+            let first = buffer.byte_to_line(range.start);
+            let last = buffer.byte_to_line(range.end);
+            if !selection.is_empty() && first == last {
+                let text = buffer.text_in(range.clone());
+                let len = text.len() as isize;
+                let to = if selection.head < selection.anchor {
+                    (len, 0)
+                } else {
+                    (0, len)
+                };
+                return Some((range.end..range.end, text, Some(to)));
+            }
+            if done_until.is_some_and(|done| first <= done) {
+                return None;
+            }
+            done_until = Some(last);
+            let start = buffer.line_to_byte(first);
+            let end = buffer.line_to_byte(last) + buffer.line_len(last);
+            let text = format!("{ending}{}", buffer.text_in(start..end));
+            // The copy starts after the inserted line break.
+            let copy = |offset: usize| (ending.len() + offset - start) as isize;
+            let to = (copy(selection.anchor), copy(selection.head));
+            Some((end..end, text, Some(to)))
+        });
+    }
+
+    /// Ctrl+Alt+D: deletes the whole lines of every cursor and selection, line breaks included.
+    /// Each cursor stays at its column on the line that takes their place.
+    pub fn delete_lines(&mut self) {
+        if self.read_only {
+            return;
+        }
+        let before = self.selections();
+        let line_count = self.buffer.line_count();
+        // The lines of each selection, first and last, and its cursor's column. A selection
+        // that ends at the start of a line leaves that line alone.
+        let mut blocks: Vec<(usize, usize, usize, bool)> = before
+            .iter()
+            .enumerate()
+            .map(|(index, selection)| {
+                let range = selection.range();
+                let first = self.buffer.byte_to_line(range.start);
+                let mut last = self.buffer.byte_to_line(range.end);
+                if last > first && range.end == self.buffer.line_to_byte(last) {
+                    last -= 1;
+                }
+                let head = self.buffer.offset_to_position(selection.head);
+                (first, last, head.column, index == 0)
+            })
+            .collect();
+        blocks.sort_by_key(|&(first, _, _, _)| first);
+        let mut merged: Vec<(usize, usize, usize, bool)> = Vec::with_capacity(blocks.len());
+        for block in blocks {
+            match merged.last_mut() {
+                Some(last) if block.0 <= last.1 + 1 => {
+                    last.1 = last.1.max(block.1);
+                    if block.3 {
+                        last.2 = block.2;
+                        last.3 = true;
+                    }
+                }
+                _ => merged.push(block),
+            }
+        }
+        let mut edits = Vec::with_capacity(merged.len());
+        let mut after = Vec::with_capacity(merged.len());
+        let mut shift = 0isize;
+        for &(first, last, column, primary) in &merged {
+            let mut start = self.buffer.line_to_byte(first);
+            let end = self.buffer.line_to_byte(last + 1);
+            // The last lines of a file without a final line break: the break before them goes.
+            let (cursor_line, cursor_line_start) = if last + 1 == line_count && first > 0 {
+                start = self.buffer.line_to_byte(first - 1) + self.buffer.line_len(first - 1);
+                (first - 1, self.buffer.line_to_byte(first - 1))
+            } else {
+                (last + 1, end)
+            };
+            let cursor_column = if cursor_line < line_count {
+                column.min(self.buffer.line_len(cursor_line))
+            } else {
+                0
+            };
+            let new_start = (start as isize + shift) as usize;
+            let cursor = if cursor_line_start >= end {
+                new_start + cursor_column
+            } else {
+                (cursor_line_start as isize + shift) as usize + cursor_column
+            };
+            shift -= (end - start) as isize;
+            edits.push(Edit {
+                start,
+                old_text: self.buffer.text_in(start..end),
+                new_text: String::new(),
+            });
+            let selection = Selection::cursor(cursor);
+            if primary {
+                after.insert(0, selection);
+            } else {
+                after.push(selection);
+            }
+        }
         self.history.edit_many(
             &mut self.buffer,
             edits,
@@ -1758,5 +1902,76 @@ mod tests {
         // "aa" at 1 overlaps the selected one at 0, and "Aa" is another case.
         assert_eq!(next_occurrence(&rope, &query, 1, &[0..2, 9..9]), Some(7..9));
         assert_eq!(next_occurrence(&rope, &query, 9, &[0..2, 7..9]), None);
+    }
+
+    #[test]
+    fn ctrl_d_duplicates_the_line_or_the_selection() {
+        let mut state = editor("one\r\ntwo");
+        at(&mut state, 0, 2);
+        state.duplicate();
+        assert_eq!(state.buffer.to_text(), "one\r\none\r\ntwo");
+        assert_eq!(state.cursor, Position::new(1, 2));
+        // A selection in a line: the copy right after it, selected.
+        state.set_selection(Selection { anchor: 6, head: 8 });
+        state.duplicate();
+        assert_eq!(state.buffer.to_text(), "one\r\nonene\r\ntwo");
+        assert_eq!(state.selected_text().as_deref(), Some("ne"));
+        assert_eq!(
+            state.selection(),
+            Selection {
+                anchor: 8,
+                head: 10
+            }
+        );
+        // A selection over lines: the whole lines, the selection on the copy.
+        let mut state = editor("a\nbc\nd");
+        state.set_selection(Selection { anchor: 0, head: 3 });
+        state.duplicate();
+        assert_eq!(state.buffer.to_text(), "a\nbc\na\nbc\nd");
+        assert_eq!(state.selection(), Selection { anchor: 5, head: 8 });
+        state.undo();
+        assert_eq!(state.buffer.to_text(), "a\nbc\nd");
+    }
+
+    #[test]
+    fn ctrl_d_at_several_cursors_duplicates_each_line_once() {
+        let mut state = editor("a\nb\n");
+        at(&mut state, 0, 0);
+        state.toggle_cursor(Position::new(0, 1));
+        state.toggle_cursor(Position::new(1, 1));
+        state.duplicate();
+        assert_eq!(state.buffer.to_text(), "a\na\nb\nb\n");
+    }
+
+    #[test]
+    fn ctrl_alt_d_deletes_whole_lines() {
+        let mut state = editor("one\ntwo\nthree");
+        at(&mut state, 0, 2);
+        state.delete_lines();
+        assert_eq!(state.buffer.to_text(), "two\nthree");
+        assert_eq!(state.cursor, Position::new(0, 2));
+        // The last line takes the line break before it.
+        at(&mut state, 1, 4);
+        state.delete_lines();
+        assert_eq!(state.buffer.to_text(), "two");
+        assert_eq!(state.cursor, Position::new(0, 3));
+        state.delete_lines();
+        assert_eq!(state.buffer.to_text(), "");
+        state.undo();
+        state.undo();
+        state.undo();
+        assert_eq!(state.buffer.to_text(), "one\ntwo\nthree");
+    }
+
+    #[test]
+    fn ctrl_alt_d_at_several_cursors_and_selections() {
+        let mut state = editor("1\n2\n3\n4\n5\n");
+        // A selection over lines 1 and 2 that ends at the start of line 3, and a cursor on
+        // line 4.
+        state.set_selection(Selection { anchor: 2, head: 6 });
+        state.toggle_cursor(Position::new(4, 1));
+        state.delete_lines();
+        assert_eq!(state.buffer.to_text(), "1\n4\n");
+        assert_eq!(cursors(&state), vec![2, 4]);
     }
 }
