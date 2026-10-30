@@ -116,7 +116,7 @@ pub struct AppView {
 impl AppView {
     pub fn new(
         settings: Settings,
-        path: Option<PathBuf>,
+        paths: Vec<PathBuf>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -146,9 +146,7 @@ impl AppView {
             _activation: activation,
         };
         view.update_title(window, cx);
-        if let Some(path) = path {
-            view.open_path(&path, window, cx);
-        }
+        view.open_paths(&paths, window, cx);
         view.apply_debug_open(window, cx);
         view
     }
@@ -185,6 +183,48 @@ impl AppView {
             .iter()
             .filter_map(|document| document.editor().cloned())
             .collect()
+    }
+
+    /// Whether the tab bar shows: always in folder mode with a file open, and in file mode once
+    /// more than one file is open (`ted a.txt b.txt`).
+    pub(crate) fn shows_tabs(&self) -> bool {
+        match self.explorer {
+            Some(_) => !self.documents.is_empty(),
+            None => self.documents.items().len() > 1,
+        }
+    }
+
+    /// Opens what the command line (or Finder) names, in order: the first folder with the
+    /// explorer, then every file in its own tab. Without a folder the files open alone, in tabs.
+    /// More folders than one are not opened.
+    pub(crate) fn open_paths(
+        &mut self,
+        paths: &[PathBuf],
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let folder = paths.iter().position(|path| path.is_dir());
+        if let Some(index) = folder {
+            self.open_path(&paths[index], window, cx);
+        }
+        for (index, path) in paths.iter().enumerate() {
+            if Some(index) == folder {
+                continue;
+            }
+            if path.is_dir() {
+                log::warn!("only the first folder given is opened");
+                continue;
+            }
+            match (&self.target, launch::resolve(path)) {
+                // A file after the first one joins the open ones as a tab.
+                (Some(_), Ok(Target::File(file))) => {
+                    self.recents.add(&Target::File(file.clone()));
+                    recents::save(&self.recents);
+                    self.open_document(file, window, cx);
+                }
+                _ => self.open_path(path, window, cx),
+            }
+        }
     }
 
     /// Opens a file or a folder, from the command line, a dialog, the explorer or the recents. A
@@ -296,6 +336,10 @@ impl AppView {
     /// After another document became the active one: focus its editor, reveal it in the
     /// explorer and retitle the window.
     pub(crate) fn document_shown(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // Without a folder, the title bar's switcher names the file shown.
+        if let (Some(Target::File(_)), Some(document)) = (&self.target, self.documents.active()) {
+            self.target = Some(Target::File(document.path.clone()));
+        }
         match self.documents.active() {
             Some(document) => {
                 if let Some(editor) = document.editor() {
@@ -541,7 +585,7 @@ impl Render for AppView {
                             .hint(crate::actions::hints::OPEN_FILE),
                     ),
                 };
-                match self.explorer.is_some() && !self.documents.is_empty() {
+                match self.shows_tabs() {
                     true => v_flex()
                         .flex_1()
                         .min_h_0()
@@ -587,7 +631,7 @@ impl Render for AppView {
                 cx.listener(|this, _: &OpenSettings, window, cx| this.open_settings(window, cx)),
             )
             .on_action(cx.listener(|this, _: &CloseTab, window, cx| {
-                if this.explorer.is_some()
+                if this.shows_tabs()
                     && let Some(document) = this.documents.active()
                 {
                     this.close_document(document.id, window, cx);

@@ -299,7 +299,9 @@ folder. The window title is `name · ted`, or `ted` alone.
 
 `ted some/file.txt`, a recent file or Open file with nothing open. The switcher shows the file;
 no explorer, no tab bar: the editor fills the window. The status bar has no panel toggles and no
-folder path.
+folder path. Several files (`ted a.txt b.txt`) open in tabs: the tab bar shows while more than
+one is open, and the switcher names the file shown. With a folder (`ted . notes.md`), the files
+open in the folder's tabs; only the first folder given is opened.
 
 ### Folder mode
 

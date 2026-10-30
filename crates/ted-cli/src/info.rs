@@ -25,9 +25,9 @@ pub enum Info {
 }
 
 impl Info {
-    /// The command asked by the first argument, or `None` when it is not one of ours.
-    pub fn parse(first_arg: &str) -> Option<Self> {
-        match first_arg {
+    /// The command asked by an argument, or `None` when it is not one of ours.
+    pub fn parse(arg: &str) -> Option<Self> {
+        match arg {
             "-h" | "--help" => Some(Info::Help),
             "-V" | "--version" => Some(Info::Version),
             _ => None,
@@ -59,11 +59,13 @@ fn version_line() -> String {
 fn help_text() -> String {
     format!(
         "{header}
-Usage: ted [OPTIONS] [PATH]
+Usage: ted [OPTIONS] [PATH]...
 
 Arguments:
-  [PATH]  A file to open on its own, or a folder to open with the explorer.
-          Without it, ted shows the recent files and folders.
+  [PATH]...  Files to open, each in its own tab, or a folder to open with the
+             explorer (`ted .` for the current one); files given with a folder
+             open in its tabs. Without any, ted shows the recent files and
+             folders. After `--`, every argument is a path.
 
 Options:
   -h, --help     Print this help and exit
@@ -116,7 +118,7 @@ mod tests {
         let help = Info::Help.output();
         assert!(help.starts_with(&version_line()));
         for needle in [
-            "Usage: ted [OPTIONS] [PATH]",
+            "Usage: ted [OPTIONS] [PATH]...",
             "-h, --help",
             "-V, --version",
             "TED_LOG",

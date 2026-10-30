@@ -10,7 +10,7 @@ mod views;
 
 rust_i18n::i18n!("locales", fallback = "en");
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::ExitCode;
 
 use gpui_kit::component::Root;
@@ -22,10 +22,12 @@ use state::settings::{LogLevel, ThemeChoice};
 use views::AppView;
 
 fn main() -> ExitCode {
-    // `--help` and `--version` print and exit before anything else: no settings, no log.
-    if let Some(code) = ted_cli::run_if_cli(std::env::args_os().nth(1).as_deref()) {
-        return code;
-    }
+    // `--help`, `--version` and a wrong option print and exit before anything else: no
+    // settings, no log. Everything else is a path to open.
+    let paths = match ted_cli::start(std::env::args_os().skip(1)) {
+        Ok(paths) => paths,
+        Err(code) => return code,
+    };
 
     // Settings first, for the log level: the logger is installed before anything else runs, so
     // every later message (gpui's own included) reaches the log file.
@@ -57,8 +59,6 @@ fn main() -> ExitCode {
         state::locale::system_locales().join(", "),
     );
 
-    // What to open: the first argument, a file or a folder.
-    let path = std::env::args_os().nth(1).map(PathBuf::from);
     let theme_choice = settings.theme;
 
     // Files the OS hands over while running (Finder's Open with, a drop on the Dock icon: macOS
@@ -86,7 +86,7 @@ fn main() -> ExitCode {
                 // changes it while ted is running; an explicit choice sets the mode once.
                 telaio_ui::ThemeChoice::from(theme_choice).apply(Some(window), cx);
 
-                let view = cx.new(|cx| AppView::new(settings, path, window, cx));
+                let view = cx.new(|cx| AppView::new(settings, paths, window, cx));
 
                 // Opens the files the OS delivers. Sleeps on the queue, so an idle window does no
                 // work; files queued before this point are delivered right away.
@@ -97,9 +97,7 @@ fn main() -> ExitCode {
                         loop {
                             let paths = queue.next().await;
                             let result = weak_view.update_in(cx, |view, window, cx| {
-                                for path in &paths {
-                                    view.open_path(path, window, cx);
-                                }
+                                view.open_paths(&paths, window, cx)
                             });
                             if result.is_err() {
                                 break;
