@@ -1036,8 +1036,13 @@ impl Element for EditorElement {
         window.set_cursor_style(CursorStyle::Arrow, &layout.gutter_hitbox);
 
         window.paint_quad(fill(bounds, palette.bg));
+        // A half visible row at the top or the bottom must not spill over the title bar or the
+        // status bar, so everything per row is clipped to the editor.
+        let editor_mask = ContentMask { bounds };
         if let Some(current_line) = layout.current_line {
-            window.paint_quad(fill(current_line, palette.hover));
+            window.with_content_mask(Some(editor_mask), |window| {
+                window.paint_quad(fill(current_line, palette.hover));
+            });
         }
 
         let line_height = layout.line_height;
@@ -1078,10 +1083,12 @@ impl Element for EditorElement {
 
         // Line numbers, right aligned, never scrolled horizontally.
         let number_right = layout.gutter.right() - px(EDITOR_GUTTER_RIGHT);
-        for (row, number) in layout.numbers.iter().enumerate() {
-            let origin = point(number_right - number.width, top + line_height * row as f32);
-            let _ = number.paint(origin, line_height, TextAlign::Left, None, window, cx);
-        }
+        window.with_content_mask(Some(editor_mask), |window| {
+            for (row, number) in layout.numbers.iter().enumerate() {
+                let origin = point(number_right - number.width, top + line_height * row as f32);
+                let _ = number.paint(origin, line_height, TextAlign::Left, None, window, cx);
+            }
+        });
 
         if let Some(minimap) = &layout.minimap {
             if let Some(hitbox) = &layout.minimap_hitbox {
