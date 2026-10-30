@@ -4,7 +4,6 @@ mod choice;
 mod document;
 mod editor;
 mod explorer;
-mod rail;
 mod root;
 mod status_bar;
 mod title_bar;

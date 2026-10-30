@@ -12,7 +12,11 @@ pub use telaio_ui::metrics::*;
 /// Height of the title bar.
 pub const TITLE_BAR_HEIGHT: f32 = 40.0;
 /// Height of the status bar.
-pub const STATUS_BAR_HEIGHT: f32 = 24.0;
+pub const STATUS_BAR_HEIGHT: f32 = 30.0;
+/// Height of a panel toggle (Files, Git) at the left of the status bar.
+pub const STATUS_TOGGLE_HEIGHT: f32 = 24.0;
+/// Narrowest a panel toggle can be (the icon alone, without a count).
+pub const STATUS_TOGGLE_MIN_WIDTH: f32 = 28.0;
 /// Side length of the "t" logo in the title bar.
 pub const LOGO_SIZE: f32 = 18.0;
 /// Width of the line number gutter beyond its digits: the left padding plus
@@ -32,14 +36,6 @@ pub const WELCOME_LOGO_SIZE: f32 = 40.0;
 pub const WELCOME_ROW_HEIGHT: f32 = 30.0;
 /// Space between the sections of the empty state.
 pub const WELCOME_SECTION_GAP: f32 = 24.0;
-/// Width of the activity rail left of the explorer.
-pub const RAIL_WIDTH: f32 = 44.0;
-/// Height of a rail button.
-pub const RAIL_BUTTON_HEIGHT: f32 = 42.0;
-/// Width of the rail's active indicator, on the button's left edge.
-pub const RAIL_INDICATOR_WIDTH: f32 = 2.0;
-/// Space between the rail indicator and the button's top and bottom.
-pub const RAIL_INDICATOR_INSET: f32 = 9.0;
 /// Default width of the explorer panel.
 pub const EXPLORER_WIDTH: f32 = 260.0;
 /// Narrowest the explorer panel can be dragged to.

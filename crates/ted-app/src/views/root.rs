@@ -21,7 +21,7 @@ use crate::state::recents::{self, Recents};
 use crate::state::settings::Settings;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
-    EXPLORER_RESIZE_HANDLE, EXPLORER_WIDTH, EXPLORER_WIDTH_MAX, EXPLORER_WIDTH_MIN, RAIL_WIDTH,
+    EXPLORER_RESIZE_HANDLE, EXPLORER_WIDTH, EXPLORER_WIDTH_MAX, EXPLORER_WIDTH_MIN,
 };
 
 use super::editor::EditorView;
@@ -369,7 +369,6 @@ impl Render for AppView {
             Some((explorer, _)) => h_flex()
                 .flex_1()
                 .min_h_0()
-                .child(self.render_rail(cx))
                 .when(self.explorer_visible, |row| {
                     row.child(
                         div()
@@ -406,7 +405,7 @@ impl Render for AppView {
             }))
             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
                 if this.resizing_explorer {
-                    let width = f32::from(event.position.x) - RAIL_WIDTH;
+                    let width = f32::from(event.position.x);
                     this.explorer_width = width.clamp(EXPLORER_WIDTH_MIN, EXPLORER_WIDTH_MAX);
                     cx.notify();
                 }

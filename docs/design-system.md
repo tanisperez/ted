@@ -1,7 +1,8 @@
 # ted design system
 
 Reference for anyone (human or agent) touching the UI. It is written from the Claude Design
-prototype in `design_system/` (`ted.dc.html`, `ted-lang.js`, `ted-data.js`), as the shared rules
+prototype in `design_system/` (`ted v2.dc.html`, the final one, which replaces `ted.dc.html`;
+`ted-lang.js`, `ted-data.js`), as the shared rules
 ask (1.3). Once the UI is implemented the code is the source of truth and this file its readable
 summary: if they disagree, the code wins; fix this file.
 
@@ -35,7 +36,7 @@ Every color token of the prototype has exactly the value of telaio's `Tokens::DE
 | CSS variable | telaio token | Light | Dark | Use in ted |
 | --- | --- | --- | --- | --- |
 | `--bg` | `bg` | `#fcfcfd` | `#15161a` | Editor, active tab, line number gutter |
-| `--surface` | `surface` | `#f4f5f7` | `#1b1c21` | Title bar, tab bar, explorer, rail, status bar |
+| `--surface` | `surface` | `#f4f5f7` | `#1b1c21` | Title bar, tab bar, explorer, status bar |
 | `--raised` | `raised` | `#ffffff` | `#23252c` | Inputs, search trigger, code blocks in the preview |
 | `--overlay` | `overlay` | `#ffffff` | `#262830` | Menus, settings modal, markdown toolbar |
 | `--border` | `border` | `#e3e5ea` | `#2c2e36` | Separators, panel borders |
@@ -43,7 +44,7 @@ Every color token of the prototype has exactly the value of telaio's `Tokens::DE
 | `--fg` | `fg` | `#1b1c22` | `#e9eaee` | Text |
 | `--fg-muted` | `fg_muted` | `#5c606e` | `#a0a3ae` | Inactive tabs, current line number |
 | `--fg-subtle` | `fg_subtle` | `#8b8e9a` | `#6f7280` | Icons, line numbers, status bar |
-| `--accent` | `accent` | `#4f57d8` | `#5b63e6` | Active tab bar line, rail indicator, switches, primary button |
+| `--accent` | `accent` | `#4f57d8` | `#5b63e6` | Active tab bar line, switches, primary button |
 | `--accent-fg` | `accent_fg` | `#ffffff` | `#ffffff` | Text on `accent` |
 | `--accent-text` | `accent_text` | `#3f47c4` | `#a3a9ff` | Links, selected row text, branch |
 | `--accent-subtle` | `accent_subtle` | `#e8e9fd` | `#272b4d` | Selected rows and categories |
@@ -134,7 +135,7 @@ Notes:
 | Tab detail ("Vista previa" label) | Geist | 12 / 400 |
 | Status bar, tree row detail | Geist | 11.5 / 400 |
 | Section labels (`EXPLORER`, `COMMIT`, `RECENT FOLDERS`) | Geist | 11 / 600, uppercase, 0.06em tracking, `fg_subtle` |
-| Rail badge | Geist | 10 / 600 |
+| Git change count in its status bar toggle | Geist Mono | 11 / 500 |
 | Editor text and line numbers | Geist Mono | 12.5 / 400 (setting) |
 | Git letters in tree rows | Geist Mono | 11.5 / 500 |
 | Shortcut hints, counts | Geist Mono | 11 / 400 |
@@ -156,7 +157,7 @@ Shared sizes come from telaio's `metrics.rs`. ted's own layout sizes go in ted's
 | --- | --- | --- |
 | Title bar | 40 | ted |
 | Document tab bar | 36 | telaio `DOCUMENT_TABS_HEIGHT` |
-| Status bar | 24 | ted (same as Postino) |
+| Status bar | 30 | ted |
 | Tree row | 26 | telaio `TREE_ROW_HEIGHT` |
 | Explorer header | 36 | ted (padding 10 10 6 14) |
 | Menu row (recents) | 30 | ted |
@@ -165,7 +166,8 @@ Shared sizes come from telaio's `metrics.rs`. ted's own layout sizes go in ted's
 | Control (input, button, select) | 30 | telaio `CONTROL_HEIGHT` |
 | Search trigger | 26 | ted |
 | Workspace switcher button | 26 | ted |
-| Rail button | 42 | ted |
+| Status bar panel toggle | 24 (min width 28) | ted |
+| Title bar settings gear | 26 x 26 | ted (as Postino) |
 | Theme card preview | 92 | telaio `THEME_PREVIEW_HEIGHT` |
 | Commit message box | 76 | ted (later milestone) |
 | Switch | 20 (track 34) | ted |
@@ -175,7 +177,6 @@ Shared sizes come from telaio's `metrics.rs`. ted's own layout sizes go in ted's
 | Element | Value |
 | --- | --- |
 | Explorer / Git panel | 260 default, resizable 200 to 480, 6 px drag handle on its right edge |
-| Activity rail | 44 (the prototype; Postino's is 48) |
 | Search trigger | 360 |
 | Window control (minimize, maximize, close) | 40 |
 | Recents menu | 360 |
@@ -210,10 +211,13 @@ count and the measured advance of Geist Mono, not from the 0.62 constant.
 - Tree row: padding left `8 + 16 * depth`, right 6, gap 4, chevron column 13, icon 14, radius 6,
   1 px gap between rows, list padding 0 6 8.
 - Title bar: 12 px left padding, logo square 18 (radius 5, `accent`, white "t" 11/700), "ted" 600, 1x16
-  separator. The logo block shows only in the title bar without a rail on the left.
-- Rail indicator: 2 px wide `accent` bar, 9 px from top and bottom, on the left edge of the active
-  button. Badge: min 15 x 15, radius 8, `accent`, 10/600.
-- Status bar: padding 0 12, gap 16, 11.5 px, `fg_subtle`. Branch button 20 high in `accent_text`.
+  separator. Settings gear at the right, before the window controls: 26 x 26, 4 px right margin,
+  radius 6, icon 16 `fg_muted`, `hover` and `pressed` backgrounds.
+- Status bar: padding 0 12 0 4, gap 16, 11.5 px, `fg_subtle`. Panel toggles first (gap 2 between
+  them, -4 margin after the group): 24 high, min 28 wide, padding 0 7, gap 5, radius 6, icon 15;
+  `fg_muted` when off, `accent_subtle` background and `accent_text` when their panel shows,
+  `hover` tint and `fg` on hover. A 1 x 14 `border` separator follows. Branch button 22 high,
+  radius 6, in `accent_text`.
 - Icon buttons: 22 in panel headers, 24 in the tab strip, 26 x 24 in the markdown toolbar, 20 for
   the shortcuts button in the status bar.
 - Radii: 4 chips and checkboxes, 5 logo and toolbar items, 6 rows and icon buttons, 7 search
@@ -223,28 +227,26 @@ count and the measured advance of Geist Mono, not from the 0.62 constant.
 
 ```
 +--------------------------------------------------------------+
-| title bar 40: logo, switcher, search trigger, window controls |
-+------+-------------+-----------------------------------------+
-| rail | explorer    | tab bar 36                              |
-| 44   | or Git      +-----------------------------------------+
-|      | panel 260   | gutter | text                           |
-|      |             |        |                                |
-+------+-------------+-----------------------------------------+
-| status bar 24                                                |
+| title bar 40: logo, switcher, search, settings, window ctrls |
++-------------+------------------------------------------------+
+| explorer    | tab bar 36                                     |
+| or Git      +------------------------------------------------+
+| panel 260   | gutter | text                                  |
+|             |        |                                       |
++-------------+------------------------------------------------+
+| status bar 30: Files, Git | branch, folder path ... Ln, Col  |
 +--------------------------------------------------------------+
 ```
 
 1. **Title bar** (`surface`, bottom border): logo, "ted", separator, workspace switcher (folder
    icon, folder name, chevron; opens the recents menu), a centered 360 px search trigger
-   ("Search files and actions", `Ctrl+K` hint; folder mode only), and the three window controls
-   at the right (close turns `danger` on hover). The window uses client decorations on Linux.
-2. **Rail** (44 px, `surface`, right border): Explorer and Git buttons (icon 20), settings at the
-   bottom. The Git button carries a badge with the change count.
-3. **Side panel** (`surface`, right border): Explorer or Git, one at a time, resizable.
-4. **Tab bar** (folder mode only).
-5. **Editor** (and, for markdown, the preview beside it or instead of it).
-6. **Status bar** (`surface`, top border): left, folder path (folder mode) and branch with the
-   ahead count; right, word count (markdown), `Ln n, Col n`, indentation, `UTF-8`, line ending,
+   ("Search files and actions", `Ctrl+K` hint; folder mode only), the settings gear (`Ctrl+,`)
+   and the three window controls at the right (close turns `danger` on hover). The window uses client decorations on Linux.
+2. **Side panel** (`surface`, right border): Explorer or Git, one at a time, resizable.
+3. **Tab bar** (folder mode only).
+4. **Editor** (and, for markdown, the preview beside it or instead of it).
+5. **Status bar** (`surface`, top border): left, the Files and Git panel toggles (folder mode;
+   Git shows its change count), a separator, the branch with the ahead count and the folder path; right, word count (markdown), `Ln n, Col n`, indentation, `UTF-8`, line ending,
    language, shortcuts button.
 
 ## Screens
@@ -252,7 +254,7 @@ count and the measured advance of Geist Mono, not from the 0.62 constant.
 ### Empty state, with recents
 
 No argument on the command line, or nothing opened yet (`views/welcome.rs`). No tabs, no editor,
-no rail. A column of 440 px (`WELCOME_WIDTH`), centered horizontally, 64 px from the top, that
+no explorer. A column of 440 px (`WELCOME_WIDTH`), centered horizontally, 64 px from the top, that
 scrolls when the recents do not fit. Its sections are 24 px apart:
 
 1. **Header**: a 40 px logo square (radius 10, `accent`, "t" 22/700 in `accent_fg`), "ted" 20/600
@@ -284,7 +286,8 @@ folder. The window title is `name · ted`, or `ted` alone.
 ### File mode
 
 `ted some/file.txt`, a recent file or Open file with nothing open. The switcher shows the file;
-no rail, no explorer, no tab bar: the editor fills the window. The status bar has no folder path.
+no explorer, no tab bar: the editor fills the window. The status bar has no panel toggles and no
+folder path.
 
 ### Folder mode
 
@@ -292,9 +295,8 @@ no rail, no explorer, no tab bar: the editor fills the window. The status bar ha
 #8 and the Git panel later. Until a file is opened the content area shows "Pick a file in the
 explorer" with the `Ctrl+O` hint.
 
-- **Rail**: 44 px, `surface`, right border. The Explorer button (files icon 20, 42 px high) is
-  `fg` while the explorer shows and `fg_subtle` otherwise, with the 2 px `accent` indicator 9 px
-  from its top and bottom. A click, or `Ctrl+B`, shows or hides the explorer.
+- **Files toggle**: first in the status bar (files icon 15). A click, or `Ctrl+B`, shows or hides
+  the explorer; it takes the active look while the explorer shows.
 - **Explorer**: `surface`, right border, 260 px by default, resized by dragging its right edge (a
   4 px strip with the `col-resize` cursor) between 180 and 520 px. Header 36 px: the folder name as
   a `SectionLabel`, then Collapse all (telaio `IconButton`). New file and New folder join it with
@@ -354,7 +356,8 @@ buttons (22 px). Groups (Changes, Unversioned) of 26 px rows with a 16 px checkb
 name, directory detail in 11.5 px, count and status letter. At the bottom, a 10 px padded block
 with a 76 px message box (`raised`, radius 8, `accent` border on focus), an Amend checkbox, the
 staged count with `+n` in `success` and `-n` in `danger`, and the Commit (`accent`) and "Commit
-and push..." buttons (30 px). The rail already reserves the button and badge.
+and push..." buttons (30 px). Its toggle sits next to Files in the status bar, with the change count
+in Geist Mono 11/500 beside the icon (`Ctrl+Shift+G`).
 
 ### Markdown preview (later milestone)
 
@@ -386,4 +389,3 @@ Differences to settle, with the choice to follow in the meantime:
   `ropey` of `gpui-component` (2.0.0-beta.1).
 - The prototype's selected tree row and category use a solid `accent_subtle`; telaio's `TreeRow`
   uses `list_active` (`accent_subtle` at 20% alpha). Use telaio's component and its look.
-- The prototype's rail is 44 px wide; Postino's is 48. Decide when the rail is built.

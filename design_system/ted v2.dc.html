@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://unpkg.com/lucide-static@0.460.0/font/lucide.css">
+<style>
+@font-face { font-family: 'Geist'; src: url('site/fonts/Geist-Regular.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'Geist'; src: url('site/fonts/Geist-Medium.woff2') format('woff2'); font-weight: 500; }
+@font-face { font-family: 'Geist'; src: url('site/fonts/Geist-SemiBold.woff2') format('woff2'); font-weight: 600 700; }
+@font-face { font-family: 'Geist Mono'; src: url('site/fonts/GeistMono-Regular.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'Geist Mono'; src: url('site/fonts/GeistMono-Medium.woff2') format('woff2'); font-weight: 500 600; }
+html, body { margin: 0; height: 100%; background: #0e0f12; overflow: hidden; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+[data-theme="dark"] { --bg:#15161a; --surface:#1b1c21; --raised:#23252c; --overlay:#262830; --scrim:#0a0b1073; --border:#2c2e36; --border-strong:#3b3e48; --fg:#e9eaee; --fg-muted:#a0a3ae; --fg-subtle:#6f7280; --hover:#ffffff0d; --pressed:#ffffff1c; --accent:#5b63e6; --accent-fg:#ffffff; --accent-text:#a3a9ff; --accent-subtle:#272b4d; --success:#4fc88f; --warning:#e8b75a; --danger:#f27171; --info:#62b3f0; --s-keyword:#b597f7; --s-string:#86d7a5; --s-constant:#f3a2c6; --shadow:0 12px 32px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.04); color-scheme: dark; }
+[data-theme="light"] { --bg:#fcfcfd; --surface:#f4f5f7; --raised:#ffffff; --overlay:#ffffff; --scrim:#0a0b1073; --border:#e3e5ea; --border-strong:#cdd0d8; --fg:#1b1c22; --fg-muted:#5c606e; --fg-subtle:#8b8e9a; --hover:#1b1c2213; --pressed:#1b1c222a; --accent:#4f57d8; --accent-fg:#ffffff; --accent-text:#3f47c4; --accent-subtle:#e8e9fd; --success:#1d8657; --warning:#9a6500; --danger:#cf3535; --info:#1c6fb0; --s-keyword:#7a4fd6; --s-string:#1d7a4f; --s-constant:#b03a78; --shadow:0 12px 32px rgba(20,22,40,.14), 0 0 0 1px rgba(20,22,40,.06); color-scheme: light; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--fg); }
+[data-theme] ::-webkit-scrollbar { width: 10px; height: 10px; }
+[data-theme] ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+[data-theme] ::-webkit-scrollbar-track, [data-theme] ::-webkit-scrollbar-corner { background: transparent; }
+</style>
+</helmet>
+<div data-theme="{{ theme }}" onMouseEnter="{{ onEnter }}" onMouseLeave="{{ onLeave }}" style="position: absolute; inset: 0; display: flex; background: var(--bg); color: var(--fg); font-family: 'Geist', system-ui, sans-serif; font-size: 13px; line-height: 1.25; -webkit-font-smoothing: antialiased; user-select: none;">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+<div style="position: relative; flex: none; height: 40px; display: flex; align-items: center; gap: 8px; padding-left: 12px; background: var(--surface); border-bottom: 1px solid var(--border);">
+<sc-if value="{{ showLogo }}" hint-placeholder-val="{{ true }}">
+  <div style="display: flex; align-items: center; gap: 8px;">
+  <img src="ted-icon.svg" alt="" style="width: 18px; height: 18px; display: block;">
+  <div style="font-weight: 600;">ted</div>
+  <div style="width: 1px; height: 16px; margin: 0 4px; background: var(--border);"></div>
+  </div>
+  </sc-if>
+  <div style="position: relative;">
+    <div onClick="{{ toggleMenu }}" title="Recientes y abrir" style="height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 6px; cursor: pointer; background: {{ menuBtnBg }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover);">
+      <i class="icon-folder" style="font-size: 14px; color: var(--fg-subtle);"></i>
+      <span style="font-weight: 500;">{{ rootName }}</span>
+      <i class="icon-chevron-down" style="font-size: 12px; color: var(--fg-subtle);"></i>
+    </div>
+    <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closeMenu }}" style="position: fixed; inset: 0; z-index: 30;"></div>
+      <div style="position: absolute; top: 32px; left: 0; z-index: 31; width: 360px; box-sizing: border-box; padding: 6px; display: flex; flex-direction: column; gap: 1px; background: var(--overlay); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow);">
+        <div style="padding: 6px 8px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--fg-subtle);">CARPETAS RECIENTES</div>
+        <sc-for list="{{ recentFolders }}" as="r" hint-placeholder-count="4">
+          <div onClick="{{ r.onClick }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);">
+            <i class="icon-folder" style="flex: none; font-size: 14px; color: var(--fg-subtle);"></i>
+            <span style="flex: none; white-space: nowrap;">{{ r.name }}</span>
+            <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--fg-subtle);">{{ r.path }}</span>
+            <i class="icon-check" style="flex: none; font-size: 14px; color: var(--accent-text); opacity: {{ r.checkOpacity }};"></i>
+          </div>
+        </sc-for>
+        <div style="height: 1px; margin: 5px 2px; background: var(--border);"></div>
+        <div style="padding: 6px 8px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--fg-subtle);">ARCHIVOS RECIENTES</div>
+        <sc-for list="{{ recentFiles }}" as="r" hint-placeholder-count="4">
+          <div onClick="{{ r.onClick }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);">
+            <i class="{{ r.icon }}" style="flex: none; font-size: 14px; color: var(--fg-subtle);"></i>
+            <span style="flex: none; white-space: nowrap;">{{ r.name }}</span>
+            <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--fg-subtle);">{{ r.path }}</span>
+          </div>
+        </sc-for>
+        <div style="height: 1px; margin: 5px 2px; background: var(--border);"></div>
+        <div onClick="{{ closeMenu }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-file-input" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Abrir archivo…</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle);">Ctrl+O</span></div>
+        <div onClick="{{ closeMenu }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-folder-open" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Abrir carpeta…</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle);">Ctrl+Shift+O</span></div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="flex: 1; min-width: 0; display: flex; justify-content: center; padding: 0 12px;">
+    <sc-if value="{{ folder }}" hint-placeholder-val="{{ true }}">
+      <div style="width: 360px; min-width: 0; height: 26px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 7px; background: var(--raised); border: 1px solid var(--border); color: var(--fg-subtle); cursor: pointer; overflow: hidden;" style-hover="border-color: var(--border-strong); color: var(--fg-muted);">
+        <i class="icon-search" style="font-size: 14px;"></i>
+        <span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Buscar archivos y acciones</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 4px; padding: 0 4px;">Ctrl+K</span>
+      </div>
+    </sc-if>
+  </div>
+
+
+
+  <div onClick="{{ openSettings }}" title="Configuración (Ctrl+,)" style="flex: none; width: 26px; height: 26px; margin-right: 4px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);" style-active="background: var(--pressed);"><i class="icon-settings" style="font-size: 16px;"></i></div>
+  <div style="display: flex; align-self: stretch;">
+    <div style="width: 40px; display: flex; align-items: center; justify-content: center; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-minus" style="font-size: 14px;"></i></div>
+    <div style="width: 40px; display: flex; align-items: center; justify-content: center; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-square" style="font-size: 12px;"></i></div>
+    <div style="width: 40px; display: flex; align-items: center; justify-content: center; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--danger); color: var(--accent-fg);"><i class="icon-x" style="font-size: 15px;"></i></div>
+  </div>
+</div>
+
+<div style="position: relative; flex: 1; min-height: 0; display: flex;">
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+<sc-if value="{{ hasTabs }}" hint-placeholder-val="{{ true }}">
+  <div style="flex: none; height: 36px; display: flex; background: var(--surface); border-bottom: 1px solid var(--border);">
+    <div style="display: flex; min-width: 0; overflow-x: auto; scrollbar-width: none;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+        <div onClick="{{ t.onClick }}" title="{{ t.title }}" style="flex: none; height: 100%; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; border-right: 1px solid var(--border); cursor: pointer; white-space: nowrap; font-size: 13px; background: {{ t.bg }}; color: {{ t.color }}; box-shadow: {{ t.shadow }};" style-hover="filter: brightness(1.12);">
+          <i class="{{ t.icon }}" style="font-size: 14px; color: var(--fg-subtle);"></i>
+          <span>{{ t.label }}</span>
+          <sc-if value="{{ t.hasDetail }}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: var(--fg-subtle);">{{ t.detail }}</span></sc-if>
+          <div onClick="{{ t.onClose }}" style="margin-left: 4px; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--fg-subtle);" style-hover="background: var(--hover);">
+            <sc-if value="{{ t.dirty }}" hint-placeholder-val="{{ false }}"><span style="width: 8px; height: 8px; border-radius: 50%; background: var(--fg-subtle);"></span></sc-if>
+            <sc-if value="{{ t.clean }}" hint-placeholder-val="{{ true }}"><i class="icon-x" style="font-size: 13px;"></i></sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="flex: none; display: flex; align-items: center; padding: 0 6px;">
+      <div title="Nuevo archivo" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-plus" style="font-size: 14px;"></i></div>
+    </div>
+  </div>
+</sc-if>
+  <div style="position: relative; flex: 1; min-height: 0; display: flex; background: var(--bg);">
+    <sc-if value="{{ isMd }}" hint-placeholder-val="{{ false }}">
+      <div style="position: absolute; top: 10px; right: 22px; z-index: 3; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 8px; background: var(--overlay); border: 1px solid var(--border); box-shadow: 0 4px 14px rgba(0,0,0,.22);">
+        <sc-for list="{{ mdTools }}" as="m" hint-placeholder-count="3">
+          <div onClick="{{ m.onClick }}" title="{{ m.title }}" style="width: 26px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 5px; cursor: pointer; background: {{ m.bg }}; color: {{ m.color }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover);"><i class="{{ m.icon }}" style="font-size: 14px;"></i></div>
+        </sc-for>
+        <div style="width: 1px; height: 16px; margin: 0 3px; background: var(--border);"></div>
+        <div onClick="{{ openPreviewTab }}" title="Abrir vista previa en una pestaña" style="width: 26px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 5px; cursor: pointer; color: var(--fg-muted);" style-hover="box-shadow: inset 0 0 0 100px var(--hover);"><i class="icon-square-arrow-out-up-right" style="font-size: 14px;"></i></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showEditor }}" hint-placeholder-val="{{ true }}">
+      <div ref="{{ edRef }}" onScroll="{{ onEdScroll }}" style="flex: {{ edFlex }}; min-width: 0; overflow: auto; padding: 10px 0 40vh; font-family: 'Geist Mono', ui-monospace, monospace; font-size: {{ edSize }}; line-height: {{ lh }}; user-select: text; cursor: text;">
+        <sc-for list="{{ lines }}" as="ln" hint-placeholder-count="24">
+          <div onClick="{{ ln.onClick }}" style="display: flex; min-width: max-content; background: {{ ln.bg }};">
+            <sc-if value="{{ showNumbers }}" hint-placeholder-val="{{ true }}">
+              <div style="flex: none; position: sticky; left: 0; width: {{ gutterW }}; box-sizing: border-box; padding-right: 16px; text-align: right; color: {{ ln.numColor }}; background: var(--bg); user-select: none;">{{ ln.n }}</div>
+            </sc-if>
+            <div style="flex: 1; padding-left: 4px; padding-right: 24px; white-space: {{ wrap }};"><sc-for list="{{ ln.toks }}" as="tk" hint-placeholder-count="0"><span style="color: {{ tk.c }}; font-weight: {{ tk.w }};">{{ tk.t }}</span></sc-for>&#8203;</div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showPreview }}" hint-placeholder-val="{{ false }}">
+      <div ref="{{ pvRef }}" style="flex: 1 1 0; min-width: 0; overflow: auto; background: var(--bg); border-left: 1px solid var(--border);">
+        {{ previewEl }}
+      </div>
+    </sc-if>
+  </div>
+  </div>
+  <sc-if value="{{ panelOpen }}" hint-placeholder-val="{{ true }}">
+    <div style="order: -1; flex: none; width: {{ pW }}; display: flex; flex-direction: column; min-height: 0; position: {{ pPos }}; top: 0; bottom: 0; left: 0; z-index: 5; background: var(--surface); border-right: 1px solid var(--border); box-shadow: {{ pShadow }};">
+      <sc-if value="{{ docked }}" hint-placeholder-val="{{ true }}">
+        <div onMouseDown="{{ startResize }}" style="position: absolute; top: 0; bottom: 0; right: -3px; width: 6px; cursor: col-resize; z-index: 2;" style-hover="background: var(--accent); opacity: .5;"></div>
+      </sc-if>
+      <sc-if value="{{ showFiles }}" hint-placeholder-val="{{ true }}">
+        <div style="flex: none; height: 36px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 10px 10px 6px 14px;">
+          <div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--fg-subtle); text-transform: uppercase;">{{ rootName }}</div>
+          <div style="display: flex; gap: 2px;">
+            <div title="Nuevo archivo" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-file-plus" style="font-size: 14px;"></i></div>
+            <div title="Nueva carpeta" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-folder-plus" style="font-size: 14px;"></i></div>
+            <div onClick="{{ collapseAll }}" title="Contraer todo" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-list-collapse" style="font-size: 14px;"></i></div>
+            
+          </div>
+        </div>
+        <div style="flex: 1; min-height: 0; overflow-y: auto; padding: 0 6px 8px; display: flex; flex-direction: column; gap: 1px;">
+          <sc-for list="{{ treeRows }}" as="r" hint-placeholder-count="12">
+            <div onClick="{{ r.onClick }}" style="flex: none; height: 26px; display: flex; align-items: center; gap: 4px; padding-left: {{ r.pad }}; padding-right: 6px; border-radius: 6px; cursor: pointer; background: {{ r.bg }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover);" style-active="box-shadow: inset 0 0 0 100px var(--pressed);">
+              <div style="flex: none; width: 13px; display: flex; justify-content: center; color: var(--fg-subtle);"><i class="{{ r.chevron }}" style="font-size: 13px;"></i></div>
+              <i class="{{ r.icon }}" style="flex: none; margin-right: 2px; font-size: 14px; color: var(--fg-subtle);"></i>
+              <div style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: {{ r.color }};">{{ r.label }}</div>
+              <div style="flex: none; width: 12px; font-family: 'Geist Mono', monospace; font-size: 11.5px; font-weight: 500; color: {{ r.letterColor }};">{{ r.letter }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ showGit }}" hint-placeholder-val="{{ false }}">
+        <div style="flex: none; height: 36px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 10px 10px 6px 14px;">
+          <div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--fg-subtle);">COMMIT</div>
+          <div style="display: flex; gap: 2px;">
+            <div title="Actualizar" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-refresh-cw" style="font-size: 14px;"></i></div>
+            <div title="Descartar todos los cambios" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-undo-2" style="font-size: 14px;"></i></div>
+            <div title="Mostrar como lista" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-list-tree" style="font-size: 14px;"></i></div>
+            <div title="Historial" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-git-graph" style="font-size: 14px;"></i></div>
+            <div title="Más" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-ellipsis" style="font-size: 14px;"></i></div>
+            
+          </div>
+        </div>
+        <div style="flex: 1; min-height: 0; overflow-y: auto; padding: 0 6px; display: flex; flex-direction: column; gap: 1px;">
+          <sc-for list="{{ gitRows }}" as="r" hint-placeholder-count="6">
+            <div onClick="{{ r.onClick }}" style="flex: none; height: 26px; display: flex; align-items: center; gap: 4px; padding-left: {{ r.pad }}; padding-right: 6px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);" style-active="background: var(--pressed);">
+              <div style="flex: none; width: 13px; display: flex; justify-content: center; color: var(--fg-subtle);"><i class="{{ r.chevron }}" style="font-size: 13px;"></i></div>
+              <div style="flex: none; margin-right: 2px; display: flex; align-items: center; gap: 6px;">
+                <div onClick="{{ r.onCheck }}" style="width: 16px; height: 16px; box-sizing: border-box; border-radius: 4px; border: 1px solid {{ r.chkBorder }}; background: {{ r.chkBg }}; display: flex; align-items: center; justify-content: center; color: var(--accent-fg);" style-hover="box-shadow: 0 0 0 3px var(--pressed);"><i class="{{ r.chkIcon }}" style="font-size: 12px; opacity: {{ r.chkOpacity }};"></i></div>
+                <sc-if value="{{ r.icon }}" hint-placeholder-val="{{ false }}"><i class="{{ r.icon }}" style="font-size: 14px; color: var(--fg-subtle);"></i></sc-if>
+              </div>
+              <div style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.label }}</div>
+              <div style="flex: 1; min-width: 0; margin-left: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--fg-subtle);">{{ r.detail }}</div>
+              <div style="flex: none; font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle);">{{ r.count }}</div>
+              <div style="flex: none; width: 12px; font-family: 'Geist Mono', monospace; font-size: 11.5px; font-weight: 500; color: {{ r.letterColor }};">{{ r.letter }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="flex: none; display: flex; flex-direction: column; gap: 8px; padding: 10px; border-top: 1px solid var(--border);">
+          <textarea placeholder="Mensaje del commit (Ctrl+Intro para hacer commit)" style="height: 76px; resize: none; box-sizing: border-box; padding: 8px 9px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); color: var(--fg); font: inherit; outline: none;" style-focus="border-color: var(--accent);">Vista previa de markdown con scroll sincronizado</textarea>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: 12px; color: var(--fg-muted);">
+            <div onClick="{{ amend.onCheck }}" style="flex: 1; display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--fg);">
+              <div style="width: 16px; height: 16px; box-sizing: border-box; border-radius: 4px; border: 1px solid {{ amend.chkBorder }}; background: {{ amend.chkBg }}; display: flex; align-items: center; justify-content: center; color: var(--accent-fg);"><i class="icon-check" style="font-size: 12px; opacity: {{ amend.chkOpacity }};"></i></div>
+              <span style="font-size: 13px;">Amend</span>
+            </div>
+            <div style="display: flex; gap: 4px; font-family: 'Geist Mono', monospace; font-size: 11.5px; color: var(--fg-subtle);"><span>{{ stagedLabel }} ·</span><span style="color: var(--success);">{{ statsAdd }}</span><span style="color: var(--danger);">{{ statsDel }}</span></div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <div style="flex: 1; min-width: 0; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--accent); color: var(--accent-fg); font-weight: 500; cursor: pointer; opacity: {{ commitOpacity }};" style-hover="box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 35%, transparent);">Commit</div>
+            <div style="flex: none; height: 30px; box-sizing: border-box; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border-strong); font-weight: 500; cursor: pointer; opacity: {{ commitOpacity }};" style-hover="background: var(--overlay);">Commit y push…</div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+</div>
+<div style="flex: none; height: 30px; display: flex; align-items: center; gap: 16px; padding: 0 12px 0 4px; background: var(--surface); border-top: 1px solid var(--border); font-size: 11.5px; color: var(--fg-subtle); white-space: nowrap;">
+
+  <div style="display: flex; align-items: center; gap: 2px; margin-right: -4px;">
+    <sc-for list="{{ railItems }}" as="it" hint-placeholder-count="2">
+      <div onClick="{{ it.onClick }}" title="{{ it.title }}" style="height: 24px; min-width: 28px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 7px; border-radius: 6px; cursor: pointer; background: {{ it.bg }}; color: {{ it.color }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover); color: var(--fg);">
+        <i class="{{ it.icon }}" style="font-size: 15px;"></i>
+        <sc-if value="{{ it.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500;">{{ it.badge }}</span></sc-if>
+      </div>
+    </sc-for>
+  </div>
+  <div style="width: 1px; height: 14px; background: var(--border);"></div>
+  <div style="height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 6px; margin: 0 -6px; border-radius: 6px; color: var(--accent-text); cursor: pointer;" style-hover="background: var(--hover);">
+    <i class="icon-git-branch" style="font-size: 13px;"></i><span>{{ branch }}</span><i class="icon-chevron-up" style="font-size: 11px;"></i>
+    <sc-if value="{{ hasAhead }}" hint-placeholder-val="{{ true }}"><span style="display: flex; align-items: center; gap: 2px;"><i class="icon-arrow-up" style="font-size: 11px;"></i>{{ ahead }}</span></sc-if>
+  </div>
+  <sc-if value="{{ folder }}" hint-placeholder-val="{{ true }}">
+    <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" style-hover="text-decoration: underline;"><i class="icon-hard-drive" style="font-size: 13px;"></i><span>{{ rootPath }}</span></div>
+  </sc-if>
+  <div style="flex: 1;"></div>
+  <sc-if value="{{ showWords }}" hint-placeholder-val="{{ false }}"><div>{{ words }}</div></sc-if>
+  <sc-if value="{{ showCursor }}" hint-placeholder-val="{{ true }}"><div style="cursor: pointer;" style-hover="color: var(--fg-muted);">Ln {{ ln }}, Col {{ col }}</div></sc-if>
+  <div style="cursor: pointer;" style-hover="color: var(--fg-muted);">{{ indent }}</div>
+  <div style="cursor: pointer;" style-hover="color: var(--fg-muted);">UTF-8</div>
+  <div style="cursor: pointer;" style-hover="color: var(--fg-muted);">LF</div>
+  <div style="cursor: pointer;" style-hover="color: var(--fg-muted);">{{ langName }}</div>
+  <div title="Atajos de teclado" style="width: 20px; height: 20px; margin-right: -6px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-keyboard" style="font-size: 14px;"></i></div>
+</div>
+</div>
+<sc-if value="{{ settings }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeSettings }}" style="position: absolute; inset: 0; z-index: 20; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 16px;">
+    <div onClick="{{ stop }}" style="width: 800px; max-width: 100%; height: 720px; max-height: 100%; display: flex; background: var(--overlay); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden;">
+      <div style="flex: none; width: 188px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; padding: 14px 10px; background: var(--surface); border-right: 1px solid var(--border); border-radius: 13px 0 0 13px;">
+        <div style="padding: 2px 8px 10px; font-size: 14px; font-weight: 600;">Configuración</div>
+        <sc-for list="{{ cats }}" as="c" hint-placeholder-count="6">
+          <div onClick="{{ c.onClick }}" style="height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 7px; cursor: pointer; background: {{ c.bg }}; color: {{ c.color }}; font-weight: {{ c.weight }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover);"><i class="{{ c.icon }}" style="font-size: 14px;"></i><span>{{ c.label }}</span></div>
+        </sc-for>
+        <div style="flex: 1;"></div>
+        <div style="padding: 8px; font-size: 11.5px; line-height: 1.5; color: var(--fg-subtle);">Guardado en<br><span style="font-family: 'Geist Mono', monospace;">~/.config/ted<br>/settings.toml</span></div>
+      </div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+        <div style="flex: none; height: 52px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--border);">
+          <div style="font-size: 15px; font-weight: 600;">{{ catTitle }}</div>
+          <div onClick="{{ closeSettings }}" title="Cerrar" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-x" style="font-size: 16px;"></i></div>
+        </div>
+        <div style="flex: 1; min-height: 0; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 22px;">
+          <sc-if value="{{ cat0 }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="font-weight: 500;">Idioma</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div style="display: flex; flex-direction: column; gap: 2px;"><div>Idioma de la interfaz</div><div style="font-size: 12px; color: var(--fg-muted);">Automático sigue el idioma del sistema.</div></div><div style="width: 220px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); cursor: pointer;" style-hover="border-color: var(--border-strong);"><span>Español</span><i class="icon-chevrons-up-down" style="font-size: 13px; color: var(--fg-subtle);"></i></div></div>
+            </div>
+            <div style="flex: none; height: 1px; background: var(--border);"></div>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="display: flex; flex-direction: column; gap: 2px;"><div style="font-weight: 500;">Tema</div><div style="font-size: 12px; color: var(--fg-muted);">Sistema sigue el modo claro u oscuro del sistema operativo.</div></div>
+              <div style="display: flex; gap: 12px;">
+                <div onClick="{{ thSystem.onClick }}" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; cursor: pointer;">
+                  <div style="height: 92px; box-sizing: border-box; display: flex; padding: {{ thSystem.pad }}; border-radius: 10px; border: {{ thSystem.bw }} solid {{ thSystem.ring }}; background: {{ thSystem.frameBg }};"><div style="flex: 1; display: flex; border-radius: 6px; border: 1px solid var(--border-strong); overflow: hidden;"><div style="flex: 1; background: #f4f5f7; padding: 8px; display: flex; flex-direction: column; gap: 5px;"><div style="height: 5px; width: 70%; border-radius: 3px; background: #cdd0d8;"></div><div style="height: 5px; width: 50%; border-radius: 3px; background: #5b63e6;"></div><div style="height: 5px; width: 60%; border-radius: 3px; background: #cdd0d8;"></div></div><div style="flex: 2 1 0; background: #15161a; padding: 8px; display: flex; flex-direction: column; gap: 6px;"><div style="height: 12px; border-radius: 4px; border: 1px solid #3b3e48;"></div><div style="height: 5px; width: 80%; border-radius: 3px; background: #3b3e48;"></div><div style="height: 5px; width: 55%; border-radius: 3px; background: #3b3e48;"></div></div></div></div>
+                  <div style="display: flex; align-items: center; gap: 8px;"><div style="width: 14px; height: 14px; box-sizing: border-box; border-radius: 50%; border: {{ thSystem.radioBw }} solid {{ thSystem.ring }};"></div><span>{{ thSystem.label }}</span></div>
+                </div>
+                <div onClick="{{ thLight.onClick }}" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; cursor: pointer;">
+                  <div style="height: 92px; box-sizing: border-box; display: flex; padding: {{ thLight.pad }}; border-radius: 10px; border: {{ thLight.bw }} solid {{ thLight.ring }}; background: {{ thLight.frameBg }};"><div style="flex: 1; display: flex; border-radius: 6px; border: 1px solid var(--border-strong); overflow: hidden;"><div style="flex: 1; background: #f4f5f7; padding: 8px; display: flex; flex-direction: column; gap: 5px;"><div style="height: 5px; width: 70%; border-radius: 3px; background: #cdd0d8;"></div><div style="height: 5px; width: 50%; border-radius: 3px; background: #5b63e6;"></div><div style="height: 5px; width: 60%; border-radius: 3px; background: #cdd0d8;"></div></div><div style="flex: 2 1 0; background: #fcfcfd; padding: 8px; display: flex; flex-direction: column; gap: 6px;"><div style="height: 12px; border-radius: 4px; border: 1px solid #cdd0d8;"></div><div style="height: 5px; width: 80%; border-radius: 3px; background: #cdd0d8;"></div><div style="height: 5px; width: 55%; border-radius: 3px; background: #cdd0d8;"></div></div></div></div>
+                  <div style="display: flex; align-items: center; gap: 8px;"><div style="width: 14px; height: 14px; box-sizing: border-box; border-radius: 50%; border: {{ thLight.radioBw }} solid {{ thLight.ring }};"></div><span>{{ thLight.label }}</span></div>
+                </div>
+                <div onClick="{{ thDark.onClick }}" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; cursor: pointer;">
+                  <div style="height: 92px; box-sizing: border-box; display: flex; padding: {{ thDark.pad }}; border-radius: 10px; border: {{ thDark.bw }} solid {{ thDark.ring }}; background: {{ thDark.frameBg }};"><div style="flex: 1; display: flex; border-radius: 6px; border: 1px solid var(--border-strong); overflow: hidden;"><div style="flex: 1; background: #1b1c21; padding: 8px; display: flex; flex-direction: column; gap: 5px;"><div style="height: 5px; width: 70%; border-radius: 3px; background: #3b3e48;"></div><div style="height: 5px; width: 50%; border-radius: 3px; background: #5b63e6;"></div><div style="height: 5px; width: 60%; border-radius: 3px; background: #3b3e48;"></div></div><div style="flex: 2 1 0; background: #15161a; padding: 8px; display: flex; flex-direction: column; gap: 6px;"><div style="height: 12px; border-radius: 4px; border: 1px solid #3b3e48;"></div><div style="height: 5px; width: 80%; border-radius: 3px; background: #3b3e48;"></div><div style="height: 5px; width: 55%; border-radius: 3px; background: #3b3e48;"></div></div></div></div>
+                  <div style="display: flex; align-items: center; gap: 8px;"><div style="width: 14px; height: 14px; box-sizing: border-box; border-radius: 50%; border: {{ thDark.radioBw }} solid {{ thDark.ring }};"></div><span>{{ thDark.label }}</span></div>
+                </div>
+              </div>
+            </div>
+            <div style="flex: none; height: 1px; background: var(--border);"></div>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="font-weight: 500;">Interfaz</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div style="display: flex; flex-direction: column; gap: 2px;"><div>Fuente</div><div style="font-size: 12px; color: var(--fg-muted);">Geist va incluida, así se ve igual en todas las plataformas.</div></div><div style="width: 220px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); cursor: pointer;" style-hover="border-color: var(--border-strong);"><span>Geist (incluida)</span><i class="icon-chevrons-up-down" style="font-size: 13px; color: var(--fg-subtle);"></i></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Tamaño de la fuente</div><div style="display: flex; align-items: center; gap: 8px;"><div onClick="{{ uiDec }}" style="width: 30px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--raised); border: 1px solid var(--border-strong); cursor: pointer;" style-hover="background: var(--overlay);"><i class="icon-minus" style="font-size: 14px;"></i></div><div style="width: 64px; text-align: center; font-family: 'Geist Mono', monospace;">{{ uiSize }} px</div><div onClick="{{ uiInc }}" style="width: 30px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--raised); border: 1px solid var(--border-strong); cursor: pointer;" style-hover="background: var(--overlay);"><i class="icon-plus" style="font-size: 14px;"></i></div></div></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ cat1 }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="font-weight: 500;">Texto</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Fuente del editor</div><div style="width: 220px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); cursor: pointer;" style-hover="border-color: var(--border-strong);"><span style="font-family: 'Geist Mono', monospace; font-size: 12.5px;">Geist Mono (incluida)</span><i class="icon-chevrons-up-down" style="font-size: 13px; color: var(--fg-subtle);"></i></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Tamaño de la fuente</div><div style="display: flex; align-items: center; gap: 8px;"><div onClick="{{ edDec }}" style="width: 30px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--raised); border: 1px solid var(--border-strong); cursor: pointer;" style-hover="background: var(--overlay);"><i class="icon-minus" style="font-size: 14px;"></i></div><div style="width: 64px; text-align: center; font-family: 'Geist Mono', monospace;">{{ edSizeLabel }} px</div><div onClick="{{ edInc }}" style="width: 30px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--raised); border: 1px solid var(--border-strong); cursor: pointer;" style-hover="background: var(--overlay);"><i class="icon-plus" style="font-size: 14px;"></i></div></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Números de línea</div><div onClick="{{ swNumbers.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swNumbers.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swNumbers.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Resaltar la línea actual</div><div onClick="{{ swCurLine.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swCurLine.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swCurLine.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div style="display: flex; flex-direction: column; gap: 2px;"><div>Ajuste de línea</div><div style="font-size: 12px; color: var(--fg-muted);">Las líneas largas continúan debajo en lugar de desplazarse en horizontal.</div></div><div onClick="{{ swWrap.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swWrap.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swWrap.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
+            </div>
+            <div style="flex: none; height: 1px; background: var(--border);"></div>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="font-weight: 500;">Indentación</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Tamaño de tabulación</div><div style="display: flex; align-items: center; gap: 8px;"><div onClick="{{ tabDec }}" style="width: 30px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--raised); border: 1px solid var(--border-strong); cursor: pointer;" style-hover="background: var(--overlay);"><i class="icon-minus" style="font-size: 14px;"></i></div><div style="width: 64px; text-align: center; font-family: 'Geist Mono', monospace;">{{ tabSize }}</div><div onClick="{{ tabInc }}" style="width: 30px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--raised); border: 1px solid var(--border-strong); cursor: pointer;" style-hover="background: var(--overlay);"><i class="icon-plus" style="font-size: 14px;"></i></div></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div style="display: flex; flex-direction: column; gap: 2px;"><div>Insertar espacios</div><div style="font-size: 12px; color: var(--fg-muted);">Cada lenguaje puede cambiarlo en Lenguajes.</div></div><div onClick="{{ swSpaces.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swSpaces.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swSpaces.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
+            </div>
+            <div style="flex: none; height: 1px; background: var(--border);"></div>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="font-weight: 500;">Markdown</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Vista al abrir un .md</div><div style="width: 220px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); cursor: pointer;" style-hover="border-color: var(--border-strong);"><span>Dividida</span><i class="icon-chevrons-up-down" style="font-size: 13px; color: var(--fg-subtle);"></i></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div style="display: flex; flex-direction: column; gap: 2px;"><div>Scroll sincronizado</div><div style="font-size: 12px; color: var(--fg-muted);">La vista previa sigue al editor en la vista dividida.</div></div><div onClick="{{ swMdSync.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swMdSync.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swMdSync.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ cat2 }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="font-weight: 500;">Guardado</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div style="display: flex; flex-direction: column; gap: 2px;"><div>Guardado automático</div><div style="font-size: 12px; color: var(--fg-muted);">Al cambiar de pestaña o de ventana.</div></div><div onClick="{{ swAutosave.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swAutosave.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swAutosave.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Quitar espacios al final de línea</div><div onClick="{{ swTrim.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swTrim.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swTrim.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Terminar con una línea vacía</div><div onClick="{{ swFinalNl.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swFinalNl.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swFinalNl.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
+            </div>
+            <div style="flex: none; height: 1px; background: var(--border);"></div>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="font-weight: 500;">Archivos nuevos</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Codificación</div><div style="width: 220px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); cursor: pointer;" style-hover="border-color: var(--border-strong);"><span>UTF-8</span><i class="icon-chevrons-up-down" style="font-size: 13px; color: var(--fg-subtle);"></i></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Fin de línea</div><div style="width: 220px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); cursor: pointer;" style-hover="border-color: var(--border-strong);"><span>LF (Linux y macOS)</span><i class="icon-chevrons-up-down" style="font-size: 13px; color: var(--fg-subtle);"></i></div></div>
+            </div>
+            <div style="flex: none; height: 1px; background: var(--border);"></div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 2px;"><div style="font-weight: 500;">Excluir del explorador</div><div style="font-size: 12px; color: var(--fg-muted);">Patrones separados por comas. También se respeta el .gitignore.</div></div>
+              <div style="height: 30px; box-sizing: border-box; display: flex; align-items: center; padding: 0 9px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); font-family: 'Geist Mono', monospace; font-size: 12.5px;" style-hover="border-color: var(--border-strong);">.git, target, node_modules</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ cat3 }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="font-weight: 500;">Git</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div style="display: flex; flex-direction: column; gap: 2px;"><div>Ejecutable</div><div style="font-size: 12px; color: var(--fg-muted);">git 2.47.1 encontrado en /usr/bin/git.</div></div><div style="width: 220px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); cursor: pointer;" style-hover="border-color: var(--border-strong);"><span>Del sistema</span><i class="icon-chevrons-up-down" style="font-size: 13px; color: var(--fg-subtle);"></i></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div style="display: flex; flex-direction: column; gap: 2px;"><div>Fetch automático</div><div style="font-size: 12px; color: var(--fg-muted);">Cada 5 minutos, para mostrar los commits pendientes en la barra de estado.</div></div><div onClick="{{ swGitFetch.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swGitFetch.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swGitFetch.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Confirmar antes de descartar cambios</div><div onClick="{{ swGitConfirm.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swGitConfirm.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swGitConfirm.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Ctrl+Intro en el mensaje</div><div style="width: 220px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); cursor: pointer;" style-hover="border-color: var(--border-strong);"><span>Commit</span><i class="icon-chevrons-up-down" style="font-size: 13px; color: var(--fg-subtle);"></i></div></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ cat4 }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="display: flex; flex-direction: column; gap: 2px;"><div style="font-weight: 500;">Lenguajes</div><div style="font-size: 12px; color: var(--fg-muted);">Resaltado con tree-sitter. Cada lenguaje puede tener su propia indentación.</div></div>
+              <div style="border: 1px solid var(--border); border-radius: 10px; overflow: hidden;">
+                <div style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11.5px; font-weight: 500; color: var(--fg-subtle);"><div style="width: 120px;">Lenguaje</div><div style="flex: 1;">Extensiones</div><div style="width: 80px; text-align: right;">Tabulación</div></div>
+                <sc-for list="{{ languages }}" as="l" hint-placeholder-count="8">
+                  <div style="height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--border);" style-hover="background: var(--hover);"><div style="width: 120px;">{{ l.name }}</div><div style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--fg-muted);">{{ l.ext }}</div><div style="width: 80px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px;">{{ l.tab }}</div></div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ cat5 }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 18px;">
+              <div style="display: flex; align-items: center; gap: 16px;"><img src="ted-icon.svg" alt="" style="width: 48px; height: 48px; display: block;"><div style="display: flex; flex-direction: column; gap: 4px;"><div style="font-size: 20px; font-weight: 600;">ted</div><div style="color: var(--fg-muted);">Tanis Editor · versión 0.1.0-dev</div></div></div>
+              <div style="color: var(--fg-muted); line-height: 1.5; text-wrap: pretty;">Un editor de texto ligero, hecho con Rust, gpui y telaio. Sin cuentas, sin telemetría.</div>
+              <div style="display: flex; gap: 8px;"><div style="height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border-strong); font-weight: 500; cursor: pointer;" style-hover="background: var(--overlay);"><i class="icon-refresh-cw" style="font-size: 14px;"></i>Buscar actualizaciones</div><div style="height: 30px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; color: var(--fg-muted); font-weight: 500; cursor: pointer;" style-hover="background: var(--hover);">Ver registros</div></div>
+              <div style="display: flex; gap: 10px; font-size: 12.5px;"><a href="#">GitHub</a><span style="color: var(--fg-subtle); opacity: .6;">·</span><a href="#">Licencia Apache 2.0</a></div>
+            </div>
+          </sc-if>
+        </div>
+        <div style="flex: none; height: 52px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-top: 1px solid var(--border);">
+          <div style="font-size: 12px; color: var(--fg-subtle);">Los cambios se aplican al momento.</div>
+          <div onClick="{{ resetSettings }}" style="height: 30px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; color: var(--fg-muted); font-weight: 500; cursor: pointer;" style-hover="background: var(--hover);">Restablecer valores</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;openPanel&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;files&quot;, &quot;git&quot;, &quot;none&quot;], &quot;default&quot;: &quot;files&quot;, &quot;tsType&quot;: &quot;'files' | 'git' | 'none'&quot;, &quot;section&quot;: &quot;Barra lateral&quot;}, &quot;theme&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;dark&quot;, &quot;light&quot;], &quot;default&quot;: &quot;dark&quot;, &quot;tsType&quot;: &quot;'dark' | 'light'&quot;, &quot;section&quot;: &quot;Tema&quot;}}">
+class Component extends DCLogic {
+  static DEF = { uiSize: 13, edSize: 12.5, tab: 4, spaces: true, wrap: false, numbers: true, curLine: true, autosave: true, trim: true, finalNl: true, gitFetch: true, gitConfirm: true, mdSync: true };
+  state = {
+    lib: null, data: null,
+    theme: this.props.theme ?? 'dark',
+    panel: this.props.openPanel ?? 'files',
+    panelW: 260, pinned: false, menu: false,
+    tabs: [{ p: 'README.md' }, { p: 'src/buffer.rs' }, { p: 'config/default.json' }, { p: 'logs/ted.log' }],
+    active: 0, mdView: 'split',
+    open: { src: true, 'src/syntax': false, config: true, assets: false, logs: false },
+    cur: 4, settings: false, cat: 0,
+    staged: { 'README.md': true, 'src/buffer.rs': true },
+    groups: { changes: true, unversioned: true }, amend: false,
+    s: { ...Component.DEF },
+  };
+  hl = {};
+  hot = false;
+  edRef = React.createRef();
+  pvRef = React.createRef();
+
+  componentDidMount() {
+    const u = (f) => new URL(f, document.baseURI).href;
+    Promise.all([import(u('./ted-lang.js')), import(u('./ted-data.js'))]).then(([lib, data]) => this.setState({ lib, data }));
+    this.onKey = (e) => {
+      if (this.props.embedded && !this.hot) return;
+      const k = e.key.toLowerCase(), c = e.ctrlKey || e.metaKey;
+      if (k === 'escape') {
+        if (this.state.settings) this.setState({ settings: false });
+        else if (this.state.menu) this.setState({ menu: false });
+        else if (this.floating()) this.setState({ panel: 'none' });
+      }
+      else if (c && k === ',') { e.preventDefault(); this.setState({ settings: true }); }
+      else if (c && !e.shiftKey && k === 'b') { e.preventDefault(); this.togglePanel('files'); }
+      else if (c && e.shiftKey && k === 'g') { e.preventDefault(); this.togglePanel('git'); }
+      else if (c && e.shiftKey && k === 'v') { e.preventDefault(); this.setState((s) => ({ mdView: s.mdView === 'editor' ? 'split' : s.mdView === 'split' ? 'preview' : 'editor' })); }
+    };
+    window.addEventListener('keydown', this.onKey);
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this.onKey); }
+  componentDidUpdate(prev) {
+    const sync = {};
+    if (prev.theme !== this.props.theme && this.props.theme) sync.theme = this.props.theme;
+    if (prev.openPanel !== this.props.openPanel && this.props.openPanel) sync.panel = this.props.openPanel;
+    if (Object.keys(sync).length) this.setState(sync);
+  }
+
+  railB() { return false; }
+  floating() { return this.railB() && !this.state.pinned; }
+  togglePanel(p) { this.setState((s) => ({ panel: s.panel === p ? 'none' : p, menu: false })); }
+  openFile(p) {
+    this.setState((s) => {
+      const i = s.tabs.findIndex((t) => t.p === p && !t.preview);
+      const next = { cur: 0 };
+      if (i >= 0) next.active = i; else { next.tabs = [...s.tabs, { p }]; next.active = s.tabs.length; }
+      if (this.floating()) next.panel = 'none';
+      return next;
+    });
+  }
+  closeTab(i) {
+    this.setState((s) => {
+      const tabs = s.tabs.filter((_, j) => j !== i);
+      let active = s.active;
+      if (i < active || active >= tabs.length) active = Math.max(0, active - 1);
+      return { tabs, active };
+    });
+  }
+  openPreviewTab(p) {
+    this.setState((s) => {
+      const i = s.tabs.findIndex((t) => t.p === p && t.preview);
+      if (i >= 0) return { active: i };
+      return { tabs: [...s.tabs, { p, preview: true }], active: s.tabs.length };
+    });
+  }
+  setS(k, v) { this.setState((s) => ({ s: { ...s.s, [k]: v } })); }
+  startResize(e) {
+    e.preventDefault();
+    const x0 = e.clientX, w0 = this.state.panelW;
+    const move = (ev) => this.setState({ panelW: Math.max(200, Math.min(480, w0 + ev.clientX - x0)) });
+    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); document.body.style.cursor = ''; };
+    document.body.style.cursor = 'col-resize';
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+  }
+  lines(path) {
+    const { lib, data } = this.state;
+    if (!this.hl[path]) this.hl[path] = lib.highlight(lib.langOf(path), data.FILES[path] || '');
+    return this.hl[path];
+  }
+  icon(path) {
+    const l = this.state.lib ? this.state.lib.langOf(path) : 'text';
+    return ({ markdown: 'icon-file-text', json: 'icon-file-json', log: 'icon-scroll-text', html: 'icon-file-code', xml: 'icon-file-code', js: 'icon-file-code', rust: 'icon-file-code', toml: 'icon-file-cog' })[l] || 'icon-file';
+  }
+  syncScroll(from, to) {
+    if (!this.state.s.mdSync || !from || !to) return;
+    const r = from.scrollTop / Math.max(1, from.scrollHeight - from.clientHeight);
+    to.scrollTop = r * (to.scrollHeight - to.clientHeight);
+  }
+  letterColor(l) { return l === 'A' || l === 'U' ? 'var(--success)' : l === 'D' ? 'var(--danger)' : l === 'R' ? 'var(--info)' : 'var(--warning)'; }
+  check(state, onToggle) {
+    const on = state !== 'off';
+    return {
+      chkBg: on ? 'var(--accent)' : 'var(--raised)', chkBorder: on ? 'var(--accent)' : 'var(--border-strong)',
+      chkIcon: state === 'mixed' ? 'icon-minus' : 'icon-check', chkOpacity: on ? 1 : 0,
+      onCheck: (e) => { e.stopPropagation(); onToggle(); },
+    };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const ready = !!(st.lib && st.data);
+    const railB = this.railB(), floating = this.floating();
+    const tab = st.tabs[st.active];
+    const path = tab ? tab.p : null;
+    const lang = ready && path ? st.lib.langOf(path) : 'text';
+    const isPreviewTab = !!(tab && tab.preview);
+    const isMd = lang === 'markdown' && !isPreviewTab;
+    const view = isPreviewTab ? 'preview' : isMd ? st.mdView : 'editor';
+    const edSize = st.s.edSize, lh = Math.round(edSize * 1.6);
+
+    const lines = ready && path ? this.lines(path).map((toks, i) => ({
+      n: i + 1, toks, onClick: () => this.setState({ cur: i }),
+      bg: st.s.curLine && i === st.cur ? 'var(--hover)' : 'transparent',
+      numColor: i === st.cur ? 'var(--fg-muted)' : 'var(--fg-subtle)',
+    })) : [];
+    const gutterW = String(lines.length).length * Math.ceil(edSize * 0.62) + 28;
+    const text = ready && path ? st.data.FILES[path] || '' : '';
+    const curLine = lines[st.cur] ? lines[st.cur].toks.map((t) => t.t).join('') : '';
+
+    const tabs = st.tabs.map((t, i) => {
+      const on = i === st.active;
+      const dirty = !t.preview && ready && !!st.data.DIRTY[t.p];
+      return {
+        label: t.p.split('/').pop(), icon: t.preview ? 'icon-eye' : this.icon(t.p), detail: t.preview ? 'Vista previa' : '',
+        hasDetail: !!t.preview, dirty, clean: !dirty,
+        bg: on ? 'var(--bg)' : 'transparent', color: on ? 'var(--fg)' : 'var(--fg-muted)',
+        shadow: on ? 'inset 0 2px 0 var(--accent)' : 'none', title: ready ? st.data.ROOT_PATH + '/' + t.p : t.p,
+        onClick: () => this.setState({ active: i, cur: 0 }),
+        onClose: (e) => { e.stopPropagation(); this.closeTab(i); },
+      };
+    });
+
+    const treeRows = [];
+    if (ready) {
+      for (const n of st.data.TREE) {
+        const parts = n.path.split('/');
+        let hidden = false;
+        for (let d = 1; d < parts.length; d++) if (!st.open[parts.slice(0, d).join('/')]) hidden = true;
+        if (hidden) continue;
+        const sel = !n.dir && path === n.path && !isPreviewTab;
+        const chg = [...st.data.GIT.changes, ...st.data.GIT.unversioned].find((c) => c.path === n.path);
+        treeRows.push({
+          label: parts[parts.length - 1], pad: 8 + (parts.length - 1) * 16 + 'px',
+          chevron: n.dir ? (st.open[n.path] ? 'icon-chevron-down' : 'icon-chevron-right') : '',
+          icon: n.dir ? (st.open[n.path] ? 'icon-folder-open' : 'icon-folder') : this.icon(n.path),
+          bg: sel ? 'var(--accent-subtle)' : 'transparent', color: sel ? 'var(--accent-text)' : chg ? this.letterColor(chg.letter) : 'var(--fg)',
+          letter: chg ? chg.letter : '', letterColor: chg ? this.letterColor(chg.letter) : 'inherit',
+          onClick: () => n.dir ? this.setState((s) => ({ open: { ...s.open, [n.path]: !s.open[n.path] } })) : this.openFile(n.path),
+        });
+      }
+    }
+
+    const G = ready ? st.data.GIT : { changes: [], unversioned: [], stats: {}, branch: 'main', ahead: 0 };
+    const gitGroup = (key, label, list) => {
+      const n = list.filter((c) => st.staged[c.path]).length;
+      const chk = n === 0 ? 'off' : n === list.length ? 'on' : 'mixed';
+      const rows = [{
+        label, count: list.length, chevron: st.groups[key] ? 'icon-chevron-down' : 'icon-chevron-right', pad: '8px', icon: '', detail: '', letter: '', letterColor: 'inherit',
+        ...this.check(chk, () => this.setState((s) => { const staged = { ...s.staged }; list.forEach((c) => { staged[c.path] = chk !== 'on'; }); return { staged }; })),
+        onClick: () => this.setState((s) => ({ groups: { ...s.groups, [key]: !s.groups[key] } })),
+      }];
+      if (st.groups[key]) for (const c of list) rows.push({
+        label: c.path.split('/').pop(), detail: c.path.includes('/') ? c.path.slice(0, c.path.lastIndexOf('/')) : '', pad: '24px',
+        letter: c.letter, letterColor: this.letterColor(c.letter), icon: this.icon(c.path), count: '', chevron: '',
+        ...this.check(st.staged[c.path] ? 'on' : 'off', () => this.setState((s) => ({ staged: { ...s.staged, [c.path]: !s.staged[c.path] } }))),
+        onClick: () => this.openFile(c.path),
+      });
+      return rows;
+    };
+    const gitRows = [...gitGroup('changes', 'Cambios', G.changes), ...gitGroup('unversioned', 'Sin versionar', G.unversioned)];
+    const stagedCount = [...G.changes, ...G.unversioned].filter((c) => st.staged[c.path]).length;
+    const changeCount = G.changes.length + G.unversioned.length;
+
+    const panelOpen = st.panel !== 'none';
+    const railItems = [['files', 'icon-files', 'Archivos', 'Explorador (Ctrl+B)'], ['git', 'icon-git-branch', 'Git', 'Control de código (Ctrl+Shift+G)']].map(([key, icon, label, title]) => {
+      const on = panelOpen && st.panel === key;
+      return {
+        icon, label, title, ind: on ? 1 : 0,
+        bg: on ? 'var(--accent-subtle)' : 'transparent',
+        color: on ? 'var(--accent-text)' : 'var(--fg-muted)',
+        badge: key === 'git' ? changeCount : '', hasBadge: key === 'git' && changeCount > 0,
+        onClick: () => this.togglePanel(key),
+      };
+    });
+
+    const previewEl = ready && view !== 'editor' && path ? React.createElement('div', {
+      style: { maxWidth: 720, margin: '0 auto', padding: '36px 40px 80px', fontSize: 14, color: 'var(--fg)', userSelect: 'text' },
+      dangerouslySetInnerHTML: { __html: st.lib.renderMarkdown(text) },
+    }) : null;
+
+    const mdTools = [['editor', 'icon-code', 'Solo editor'], ['split', 'icon-columns-2', 'Editor y vista previa'], ['preview', 'icon-eye', 'Solo vista previa']].map(([v, icon, title]) => ({
+      icon, title: title + ' (Ctrl+Shift+V)',
+      bg: st.mdView === v ? 'var(--accent-subtle)' : 'transparent', color: st.mdView === v ? 'var(--accent-text)' : 'var(--fg-muted)',
+      onClick: () => this.setState({ mdView: v }),
+    }));
+
+    const closeMenu = () => this.setState({ menu: false });
+    const recentFolders = [['ted', '~/projects/ted'], ['postino', '~/projects/postino'], ['telaio', '~/projects/telaio'], ['dotfiles', '~/dotfiles']]
+      .map(([name, p], i) => ({ name, path: p, checkOpacity: i === 0 ? 1 : 0, onClick: closeMenu }));
+    const recentFiles = [['notas.md', '~/Documentos'], ['nginx.conf', '/etc/nginx'], ['docker-compose.yml', '~/projects/infra'], ['app.log', '~/Descargas']]
+      .map(([name, p]) => ({ name, path: p, icon: this.icon(name), onClick: closeMenu }));
+
+    const cats = [
+      { label: 'Apariencia', icon: 'icon-palette' }, { label: 'Editor', icon: 'icon-square-pen' },
+      { label: 'Archivos', icon: 'icon-file' }, { label: 'Git', icon: 'icon-git-branch' },
+      { label: 'Lenguajes', icon: 'icon-code' }, { label: 'Acerca de', icon: 'icon-info' },
+    ].map((c, i) => ({
+      ...c, onClick: () => this.setState({ cat: i }),
+      bg: i === st.cat ? 'var(--accent-subtle)' : 'transparent', color: i === st.cat ? 'var(--accent-text)' : 'var(--fg)', weight: i === st.cat ? 500 : 400,
+    }));
+    const sw = (k) => ({ bg: st.s[k] ? 'var(--accent)' : 'var(--border-strong)', x: st.s[k] ? '16px' : '2px', toggle: () => this.setS(k, !st.s[k]) });
+    const themeCard = (t, label) => {
+      const on = st.theme === t;
+      return { label, ring: on ? 'var(--accent)' : 'var(--border-strong)', frameBg: on ? 'var(--accent-subtle)' : 'var(--surface)', bw: on ? '2px' : '1px', pad: on ? '7px' : '8px', radioBw: on ? '4px' : '1px', onClick: () => t !== 'system' && this.setState({ theme: t }) };
+    };
+    const languages = ['Markdown', 'Rust', 'JavaScript', 'JSON', 'TOML', 'HTML', 'XML', 'Log'].map((l, i) => ({ name: l, ext: ['.md', '.rs', '.js .mjs .ts', '.json', '.toml', '.html .htm', '.xml .svg', '.log'][i], tab: ['Markdown', 'JSON', 'HTML', 'XML'].includes(l) ? 2 : 4 }));
+
+    return {
+      ready, theme: st.theme, folder: true, hasTabs: true,
+      onEnter: () => { this.hot = true; }, onLeave: () => { this.hot = false; },
+      railA: !railB, railB, railItems, showLogo: !railB,
+      rootName: ready ? st.data.ROOT : '', rootPath: ready ? st.data.ROOT_PATH : '',
+      menuOpen: st.menu, toggleMenu: () => this.setState((s) => ({ menu: !s.menu })), closeMenu,
+      menuBtnBg: st.menu ? 'var(--pressed)' : 'transparent', recentFolders, recentFiles,
+      tabs,
+      lines, lh: lh + 'px', edSize: edSize + 'px', gutterW: gutterW + 'px', showNumbers: st.s.numbers, wrap: st.s.wrap ? 'pre-wrap' : 'pre',
+      edRef: this.edRef, pvRef: this.pvRef,
+      onEdScroll: () => this.syncScroll(this.edRef.current, this.pvRef.current),
+      showEditor: view !== 'preview', showPreview: view !== 'editor', previewEl,
+      edFlex: view === 'split' ? '1 1 0' : '1 1 auto',
+      isMd, mdTools, openPreviewTab: () => this.openPreviewTab(path),
+      panelOpen, showFiles: st.panel === 'files', showGit: st.panel === 'git', docked: !floating,
+      pW: st.panelW + 'px', pPos: floating ? 'absolute' : 'relative',
+      pShadow: floating ? '12px 0 32px rgba(0,0,0,.35)' : 'none',
+      showPin: railB, togglePin: () => this.setState((s) => ({ pinned: !s.pinned })),
+      pinIcon: st.pinned ? 'icon-pin-off' : 'icon-pin', pinTitle: st.pinned ? 'Soltar: flota sobre el editor' : 'Fijar junto al editor',
+      pinColor: st.pinned ? 'var(--accent-text)' : 'var(--fg-muted)',
+      startResize: (e) => this.startResize(e),
+      treeRows, collapseAll: () => this.setState({ open: {} }),
+      gitRows, branch: G.branch, ahead: G.ahead, hasAhead: G.ahead > 0, changeCount, hasChanges: changeCount > 0,
+      statsAdd: '+' + (G.stats.additions || 0), statsDel: '\u2212' + (G.stats.deletions || 0),
+      stagedLabel: stagedCount === 1 ? '1 archivo' : stagedCount + ' archivos', commitOpacity: stagedCount ? 1 : 0.45,
+      amend: this.check(st.amend ? 'on' : 'off', () => this.setState((s) => ({ amend: !s.amend }))),
+      ln: st.cur + 1, col: curLine.length + 1, indent: st.s.spaces ? 'Espacios: ' + st.s.tab : 'Tabulación: ' + st.s.tab,
+      langName: ready ? st.lib.LANG_NAMES[lang] : '', words: isMd && ready ? st.lib.wordCount(text).toLocaleString('es-ES') + ' palabras' : '',
+      showWords: isMd, showCursor: view !== 'preview',
+      settings: st.settings, openSettings: () => this.setState({ settings: true, menu: false }), closeSettings: () => this.setState({ settings: false }),
+      stop: (e) => e.stopPropagation(), cats, catTitle: cats[st.cat].label,
+      cat0: st.cat === 0, cat1: st.cat === 1, cat2: st.cat === 2, cat3: st.cat === 3, cat4: st.cat === 4, cat5: st.cat === 5,
+      thSystem: themeCard('system', 'Sistema'), thLight: themeCard('light', 'Claro'), thDark: themeCard('dark', 'Oscuro'),
+      uiSize: st.s.uiSize, edSizeLabel: edSize, tabSize: st.s.tab,
+      uiDec: () => this.setS('uiSize', Math.max(11, st.s.uiSize - 1)), uiInc: () => this.setS('uiSize', Math.min(16, st.s.uiSize + 1)),
+      edDec: () => this.setS('edSize', Math.max(10, edSize - 0.5)), edInc: () => this.setS('edSize', Math.min(18, edSize + 0.5)),
+      tabDec: () => this.setS('tab', Math.max(1, st.s.tab - 1)), tabInc: () => this.setS('tab', Math.min(8, st.s.tab + 1)),
+      swSpaces: sw('spaces'), swWrap: sw('wrap'), swNumbers: sw('numbers'), swCurLine: sw('curLine'), swAutosave: sw('autosave'),
+      swTrim: sw('trim'), swFinalNl: sw('finalNl'), swGitFetch: sw('gitFetch'), swGitConfirm: sw('gitConfirm'), swMdSync: sw('mdSync'),
+      languages, resetSettings: () => this.setState({ s: { ...Component.DEF } }),
+    };
+  }
+}
+</script>
+</body>
+</html>
