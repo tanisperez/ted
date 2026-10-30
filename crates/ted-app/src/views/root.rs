@@ -8,6 +8,7 @@
 use std::path::{Path, PathBuf};
 
 use gpui_kit::assets::IconName;
+use gpui_kit::component::input::InputState;
 use gpui_kit::component::notification::Notification;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -17,11 +18,13 @@ use ted_syntax::Language;
 use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
 use telaio_ui::components::EmptyState;
 
-use crate::actions::{CloseTab, NextTab, OpenFile, OpenFolder, PreviousTab, Save, ToggleExplorer};
+use crate::actions::{
+    CloseTab, NextTab, OpenFile, OpenFolder, OpenSettings, PreviousTab, Save, ToggleExplorer,
+};
 use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::launch::{self, LaunchError, Target};
 use crate::state::recents::{self, Recents};
-use crate::state::settings::Settings;
+use crate::state::settings::{Settings, SettingsCategory};
 use crate::state::syntax::Syntax;
 use crate::state::tabs::Tabs;
 use crate::theme::PaletteExt;
@@ -102,6 +105,10 @@ pub struct AppView {
     last_title: String,
     /// The user chose to close the window without saving: it may close now.
     pub(crate) closing: bool,
+    /// The category the Settings modal shows.
+    pub(crate) settings_category: SettingsCategory,
+    /// The exclude patterns field of the Settings modal, made when it opens.
+    pub(crate) exclude_input: Option<Entity<InputState>>,
     /// Checks the open file on disk when the window gets the focus back.
     _activation: Subscription,
 }
@@ -134,13 +141,33 @@ impl AppView {
             resizing_explorer: false,
             last_title: String::new(),
             closing: false,
+            settings_category: SettingsCategory::default(),
+            exclude_input: None,
             _activation: activation,
         };
         view.update_title(window, cx);
         if let Some(path) = path {
             view.open_path(&path, window, cx);
         }
+        view.apply_debug_open(window, cx);
         view
+    }
+
+    /// `TED_OPEN=settings` or `settings-about` opens the Settings modal at startup, to check or
+    /// screenshot it. Not a feature: unknown values are ignored.
+    fn apply_debug_open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let category = match std::env::var("TED_OPEN").as_deref() {
+            Ok("settings") => SettingsCategory::Appearance,
+            Ok("settings-about") => SettingsCategory::About,
+            _ => return,
+        };
+        self.settings_category = category;
+        // A dialog needs the window's `Root`, which does not exist yet while this view is being
+        // built: wait one tick, as Postino does.
+        let weak = cx.weak_entity();
+        window.defer(cx, move |window, cx| {
+            let _ = weak.update(cx, |view, cx| view.open_settings(window, cx));
+        });
     }
 
     /// The editor shown, if any.
@@ -216,7 +243,8 @@ impl AppView {
             }
             Target::Folder(root) => {
                 log::info!("opening a folder");
-                let explorer = cx.new(|cx| ExplorerView::new(root.clone(), cx));
+                let excludes = self.settings.explorer_exclude.clone();
+                let explorer = cx.new(|cx| ExplorerView::new(root.clone(), &excludes, cx));
                 let subscription = cx.subscribe_in(
                     &explorer,
                     window,
@@ -555,6 +583,9 @@ impl Render for AppView {
             .on_action(cx.listener(|this, _: &Save, window, cx| {
                 this.save(window, cx).detach();
             }))
+            .on_action(
+                cx.listener(|this, _: &OpenSettings, window, cx| this.open_settings(window, cx)),
+            )
             .on_action(cx.listener(|this, _: &CloseTab, window, cx| {
                 if this.explorer.is_some()
                     && let Some(document) = this.documents.active()

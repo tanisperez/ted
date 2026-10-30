@@ -175,6 +175,25 @@ pub fn bind_keys(cx: &mut App) {
     ]);
 }
 
+/// The settings that change how every editor paints, read by the element on every frame. Set
+/// with `cx.set_global` at startup and when Settings changes them.
+#[derive(Clone, Copy)]
+pub struct EditorDisplay {
+    pub line_numbers: bool,
+    pub current_line: bool,
+}
+
+impl Default for EditorDisplay {
+    fn default() -> Self {
+        Self {
+            line_numbers: true,
+            current_line: true,
+        }
+    }
+}
+
+impl Global for EditorDisplay {}
+
 /// One editor: a document, its cursor and scroll, and the keyboard focus.
 pub struct EditorView {
     pub state: EditorState,
@@ -566,6 +585,9 @@ pub struct EditorLayout {
     current_line: Option<Bounds<Pixels>>,
     /// The selected parts of the visible lines.
     selection: Vec<Bounds<Pixels>>,
+    /// The whole element: the mouse acts on the editor only while this is hovered, so a modal
+    /// or a menu drawn over it keeps its clicks and wheel.
+    hitbox: Hitbox,
     text_hitbox: Hitbox,
     gutter_hitbox: Hitbox,
 }
@@ -623,11 +645,20 @@ impl Element for EditorElement {
             .map(|size| size.width)
             .unwrap_or(font_size * 0.6);
 
-        // Gutter: as many digits as the last line number, at least two.
+        // Gutter: as many digits as the last line number, at least two. Without line numbers,
+        // only its right padding stays, so the text does not touch the edge.
         let started = std::time::Instant::now();
-        let gutter_lines = self.editor.read(cx).state.gutter_lines();
-        let digits = gutter_lines.to_string().len().max(2) as f32;
-        let gutter_width = px(digits * f32::from(char_width).ceil() + EDITOR_GUTTER_PADDING);
+        let display = cx
+            .try_global::<EditorDisplay>()
+            .copied()
+            .unwrap_or_default();
+        let gutter_width = if display.line_numbers {
+            let gutter_lines = self.editor.read(cx).state.gutter_lines();
+            let digits = gutter_lines.to_string().len().max(2) as f32;
+            px(digits * f32::from(char_width).ceil() + EDITOR_GUTTER_PADDING)
+        } else {
+            px(EDITOR_GUTTER_RIGHT)
+        };
         let gutter = Bounds::new(bounds.origin, size(gutter_width, bounds.size.height));
         let text_left = bounds.left() + gutter_width + px(EDITOR_TEXT_PADDING);
         let text = Bounds::from_corners(
@@ -711,7 +742,7 @@ impl Element for EditorElement {
             };
 
             let cursor_line = state.cursor.line;
-            let current_line = lines.contains(&cursor_line).then(|| {
+            let current_line = (display.current_line && lines.contains(&cursor_line)).then(|| {
                 Bounds::new(
                     point(bounds.left(), row_top(cursor_line)),
                     size(bounds.size.width, line_height),
@@ -774,9 +805,10 @@ impl Element for EditorElement {
 
             let numbers = lines
                 .clone()
+                .filter(|_| display.line_numbers)
                 .map(|line| {
                     let label = SharedString::from((line + 1).to_string());
-                    let color = if line == cursor_line {
+                    let color = if line == cursor_line && display.current_line {
                         palette.fg_muted
                     } else {
                         palette.fg_subtle
@@ -832,6 +864,7 @@ impl Element for EditorElement {
                 cursor,
                 current_line,
                 selection: selection_rects,
+                hitbox: window.insert_hitbox(bounds, HitboxBehavior::Normal),
                 text_hitbox: window.insert_hitbox(text, HitboxBehavior::Normal),
                 gutter_hitbox: window.insert_hitbox(gutter, HitboxBehavior::Normal),
             }
@@ -916,24 +949,21 @@ impl Element for EditorElement {
             cx,
         );
 
-        self.register_mouse_handlers(bounds, layout, window);
+        self.register_mouse_handlers(layout, window);
     }
 }
 
 impl EditorElement {
-    fn register_mouse_handlers(
-        &self,
-        bounds: Bounds<Pixels>,
-        layout: &EditorLayout,
-        window: &mut Window,
-    ) {
+    fn register_mouse_handlers(&self, layout: &EditorLayout, window: &mut Window) {
         let line_height = layout.line_height;
         let text = layout.text;
         let scrollbar = layout.scrollbar;
+        let hitbox = layout.hitbox.clone();
 
         let editor = self.editor.clone();
-        window.on_mouse_event(move |event: &ScrollWheelEvent, phase, _window, cx| {
-            if !phase.bubble() || !bounds.contains(&event.position) {
+        let wheel_hitbox = hitbox.clone();
+        window.on_mouse_event(move |event: &ScrollWheelEvent, phase, window, cx| {
+            if !phase.bubble() || !wheel_hitbox.is_hovered(window) {
                 return;
             }
             let delta = event.delta.pixel_delta(line_height);
@@ -957,7 +987,7 @@ impl EditorElement {
 
         let editor = self.editor.clone();
         window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
-            if !phase.bubble() || event.button != MouseButton::Left {
+            if !phase.bubble() || event.button != MouseButton::Left || !hitbox.is_hovered(window) {
                 return;
             }
             if let Some(scrollbar) = scrollbar
@@ -974,9 +1004,6 @@ impl EditorElement {
                     cx.notify();
                 });
                 cx.stop_propagation();
-                return;
-            }
-            if !bounds.contains(&event.position) {
                 return;
             }
             editor.update(cx, |editor, cx| {

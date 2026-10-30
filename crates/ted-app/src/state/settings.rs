@@ -2,13 +2,15 @@
 //! is no explicit "Save" action, every change made through the Settings view writes the file at
 //! once.
 //!
-//! Only what 0.1.0 needs so far: language, theme, fonts, the save cleanup and the log level. Each feature adds its
-//! own settings as it lands.
+//! Only what 0.1.0 needs: language, theme, fonts, the editor's gutter and indentation, the save
+//! cleanup, the explorer's exclude patterns, the highlighting limit and the log level. Each
+//! feature adds its own settings as it lands.
 
 use std::fs;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
+use rust_i18n::t;
 use serde::Serialize;
 
 use super::config::config_dir;
@@ -18,6 +20,55 @@ pub use telaio_app::logging::LogLevel;
 
 /// The path, relative to the config directory ([`config_dir`]), of the settings file.
 const SETTINGS_FILE: &str = "settings.toml";
+
+/// Step of the UI font size stepper, in points.
+pub const UI_FONT_SIZE_STEP: f32 = 1.0;
+/// Step of the editor font size stepper, in points.
+pub const MONO_FONT_SIZE_STEP: f32 = 0.5;
+
+/// The categories of the Settings modal, in the order of its left column. Git and Languages join
+/// them with their features.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SettingsCategory {
+    #[default]
+    Appearance,
+    Editor,
+    Files,
+    About,
+}
+
+impl SettingsCategory {
+    pub const ALL: [SettingsCategory; 4] = [
+        SettingsCategory::Appearance,
+        SettingsCategory::Editor,
+        SettingsCategory::Files,
+        SettingsCategory::About,
+    ];
+
+    /// The title in the left column and in the header.
+    pub fn label(self) -> String {
+        match self {
+            SettingsCategory::Appearance => t!("settings.category.appearance"),
+            SettingsCategory::Editor => t!("settings.category.editor"),
+            SettingsCategory::Files => t!("settings.category.files"),
+            SettingsCategory::About => t!("settings.category.about"),
+        }
+        .into_owned()
+    }
+}
+
+/// The explorer's exclude patterns as typed in Settings: comma separated, trimmed, the empty ones
+/// left out.
+pub fn parse_excludes(text: &str) -> Vec<String> {
+    text.split(',')
+        .map(str::trim)
+        .filter(|pattern| !pattern.is_empty())
+        .map(String::from)
+        .collect()
+}
+
+/// The tab sizes Settings offers. `settings.toml` accepts any size from 1 to 16.
+pub const TAB_SIZES: [usize; 3] = [2, 4, 8];
 
 /// Valid range of [`Settings::ui_font_size`], in points.
 pub const UI_FONT_SIZE_RANGE: RangeInclusive<f32> = 11.0..=16.0;
@@ -76,6 +127,15 @@ pub struct Settings {
     pub mono_font: String,
     /// The editor font size, in points, clamped to [`MONO_FONT_SIZE_RANGE`].
     pub mono_font_size: f32,
+    /// Whether the editor shows the line numbers.
+    pub line_numbers: bool,
+    /// Whether the editor highlights the line of the cursor.
+    pub highlight_current_line: bool,
+    /// Columns a tab advances to, and the width of one indentation level in spaces.
+    pub tab_size: usize,
+    /// Whether Tab inserts spaces in a file whose indentation is not detected (a new or flat
+    /// file); a file indented with tabs or spaces keeps its own style.
+    pub insert_spaces: bool,
     /// Whether saving removes the spaces and tabs at the end of every line.
     pub trim_trailing_whitespace: bool,
     /// Whether saving ends the file with a line break.
@@ -84,6 +144,9 @@ pub struct Settings {
     /// generated file never costs a long parse nor the memory of its tree. Logs are highlighted
     /// at any size: they need no parse.
     pub highlight_max_size_mb: u32,
+    /// What the explorer hides, in the gitignore syntax (`target`, `*.log`). `.gitignore` is
+    /// honored too.
+    pub explorer_exclude: Vec<String>,
     /// How much is written to the log file.
     pub log_level: LogLevel,
 }
@@ -104,9 +167,16 @@ impl Default for Settings {
             ui_font_size: 13.0,
             mono_font: "Geist Mono".to_string(),
             mono_font_size: 12.5,
+            line_numbers: true,
+            highlight_current_line: true,
+            tab_size: 4,
+            insert_spaces: true,
             trim_trailing_whitespace: true,
             insert_final_newline: true,
             highlight_max_size_mb: 4,
+            explorer_exclude: [".git", "target", "node_modules"]
+                .map(String::from)
+                .to_vec(),
             log_level: LogLevel::default(),
         }
     }
@@ -118,6 +188,33 @@ pub fn load_settings() -> Settings {
     match config_dir() {
         Some(base) => read_settings(&base),
         None => Settings::default(),
+    }
+}
+
+/// Writes `settings` to `<OS config dir>/ted/settings.toml`. Failures are logged, not returned:
+/// the change stays applied for this session.
+pub fn save_settings(settings: &Settings) {
+    if let Some(base) = config_dir() {
+        write_settings(&base, settings);
+    }
+}
+
+/// Writes `<base>/settings.toml`. Split out from [`save_settings`] for the tests.
+fn write_settings(base: &Path, settings: &Settings) {
+    if let Err(error) = fs::create_dir_all(base) {
+        log::warn!("could not create {}: {error}", base.display());
+        return;
+    }
+    let text = match toml::to_string_pretty(settings) {
+        Ok(text) => text,
+        Err(error) => {
+            log::warn!("could not serialize the settings: {error}");
+            return;
+        }
+    };
+    let path = base.join(SETTINGS_FILE);
+    if let Err(error) = fs::write(&path, text) {
+        log::warn!("could not save {}: {error}", path.display());
     }
 }
 
@@ -163,6 +260,31 @@ fn parse_settings(content: &str) -> Settings {
     if let Some(value) = table.get("mono_font_size").and_then(as_f32) {
         settings.mono_font_size =
             value.clamp(*MONO_FONT_SIZE_RANGE.start(), *MONO_FONT_SIZE_RANGE.end());
+    }
+    let flag = |key: &str| table.get(key).and_then(toml::Value::as_bool);
+    if let Some(value) = flag("line_numbers") {
+        settings.line_numbers = value;
+    }
+    if let Some(value) = flag("highlight_current_line") {
+        settings.highlight_current_line = value;
+    }
+    if let Some(value) = table.get("tab_size").and_then(toml::Value::as_integer) {
+        settings.tab_size = value.clamp(1, 16) as usize;
+    }
+    if let Some(value) = flag("insert_spaces") {
+        settings.insert_spaces = value;
+    }
+    if let Some(patterns) = table
+        .get("explorer_exclude")
+        .and_then(toml::Value::as_array)
+    {
+        settings.explorer_exclude = patterns
+            .iter()
+            .filter_map(toml::Value::as_str)
+            .map(str::trim)
+            .filter(|pattern| !pattern.is_empty())
+            .map(String::from)
+            .collect();
     }
     if let Some(value) = table
         .get("trim_trailing_whitespace")
@@ -248,6 +370,47 @@ mod tests {
             parse_settings("highlight_max_size_mb = \"big\"").highlight_max_size_mb,
             Settings::default().highlight_max_size_mb
         );
+    }
+
+    #[test]
+    fn saved_settings_read_back_the_same() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let settings = Settings {
+            language: LanguageChoice::Es,
+            theme: ThemeChoice::Light,
+            mono_font_size: 14.5,
+            line_numbers: false,
+            highlight_current_line: false,
+            tab_size: 2,
+            insert_spaces: false,
+            trim_trailing_whitespace: false,
+            explorer_exclude: vec!["dist".to_string(), "*.log".to_string()],
+            log_level: LogLevel::Debug,
+            ..Settings::default()
+        };
+        write_settings(dir.path(), &settings);
+        assert_eq!(read_settings(dir.path()), settings);
+        write_settings(dir.path(), &Settings::default());
+        assert_eq!(read_settings(dir.path()), Settings::default());
+    }
+
+    #[test]
+    fn editor_settings_are_validated() {
+        let settings = parse_settings(
+            "tab_size = 40\nline_numbers = \"no\"\nexplorer_exclude = [\" build \", \"\", 3]\n",
+        );
+        assert_eq!(settings.tab_size, 16);
+        assert!(settings.line_numbers);
+        assert_eq!(settings.explorer_exclude, vec!["build".to_string()]);
+    }
+
+    #[test]
+    fn exclude_patterns_are_split_on_commas() {
+        assert_eq!(
+            parse_excludes(" .git, target ,, *.log ,"),
+            vec![".git", "target", "*.log"]
+        );
+        assert!(parse_excludes("  ").is_empty());
     }
 
     #[test]

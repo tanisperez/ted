@@ -1,20 +1,22 @@
 //! The title bar: the "t" logo, "ted" and the switcher with what is open (the folder or the file),
-//! whose menu lists the recent folders and files and the two Open actions. The window controls
-//! at the far right are drawn by gpui-kit's `TitleBar`.
+//! whose menu lists the recent folders and files and the two Open actions. At the right, the
+//! settings gear, then the window controls drawn by gpui-kit's `TitleBar`.
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 use telaio_ui::components::{menu_shortcut_item, rich_menu_width};
 
-use crate::actions::hints;
+use crate::actions::{OpenSettings, hints};
 use crate::state::launch::{Target, display_name, shorten_path};
 use crate::theme::metrics::{
-    LOGO_SIZE, RADIUS_MD, RICH_MENU_ROW_HEIGHT, RICH_MENU_TEXT_SIZE, TITLE_BAR_HEIGHT,
+    LOGO_SIZE, RADIUS_MD, RICH_MENU_ROW_HEIGHT, RICH_MENU_TEXT_SIZE, SETTINGS_GEAR_SIZE,
+    TITLE_BAR_HEIGHT,
 };
 use crate::theme::{Palette, PaletteExt};
 
@@ -43,7 +45,9 @@ impl AppView {
                     .child(render_logo(&palette))
                     .child(div().font_weight(FontWeight::SEMIBOLD).child("ted"))
                     .child(div().w(px(1.0)).h(px(16.0)).mx(px(4.0)).bg(palette.border))
-                    .child(no_drag(self.render_switcher(&palette, cx))),
+                    .child(no_drag(self.render_switcher(&palette, cx)))
+                    .child(div().flex_1())
+                    .child(no_drag(render_settings_gear(&palette, cx))),
             )
             .into_any_element()
     }
@@ -154,6 +158,30 @@ fn recent_item(icon: IconName, name: String, detail: String, selected: bool) -> 
                     .text_color(palette.accent_text)
             }))
     })
+}
+
+/// The settings gear: opens the Settings modal, as `Ctrl+,`.
+fn render_settings_gear(palette: &Palette, cx: &mut Context<AppView>) -> impl IntoElement {
+    let (hover, pressed) = (palette.hover, palette.pressed);
+    div()
+        .id("title-bar-settings")
+        .size(px(SETTINGS_GEAR_SIZE))
+        .mr(px(4.0))
+        .flex()
+        .items_center()
+        .justify_center()
+        .cursor_pointer()
+        .rounded(px(RADIUS_MD - 2.0))
+        .text_color(palette.fg_muted)
+        .hover(move |style| style.bg(hover))
+        .active(move |style| style.bg(pressed))
+        .tooltip(|window, cx| {
+            Tooltip::new(SharedString::from(t!("settings.open")))
+                .action(&OpenSettings, None)
+                .build(window, cx)
+        })
+        .child(Icon::new(IconName::Settings).with_size(px(16.0)))
+        .on_click(cx.listener(|view, _, window, cx| view.open_settings(window, cx)))
 }
 
 /// The "t" logo square: `accent` background, `accent_fg` text.

@@ -23,6 +23,12 @@ pub fn install(cx: &mut App, settings: &Settings) {
     telaio_ui::install(cx, &theme_family(settings));
 }
 
+/// Rebuilds the themes from `settings` (their font sizes) and makes them the active ones, live.
+/// The caller applies the theme choice afterwards to repaint the window.
+pub fn apply_settings(cx: &mut App, settings: &Settings) {
+    telaio_ui::apply(cx, &theme_family(settings));
+}
+
 /// The theme family: telaio's default tokens, ted's [`syntax`] colors and the settings' fonts.
 fn theme_family(settings: &Settings) -> telaio_ui::ThemeFamily {
     telaio_ui::ThemeFamily::new("ted")

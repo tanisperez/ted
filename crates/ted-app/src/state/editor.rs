@@ -8,6 +8,7 @@
 
 use std::ops::Range;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::SystemTime;
 
 use ted_core::{Buffer, Edit, EditKind, History, Indent, Position, Selection};
@@ -20,8 +21,22 @@ pub const PADDING_TOP: f32 = 10.0;
 pub const SCROLL_PAST_END: f32 = 0.4;
 /// Empty space after the longest line, in pixels.
 pub const PADDING_RIGHT: f32 = 24.0;
-/// Columns a tab advances to the next multiple of. A setting later (#13).
-pub const TAB_SIZE: usize = 4;
+/// Columns a tab advances to the next multiple of (the `tab_size` setting). Process wide, like
+/// the settings, and an atomic because the layout helpers below read it once per character.
+static TAB_SIZE: AtomicUsize = AtomicUsize::new(4);
+/// Whether Tab inserts spaces where the file's indentation is unknown (`insert_spaces`).
+static INSERT_SPACES: AtomicBool = AtomicBool::new(true);
+
+/// Applies the `tab_size` and `insert_spaces` settings to every editor. The caller repaints.
+pub fn set_indentation(tab_size: usize, insert_spaces: bool) {
+    TAB_SIZE.store(tab_size.max(1), Ordering::Relaxed);
+    INSERT_SPACES.store(insert_spaces, Ordering::Relaxed);
+}
+
+/// The current tab size.
+pub fn tab_size() -> usize {
+    TAB_SIZE.load(Ordering::Relaxed)
+}
 
 /// The size of the area the text is painted in and the font metrics, measured by the element on
 /// every frame.
@@ -433,7 +448,8 @@ impl EditorState {
         match self.buffer.indent() {
             Some(Indent::Tabs) => "\t".to_string(),
             Some(Indent::Spaces(count)) => " ".repeat(usize::from(count)),
-            None => " ".repeat(TAB_SIZE),
+            None if INSERT_SPACES.load(Ordering::Relaxed) => " ".repeat(tab_size()),
+            None => "\t".to_string(),
         }
     }
 
@@ -623,7 +639,7 @@ impl EditorState {
 }
 
 /// The display column of byte `column` of `line`: characters before it, with tabs advancing to
-/// the next multiple of [`TAB_SIZE`].
+/// the next multiple of the tab size.
 pub fn display_column(line: &str, column: usize) -> usize {
     let mut display = 0;
     for (index, ch) in line.char_indices() {
@@ -761,7 +777,8 @@ pub fn word_range(line: &str, column: usize) -> (usize, usize) {
 /// The display column after `ch` at display column `display`.
 pub(crate) fn advance(display: usize, ch: char) -> usize {
     if ch == '\t' {
-        (display / TAB_SIZE + 1) * TAB_SIZE
+        let size = tab_size();
+        (display / size + 1) * size
     } else {
         display + 1
     }

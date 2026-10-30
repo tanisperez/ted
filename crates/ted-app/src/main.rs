@@ -67,6 +67,7 @@ fn main() -> ExitCode {
         views::bind_keys(cx);
         views::bind_explorer_keys(cx);
         theme::install(cx, &settings);
+        views::apply_editor_settings(&settings, cx);
 
         // 1440x900 logical, capped to 90% of the display (see `window::options`).
         let window_options = window::options(cx, &IDENTITY, window::WindowSizes::default());

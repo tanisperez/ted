@@ -1,0 +1,92 @@
+# The Settings modal.
+_version: 2
+"settings.title":
+  en: "Settings"
+  es: "Configuración"
+"settings.open":
+  en: "Settings"
+  es: "Configuración"
+"settings.saved_to":
+  en: "Saved to"
+  es: "Guardado en"
+"settings.footer.applied":
+  en: "Changes apply at once."
+  es: "Los cambios se aplican al momento."
+"settings.footer.reset":
+  en: "Reset values"
+  es: "Restablecer valores"
+"settings.category.appearance":
+  en: "Appearance"
+  es: "Apariencia"
+"settings.category.editor":
+  en: "Editor"
+  es: "Editor"
+"settings.category.files":
+  en: "Files"
+  es: "Archivos"
+"settings.category.about":
+  en: "About"
+  es: "Acerca de"
+"settings.language.title":
+  en: "Language"
+  es: "Idioma"
+"settings.language.label":
+  en: "Interface language"
+  es: "Idioma de la interfaz"
+"settings.language.auto":
+  en: "Automatic (%{language})"
+  es: "Automático (%{language})"
+"settings.theme.title":
+  en: "Theme"
+  es: "Tema"
+"settings.theme.description":
+  en: "The colors of the whole window. System follows the light or dark mode of the desktop."
+  es: "Los colores de toda la ventana. Sistema sigue el modo claro u oscuro del escritorio."
+"settings.interface.title":
+  en: "Interface"
+  es: "Interfaz"
+"settings.font_size":
+  en: "Font size"
+  es: "Tamaño de letra"
+"settings.text.title":
+  en: "Text"
+  es: "Texto"
+"settings.text.line_numbers":
+  en: "Line numbers"
+  es: "Números de línea"
+"settings.text.current_line":
+  en: "Highlight current line"
+  es: "Resaltar la línea actual"
+"settings.indent.title":
+  en: "Indentation"
+  es: "Sangría"
+"settings.indent.tab_size":
+  en: "Tab size"
+  es: "Tamaño del tabulador"
+"settings.indent.insert_spaces":
+  en: "Insert spaces"
+  es: "Insertar espacios"
+"settings.indent.insert_spaces_description":
+  en: "Tab inserts spaces in new files. A file indented with tabs or spaces keeps its own style."
+  es: "Tab inserta espacios en los archivos nuevos. Un archivo sangrado con tabuladores o espacios conserva su estilo."
+"settings.saving.title":
+  en: "Saving"
+  es: "Al guardar"
+"settings.saving.trim":
+  en: "Trim trailing whitespace"
+  es: "Quitar espacios al final de las líneas"
+"settings.saving.final_newline":
+  en: "Insert final newline"
+  es: "Añadir un salto de línea al final"
+"settings.explorer.title":
+  en: "Explorer"
+  es: "Explorador"
+"settings.explorer.exclude":
+  en: "Exclude"
+  es: "Excluir"
+"settings.explorer.exclude_description":
+  en: "Hidden from the explorer. Comma separated, in the .gitignore syntax; .gitignore is honored too."
+  es: "Se ocultan en el explorador. Separados por comas, con la sintaxis de .gitignore; también se respeta .gitignore."
+"settings.about.footer":
+  en: "ted does not update itself yet: new versions are published on GitHub."
+  es: "ted aún no se actualiza solo: las versiones nuevas se publican en GitHub."

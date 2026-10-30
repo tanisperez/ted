@@ -20,9 +20,6 @@ use crate::state::launch::display_name;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{EXPLORER_HEADER_HEIGHT, EXPLORER_LIST_PADDING};
 
-/// What the explorer patterns hide by default, until the setting exists (#13).
-pub const DEFAULT_EXCLUDES: [&str; 3] = [".git", "target", "node_modules"];
-
 actions!(
     explorer,
     [
@@ -76,9 +73,9 @@ pub struct ExplorerView {
 impl EventEmitter<ExplorerEvent> for ExplorerView {}
 
 impl ExplorerView {
-    pub fn new(root: PathBuf, cx: &mut Context<Self>) -> Self {
-        let excludes: Vec<String> = DEFAULT_EXCLUDES.iter().map(|s| s.to_string()).collect();
-        let filter = Arc::new(ExplorerFilter::new(&root, &excludes));
+    /// The explorer of `root`, hiding `excludes` (the `explorer_exclude` setting).
+    pub fn new(root: PathBuf, excludes: &[String], cx: &mut Context<Self>) -> Self {
+        let filter = Arc::new(ExplorerFilter::new(&root, excludes));
         let watcher = match FolderWatcher::new() {
             Ok((watcher, changes)) => {
                 // Sleeps on the channel: an idle explorer does no work.
@@ -115,6 +112,18 @@ impl ExplorerView {
         };
         view.list(root, cx);
         view
+    }
+
+    /// Hides `excludes` from now on: lists the root and the expanded folders again.
+    pub fn set_excludes(&mut self, excludes: &[String], cx: &mut Context<Self>) {
+        let root = self.tree.root().to_path_buf();
+        self.filter = Arc::new(ExplorerFilter::new(&root, excludes));
+        let dirs: Vec<PathBuf> = std::iter::once(root)
+            .chain(self.tree.expanded().cloned())
+            .collect();
+        for dir in dirs {
+            self.list(dir, cx);
+        }
     }
 
     /// Shows `path` (the file in the editor) selected, expanding its folders.

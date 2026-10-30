@@ -364,6 +364,25 @@ Defaults of the prototype: UI size 13, editor size 12.5, tab 4, insert spaces on
 numbers on, current line on, autosave on, trim on, final newline on, Git fetch on, Git confirm on,
 markdown sync on.
 
+What 0.1.0 has (`views/settings.rs`, telaio's `settings_dialog` and `SettingsLayout`, as
+Postino's):
+
+- Opened with the title bar gear or `Ctrl+,`; closed with the cross, Escape, a click outside, or
+  Enter. Every change applies at once and writes `settings.toml`; Reset values restores the
+  defaults (except the log level and `highlight_max_size_mb`, which only the file sets).
+- **Appearance**: Language as a segmented control (Automatic with the language it resolves to,
+  English, Español), the three theme cards, the UI font size stepper (11 to 16).
+- **Editor**: Text (editor font size stepper, 10 to 18 in 0.5 steps; line numbers; highlight
+  current line), Indentation (tab size 2, 4 or 8; insert spaces, used where the file's own
+  indentation is not detected). Without line numbers the gutter keeps only its 16 px padding.
+- **Files**: Saving (trim trailing whitespace, final newline), Explorer (the exclude patterns, one
+  comma separated field, applied on Enter or when the field is left).
+- **About**: telaio's About header (version, platform, telaio, release notes and GitHub). ted has
+  no updater: the footer says new versions are published on GitHub.
+- Font families, word wrap, autosave, encoding and line ending of new files, Git and Languages
+  are not in 0.1.0; the families can still be set in `settings.toml`.
+- `TED_OPEN=settings` or `settings-about` opens the modal at startup.
+
 ### Git panel (later milestone)
 
 Not in 0.1.0. Header `COMMIT` with Refresh, Discard all, List/tree toggle, History and More
