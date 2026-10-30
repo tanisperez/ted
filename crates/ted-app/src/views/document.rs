@@ -1,5 +1,5 @@
-//! The open document and its file: saving (`Ctrl+S`), asking before unsaved changes are lost
-//! (opening something else, closing the window), and noticing when another program changed the
+//! The open documents and their files: saving (`Ctrl+S`), asking before unsaved changes are lost
+//! (closing a tab, opening something else, closing the window), and noticing when another program changed the
 //! file. Every file access runs on the background executor.
 //!
 //! Saving takes a snapshot of the buffer (cloning a rope is O(1)), computes the whitespace
@@ -16,15 +16,26 @@ use ted_workspace::{FileContent, load_file, modified_time, save_file};
 use crate::state::launch::display_name;
 
 use super::choice::{Choice, ChoiceStyle, ask};
+use super::editor::EditorView;
 
 use super::root::AppView;
 
 impl AppView {
-    /// Saves the open document. The task resolves to whether the file was written.
+    /// Saves the document shown. The task resolves to whether the file was written.
     pub(crate) fn save(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Task<bool> {
-        let Some(editor) = self.editor().cloned() else {
-            return Task::ready(false);
-        };
+        match self.editor().cloned() {
+            Some(editor) => self.save_editor(editor, window, cx),
+            None => Task::ready(false),
+        }
+    }
+
+    /// Saves the document of `editor`. The task resolves to whether the file was written.
+    fn save_editor(
+        &mut self,
+        editor: Entity<EditorView>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Task<bool> {
         let state = &editor.read(cx).state;
         let Some(path) = state.path.clone() else {
             return Task::ready(false);
@@ -105,23 +116,31 @@ impl AppView {
         })
     }
 
-    /// Runs `then` at once when nothing would be lost; otherwise asks to save, not save or cancel,
-    /// and runs it after saving (if the save worked) or without saving.
+    /// Runs `then` at once when none of `editors` has unsaved changes. Otherwise asks, one
+    /// document at a time, to save, not save or cancel, and runs it once every one was saved (if
+    /// the save worked) or discarded. Cancel stops there.
     pub(crate) fn confirm_discard(
         &mut self,
+        editors: Vec<Entity<EditorView>>,
         window: &mut Window,
         cx: &mut Context<Self>,
         then: impl FnOnce(&mut Self, &mut Window, &mut Context<Self>) + 'static,
     ) {
-        let dirty_name = self.editor().and_then(|editor| {
-            let state = &editor.read(cx).state;
-            state
-                .is_dirty()
-                .then(|| state.path.as_deref().map(display_name).unwrap_or_default())
-        });
-        let Some(name) = dirty_name else {
+        let mut dirty: Vec<_> = editors
+            .into_iter()
+            .filter(|editor| editor.read(cx).state.is_dirty())
+            .collect();
+        if dirty.is_empty() {
             return then(self, window, cx);
-        };
+        }
+        let editor = dirty.remove(0);
+        let name = editor
+            .read(cx)
+            .state
+            .path
+            .as_deref()
+            .map(display_name)
+            .unwrap_or_default();
         let answer = ask(
             window,
             cx,
@@ -135,16 +154,21 @@ impl AppView {
         );
         cx.spawn_in(window, async move |this, cx| match answer.recv().await {
             Ok(2) => {
-                let Ok(saving) = this.update_in(cx, |this, window, cx| this.save(window, cx))
+                let Ok(saving) =
+                    this.update_in(cx, |this, window, cx| this.save_editor(editor, window, cx))
                 else {
                     return;
                 };
                 if saving.await {
-                    let _ = this.update_in(cx, then);
+                    let _ = this.update_in(cx, |this, window, cx| {
+                        this.confirm_discard(dirty, window, cx, then)
+                    });
                 }
             }
             Ok(0) => {
-                let _ = this.update_in(cx, then);
+                let _ = this.update_in(cx, |this, window, cx| {
+                    this.confirm_discard(dirty, window, cx, then)
+                });
             }
             _ => {}
         })
@@ -154,13 +178,14 @@ impl AppView {
     /// Whether the window may close now. With unsaved changes it asks first and closes the window
     /// itself once they are saved or discarded.
     pub fn should_close(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
-        let dirty = self
-            .editor()
-            .is_some_and(|editor| editor.read(cx).state.is_dirty());
+        let editors = self.editors();
+        let dirty = editors
+            .iter()
+            .any(|editor| editor.read(cx).state.is_dirty());
         if self.closing || !dirty {
             return true;
         }
-        self.confirm_discard(window, cx, |this, window, _| {
+        self.confirm_discard(editors, window, cx, |this, window, _| {
             this.closing = true;
             window.remove_window();
         });

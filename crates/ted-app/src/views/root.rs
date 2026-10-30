@@ -2,11 +2,13 @@
 //!
 //! What it shows depends on what was opened (`state::launch`): nothing (the empty state with the
 //! recents, `views/welcome.rs`), one file alone (file mode, the editor fills the window) or a
-//! folder (folder mode; the explorer and the tabs come with #6 and #8). Files load in the
-//! background; a generation counter drops the result of a load that a newer one replaced.
+//! folder (folder mode, with the explorer and one tab per open file). Files load in the
+//! background into their document; a load whose document was closed meanwhile is dropped.
 
 use std::path::{Path, PathBuf};
 
+use gpui_kit::assets::IconName;
+use gpui_kit::component::notification::Notification;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -14,11 +16,12 @@ use rust_i18n::t;
 use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
 use telaio_ui::components::EmptyState;
 
-use crate::actions::{OpenFile, OpenFolder, Save, ToggleExplorer};
+use crate::actions::{CloseTab, NextTab, OpenFile, OpenFolder, PreviousTab, Save, ToggleExplorer};
 use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::launch::{self, LaunchError, Target};
 use crate::state::recents::{self, Recents};
 use crate::state::settings::Settings;
+use crate::state::tabs::Tabs;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
     EXPLORER_RESIZE_HANDLE, EXPLORER_WIDTH, EXPLORER_WIDTH_MAX, EXPLORER_WIDTH_MIN,
@@ -36,13 +39,39 @@ const HEAD_BYTES: usize = 256 * 1024;
 enum Content {
     /// Nothing opened: the empty state with the recents.
     Welcome,
-    /// A file is being read.
+    /// Something could not be opened: a title and a detail.
+    Message(SharedString, Option<SharedString>),
+    /// The open documents: the one file of file mode, or the tabs of folder mode (with none yet,
+    /// a placeholder).
+    Documents,
+}
+
+/// What an open document shows.
+pub(crate) enum DocumentView {
+    /// Its file is being read.
     Loading,
-    /// A folder is open and no file yet.
-    Folder,
-    /// Something could not be opened or shown: a title and a detail.
+    /// It could not be shown: a title and a detail.
     Message(SharedString, Option<SharedString>),
     Editor(Entity<EditorView>),
+}
+
+/// One open file: a tab in folder mode, the whole window in file mode.
+pub(crate) struct Document {
+    /// Tells the loads apart: a load whose document was closed meanwhile is dropped.
+    pub(crate) id: u64,
+    pub(crate) path: PathBuf,
+    pub(crate) view: DocumentView,
+    /// Keeps the window title in step with the editor (its dirty state).
+    _subscription: Option<Subscription>,
+}
+
+impl Document {
+    pub(crate) fn editor(&self) -> Option<&Entity<EditorView>> {
+        match &self.view {
+            DocumentView::Editor(editor) => Some(editor),
+            _ => None,
+        }
+    }
 }
 
 /// The root view of the main window.
@@ -53,11 +82,11 @@ pub struct AppView {
     pub(crate) recents: Recents,
     /// What is open: `None` in the empty state.
     pub(crate) target: Option<Target>,
-    /// The file shown in folder mode, `None` until one is opened.
-    pub(crate) file: Option<PathBuf>,
     content: Content,
-    /// Bumped by every load, so a slow load cannot replace a newer one.
-    load_generation: u64,
+    /// The open files, in tab order.
+    pub(crate) documents: Tabs<Document>,
+    /// The id of the next document opened.
+    next_document: u64,
     focus_handle: FocusHandle,
     /// The explorer of folder mode, with the subscription to its events.
     pub(crate) explorer: Option<(Entity<ExplorerView>, Subscription)>,
@@ -67,8 +96,6 @@ pub struct AppView {
     explorer_width: f32,
     /// While the explorer's edge is dragged.
     resizing_explorer: bool,
-    /// Keeps the window title in step with the editor (its dirty state).
-    editor_subscription: Option<Subscription>,
     /// The window title last set, so it is only set again when it changes.
     last_title: String,
     /// The user chose to close the window without saving: it may close now.
@@ -95,15 +122,14 @@ impl AppView {
             settings,
             recents: recents::load(),
             target: None,
-            file: None,
             content: Content::Welcome,
-            load_generation: 0,
+            documents: Tabs::default(),
+            next_document: 0,
             focus_handle,
             explorer: None,
             explorer_visible: true,
             explorer_width: EXPLORER_WIDTH,
             resizing_explorer: false,
-            editor_subscription: None,
             last_title: String::new(),
             closing: false,
             _activation: activation,
@@ -117,44 +143,78 @@ impl AppView {
 
     /// The editor shown, if any.
     pub(crate) fn editor(&self) -> Option<&Entity<EditorView>> {
-        match &self.content {
-            Content::Editor(editor) => Some(editor),
+        match self.content {
+            Content::Documents => self.documents.active().and_then(Document::editor),
             _ => None,
         }
     }
 
-    /// Opens a file or a folder, from the command line, a dialog or the recents, asking first
-    /// when the open document has unsaved changes.
-    pub(crate) fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
-        let path = path.to_path_buf();
-        self.confirm_discard(window, cx, move |this, window, cx| {
-            this.open_path_now(&path, window, cx)
-        });
+    /// The editors of every open document, for the questions about unsaved changes.
+    pub(crate) fn editors(&self) -> Vec<Entity<EditorView>> {
+        self.documents
+            .items()
+            .iter()
+            .filter_map(|document| document.editor().cloned())
+            .collect()
     }
 
-    /// Opens a file or a folder. A file opened while a folder is open is shown inside folder
-    /// mode.
-    fn open_path_now(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
+    /// Opens a file or a folder, from the command line, a dialog, the explorer or the recents. A
+    /// file opened in folder mode gets a tab; anything else replaces what is open, asking first
+    /// when that has unsaved changes.
+    pub(crate) fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
         match launch::resolve(path) {
-            Ok(Target::File(file)) => {
+            Ok(Target::File(file)) if matches!(self.target, Some(Target::Folder(_))) => {
                 log::info!("opening a file");
                 self.recents.add(&Target::File(file.clone()));
-                if matches!(self.target, Some(Target::Folder(_))) {
-                    self.file = Some(file.clone());
-                    if let Some((explorer, _)) = &self.explorer {
-                        explorer.update(cx, |explorer, cx| explorer.reveal(&file, cx));
-                    }
-                } else {
-                    self.explorer = None;
-                    self.target = Some(Target::File(file.clone()));
-                    self.file = None;
-                }
-                self.load(file, window, cx);
+                recents::save(&self.recents);
+                self.open_document(file, window, cx);
             }
-            Ok(target @ Target::Folder(_)) => {
+            Ok(target) => {
+                let editors = self.editors();
+                self.confirm_discard(editors, window, cx, move |this, window, cx| {
+                    this.open_target(target, window, cx)
+                });
+            }
+            Err(error) => {
+                let (title, path) = match &error {
+                    LaunchError::NotFound(path) => (t!("open.not_found"), path),
+                    LaunchError::Unreadable(path, _) => (t!("open.unreadable"), path),
+                };
+                log::warn!("cannot open a path: {error:?}");
+                self.recents.remove(path);
+                recents::save(&self.recents);
+                let detail = path.display().to_string();
+                if self.documents.is_empty() {
+                    self.content = Content::Message(title.into_owned().into(), Some(detail.into()));
+                } else {
+                    // Keep the open documents: say it in a notification instead.
+                    window.push_notification(
+                        Notification::warning(detail).title(title.into_owned()),
+                        cx,
+                    );
+                }
+                self.update_title(window, cx);
+                cx.notify();
+            }
+        }
+    }
+
+    /// Opens a file alone (file mode) or a folder, replacing what was open.
+    fn open_target(&mut self, target: Target, window: &mut Window, cx: &mut Context<Self>) {
+        self.recents.add(&target);
+        recents::save(&self.recents);
+        self.documents.clear();
+        self.content = Content::Documents;
+        match target {
+            Target::File(file) => {
+                log::info!("opening a file");
+                self.explorer = None;
+                self.target = Some(Target::File(file.clone()));
+                self.open_document(file, window, cx);
+            }
+            Target::Folder(root) => {
                 log::info!("opening a folder");
-                self.recents.add(&target);
-                let explorer = cx.new(|cx| ExplorerView::new(target.path().to_path_buf(), cx));
+                let explorer = cx.new(|cx| ExplorerView::new(root.clone(), cx));
                 let subscription = cx.subscribe_in(
                     &explorer,
                     window,
@@ -164,27 +224,88 @@ impl AppView {
                 );
                 self.explorer = Some((explorer, subscription));
                 self.explorer_visible = true;
-                self.target = Some(target);
-                self.file = None;
-                self.load_generation += 1;
-                self.content = Content::Folder;
-            }
-            Err(error) => {
-                let (title, path) = match &error {
-                    LaunchError::NotFound(path) => (t!("open.not_found"), path),
-                    LaunchError::Unreadable(path, _) => (t!("open.unreadable"), path),
-                };
-                log::warn!("cannot open a path: {error:?}");
-                self.recents.remove(path);
-                self.content = Content::Message(
-                    title.into_owned().into(),
-                    Some(path.display().to_string().into()),
-                );
+                self.target = Some(Target::Folder(root));
+                self.update_title(window, cx);
+                cx.notify();
             }
         }
-        recents::save(&self.recents);
+    }
+
+    /// Shows `path`: its tab when it is already open, otherwise a new one that loads it.
+    fn open_document(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+        self.content = Content::Documents;
+        if let Some(index) = self.documents.position(|document| document.path == path) {
+            self.activate_document(index, window, cx);
+            return;
+        }
+        let id = self.next_document;
+        self.next_document += 1;
+        self.documents.open(Document {
+            id,
+            path: path.clone(),
+            view: DocumentView::Loading,
+            _subscription: None,
+        });
+        self.load(id, path, window, cx);
+        self.document_shown(window, cx);
+    }
+
+    /// Makes the tab at `index` the one shown.
+    pub(crate) fn activate_document(
+        &mut self,
+        index: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.documents.activate(index) {
+            self.document_shown(window, cx);
+            self.check_disk(window, cx);
+        }
+    }
+
+    /// After another document became the active one: focus its editor, reveal it in the
+    /// explorer and retitle the window.
+    pub(crate) fn document_shown(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        match self.documents.active() {
+            Some(document) => {
+                if let Some(editor) = document.editor() {
+                    let focus = editor.read(cx).focus_handle().clone();
+                    focus.focus(window, cx);
+                }
+                if let Some((explorer, _)) = &self.explorer {
+                    let path = document.path.clone();
+                    explorer.update(cx, |explorer, cx| explorer.reveal(&path, cx));
+                }
+            }
+            None => self.focus_handle.focus(window, cx),
+        }
         self.update_title(window, cx);
         cx.notify();
+    }
+
+    /// Closes the document with `id`, asking first when it has unsaved changes.
+    pub(crate) fn close_document(&mut self, id: u64, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(index) = self.documents.position(|document| document.id == id) else {
+            return;
+        };
+        let editors = self.documents.items()[index].editor().cloned();
+        self.confirm_discard(
+            editors.into_iter().collect(),
+            window,
+            cx,
+            move |this, window, cx| {
+                let Some(index) = this.documents.position(|document| document.id == id) else {
+                    return;
+                };
+                let was_active = this.documents.active_index() == Some(index);
+                this.documents.close(index);
+                if was_active {
+                    this.document_shown(window, cx);
+                } else {
+                    cx.notify();
+                }
+            },
+        );
     }
 
     /// Asks for a file or a folder with the native dialog and opens it.
@@ -216,8 +337,9 @@ impl AppView {
             .editor()
             .is_some_and(|editor| editor.read(cx).state.is_dirty());
         let name = self
-            .file
-            .as_deref()
+            .documents
+            .active()
+            .map(|document| document.path.as_path())
             .or(self.target.as_ref().map(Target::path))
             .map(launch::display_name);
         let title = match name {
@@ -231,12 +353,9 @@ impl AppView {
         }
     }
 
-    /// Loads `path` in the background and shows it. A big file shows its start first, then the
-    /// whole text replaces it, keeping the cursor and the scroll.
-    fn load(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
-        self.load_generation += 1;
-        let generation = self.load_generation;
-        self.content = Content::Loading;
+    /// Loads `path` in the background into the document `id`. A big file shows its start first,
+    /// then the whole text replaces it, keeping the cursor and the scroll.
+    fn load(&mut self, id: u64, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
         cx.spawn_in(window, async move |this, cx| {
             let size = std::fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0);
             if size >= HEAD_THRESHOLD {
@@ -244,34 +363,35 @@ impl AppView {
                 let head = cx
                     .background_spawn(async move { load_head(&head_path, HEAD_BYTES) })
                     .await;
-                let _ = this.update_in(cx, |view, window, cx| {
-                    view.show(generation, head, window, cx)
-                });
+                let _ = this.update_in(cx, |view, window, cx| view.show(id, head, window, cx));
             }
             let loaded = cx.background_spawn(async move { load_file(&path) }).await;
-            let _ = this.update_in(cx, |view, window, cx| {
-                view.show(generation, loaded, window, cx)
-            });
+            let _ = this.update_in(cx, |view, window, cx| view.show(id, loaded, window, cx));
         })
         .detach();
     }
 
-    /// Shows a loaded file: a new editor, or the full text in the editor of its head.
+    /// Shows a loaded file in its document: a new editor, or the full text in the editor of its
+    /// head. Dropped when the document was closed meanwhile.
     fn show(
         &mut self,
-        generation: u64,
+        id: u64,
         loaded: Result<LoadedFile, ted_workspace::LoadError>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if generation != self.load_generation {
+        let Some(index) = self.documents.position(|document| document.id == id) else {
             return;
-        }
+        };
+        let active = self.documents.active_index() == Some(index);
+        let Some(document) = self.documents.get_mut(index) else {
+            return;
+        };
         let loaded = match loaded {
             Ok(loaded) => loaded,
             Err(error) => {
                 log::warn!("cannot open a file: {error}");
-                self.content = Content::Message(
+                document.view = DocumentView::Message(
                     t!("open.unreadable").into_owned().into(),
                     Some(error.to_string().into()),
                 );
@@ -284,13 +404,14 @@ impl AppView {
         let (buffer, bom, lossy) = match loaded.content {
             FileContent::Text { buffer, bom, lossy } => (buffer, bom, lossy),
             FileContent::Binary => {
-                self.content = Content::Message(t!("editor.binary").into_owned().into(), None);
+                document.view =
+                    DocumentView::Message(t!("editor.binary").into_owned().into(), None);
                 cx.notify();
                 return;
             }
         };
-        match &self.content {
-            Content::Editor(editor) => editor.update(cx, |editor, cx| {
+        match &document.view {
+            DocumentView::Editor(editor) => editor.update(cx, |editor, cx| {
                 editor.state.buffer = buffer;
                 editor.state.expected_lines = None;
                 editor.state.read_only = lossy;
@@ -309,13 +430,15 @@ impl AppView {
                 state.path = Some(path);
                 state.disk_modified = modified;
                 let editor = cx.new(|cx| EditorView::new(state, cx));
-                self.editor_subscription =
+                document._subscription =
                     Some(cx.observe_in(&editor, window, |this, _, window, cx| {
                         this.update_title(window, cx)
                     }));
-                let focus = editor.read(cx).focus_handle().clone();
-                focus.focus(window, cx);
-                self.content = Content::Editor(editor);
+                if active {
+                    let focus = editor.read(cx).focus_handle().clone();
+                    focus.focus(window, cx);
+                }
+                document.view = DocumentView::Editor(editor);
             }
         }
         cx.notify();
@@ -323,6 +446,22 @@ impl AppView {
 }
 
 impl AppView {
+    /// Something that cannot be shown: its title and detail, and the Open buttons.
+    fn render_message(
+        &self,
+        title: &SharedString,
+        detail: Option<&SharedString>,
+        cx: &mut Context<Self>,
+    ) -> Div {
+        let mut state = EmptyState::new(title.clone())
+            .icon(Icon::new(IconName::TriangleAlert))
+            .action(self.render_open_buttons(cx));
+        if let Some(detail) = detail {
+            state = state.description(detail.clone());
+        }
+        div().flex_1().child(state)
+    }
+
     /// The invisible strip on the explorer's right edge that resizes it.
     fn render_resize_handle(&self, cx: &mut Context<Self>) -> impl IntoElement {
         div()
@@ -347,22 +486,31 @@ impl Render for AppView {
         log::trace!("render AppView");
         let palette = cx.palette();
         let content = match &self.content {
-            Content::Editor(editor) => div().flex_1().min_h_0().child(editor.clone()),
             Content::Welcome => div().flex_1().min_h_0().child(self.render_welcome(cx)),
-            Content::Loading => div().flex_1(),
-            Content::Folder => div().flex_1().child(
-                EmptyState::new(t!("open.folder_placeholder"))
-                    .icon(Icon::new(IconName::FolderOpen))
-                    .hint(crate::actions::hints::OPEN_FILE),
-            ),
-            Content::Message(title, detail) => {
-                let mut state = EmptyState::new(title.clone())
-                    .icon(Icon::new(IconName::TriangleAlert))
-                    .action(self.render_open_buttons(cx));
-                if let Some(detail) = detail {
-                    state = state.description(detail.clone());
+            Content::Message(title, detail) => self.render_message(title, detail.as_ref(), cx),
+            Content::Documents => {
+                let document = match self.documents.active().map(|document| &document.view) {
+                    Some(DocumentView::Editor(editor)) => {
+                        div().flex_1().min_h_0().child(editor.clone())
+                    }
+                    Some(DocumentView::Loading) => div().flex_1(),
+                    Some(DocumentView::Message(title, detail)) => {
+                        self.render_message(title, detail.as_ref(), cx)
+                    }
+                    None => div().flex_1().child(
+                        EmptyState::new(t!("open.folder_placeholder"))
+                            .icon(Icon::new(IconName::FolderOpen))
+                            .hint(crate::actions::hints::OPEN_FILE),
+                    ),
+                };
+                match self.explorer.is_some() && !self.documents.is_empty() {
+                    true => v_flex()
+                        .flex_1()
+                        .min_h_0()
+                        .child(self.render_tabs(cx))
+                        .child(document),
+                    false => document,
                 }
-                div().flex_1().child(state)
             }
         };
         let content = match &self.explorer {
@@ -396,6 +544,23 @@ impl Render for AppView {
             )
             .on_action(cx.listener(|this, _: &Save, window, cx| {
                 this.save(window, cx).detach();
+            }))
+            .on_action(cx.listener(|this, _: &CloseTab, window, cx| {
+                if this.explorer.is_some()
+                    && let Some(document) = this.documents.active()
+                {
+                    this.close_document(document.id, window, cx);
+                }
+            }))
+            .on_action(cx.listener(|this, _: &NextTab, window, cx| {
+                if this.documents.cycle(true) {
+                    this.document_shown(window, cx);
+                }
+            }))
+            .on_action(cx.listener(|this, _: &PreviousTab, window, cx| {
+                if this.documents.cycle(false) {
+                    this.document_shown(window, cx);
+                }
             }))
             .on_action(cx.listener(|this, _: &ToggleExplorer, _, cx| {
                 if this.explorer.is_some() {

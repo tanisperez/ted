@@ -6,6 +6,7 @@ mod editor;
 mod explorer;
 mod root;
 mod status_bar;
+mod tabs;
 mod title_bar;
 mod welcome;
 

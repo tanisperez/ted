@@ -291,12 +291,19 @@ folder path.
 
 ### Folder mode
 
-`ted some/folder`, a recent folder or Open folder. The full layout above; the tab bar comes with
-#8 and the Git panel later. Until a file is opened the content area shows "Pick a file in the
+`ted some/folder`, a recent folder or Open folder. The full layout above; the Git panel comes later.
+Until a file is opened, and after the last tab closes, the content area shows "Pick a file in the
 explorer" with the `Ctrl+O` hint.
 
-- **Files toggle**: first in the status bar (files icon 15). A click, or `Alt+1` (`Ctrl+1` on macOS), shows or hides
-  the explorer; it takes the active look while the explorer shows.
+- **Files toggle**: first in the status bar (files icon 15). A click, or `Alt+1` (`Ctrl+1` on
+  macOS), shows or hides the explorer; it takes the active look while the explorer shows.
+- **Tabs**: telaio's `DocumentTabs`, one tab per open file (file icon, name, the shortened path as
+  tooltip). Opening a file from the explorer or a dialog focuses its tab when it is already open,
+  otherwise adds one right after the active tab. Each tab keeps its own editor, so its scroll and
+  cursor survive switching. The cross, a middle click or `Ctrl+W` closes a tab (asking first when
+  it has unsaved changes) and the neighbour to its right, or else to its left, becomes active.
+  `Ctrl+Tab` and `Ctrl+Shift+Tab` cycle through the tabs on every platform. Dragging reorders.
+  The "New file" button of the design joins the strip with new untitled documents.
 - **Explorer**: `surface`, right border, 260 px by default, resized by dragging its right edge (a
   4 px strip with the `col-resize` cursor) between 180 and 520 px. Header 36 px: the folder name as
   a `SectionLabel`, then Collapse all (telaio `IconButton`). New file and New folder join it with
@@ -312,14 +319,17 @@ explorer" with the `Ctrl+O` hint.
 ### Saving and unsaved changes
 
 - `Ctrl+S` saves. A document with unsaved changes shows `●` before its name in the window title
-  (`● main.rs · ted`); the tab bar's dot joins it with #8. Undoing back to the saved text makes
+  (`● main.rs · ted`); its tab shows the dot in place of the cross. Undoing back to the saved text makes
   it clean again.
 - Questions use telaio's modal frame (`views/choice.rs`), never the platform's plain prompt: the
   title in the header, the explanation in `fg_muted`, the answers in the footer, the suggested one
   a `PrimaryButton` (also Enter), one that loses work a `DangerButton`, the rest
   `SecondaryButton`. Escape or the close button cancels.
-- Closing the window, or opening another file, with unsaved changes asks "Save the changes to
-  name?": Don't save (danger), Cancel, Save (primary).
+- Closing a tab, closing the window, or opening another folder (or another file in file mode),
+  with unsaved changes asks "Save the changes to name?": Don't save (danger), Cancel, Save
+  (primary), once per document with changes. Cancel stops there and nothing closes.
+- Opening a path that no longer exists while documents are open shows a warning notification and
+  keeps them open.
 - When the window gets the focus back, a file changed by another program reloads at once if it has
   no unsaved changes; otherwise it asks: Keep my changes, Reload (primary). Saving over a file
   changed on disk asks first: Cancel, Overwrite (primary).

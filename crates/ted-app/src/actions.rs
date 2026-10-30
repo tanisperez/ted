@@ -18,6 +18,12 @@ actions!(
         ToggleExplorer,
         /// Saves the open document (`Ctrl+S`).
         Save,
+        /// Closes the active tab in folder mode (`Ctrl+W`).
+        CloseTab,
+        /// Shows the next tab, wrapping around (`Ctrl+Tab`).
+        NextTab,
+        /// Shows the previous tab, wrapping around (`Ctrl+Shift+Tab`).
+        PreviousTab,
     ]
 );
 
@@ -43,6 +49,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-shift-o", OpenFolder, None),
         KeyBinding::new("ctrl-1", ToggleExplorer, None),
         KeyBinding::new("cmd-s", Save, None),
+        KeyBinding::new("cmd-w", CloseTab, None),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
@@ -50,5 +57,12 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-shift-o", OpenFolder, None),
         KeyBinding::new("alt-1", ToggleExplorer, None),
         KeyBinding::new("ctrl-s", Save, None),
+        KeyBinding::new("ctrl-w", CloseTab, None),
+    ]);
+    // Ctrl+Tab switches tabs on every platform, macOS included, as in Postino. The editor binds
+    // only plain `tab` and `shift-tab`, so this still fires while it has the focus.
+    cx.bind_keys([
+        KeyBinding::new("ctrl-tab", NextTab, None),
+        KeyBinding::new("ctrl-shift-tab", PreviousTab, None),
     ]);
 }

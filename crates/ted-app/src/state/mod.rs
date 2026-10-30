@@ -9,3 +9,4 @@ pub mod locale;
 pub mod recents;
 pub mod settings;
 pub mod status;
+pub mod tabs;
