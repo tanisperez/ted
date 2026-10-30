@@ -70,9 +70,10 @@ Expo/React Native conventions here.
 - Package repositories (APT, DNF, AUR), other channels and the in-app updater (not before the
   user asks).
 - Language of the user docs (English for now, as everything in the repository).
-- Word wrap, multiple cursors, split views: not in 0.1.0; ask before designing them. The
-  minimap was decided on 2026-10-30: it is in 0.1.0 (#16), built directly in the style of VS Code
-  and Zed from the design tokens.
+- Word wrap, split views: not in 0.1.0; ask before designing them. The minimap was decided on
+  2026-10-30: it is in 0.1.0 (#16), built directly in the style of VS Code and Zed from the design
+  tokens. Multiple cursors were decided on 2026-10-30: they are in 0.2.0 (#20), as in IntelliJ
+  (Alt+click, column selection with the middle button, which never pastes the primary selection).
 - Files bigger than the 100 MB target (memory mapping, lazy loading): only if the user asks.
 - Encodings other than UTF-8 (UTF-16, Latin-1): 0.1.0 opens UTF-8 and shows anything else as
   lossy or read only; ask before adding real support.
