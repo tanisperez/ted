@@ -16,6 +16,7 @@ use super::root::AppView;
 
 mod branch_menu;
 mod branches;
+mod diff_view;
 mod panel;
 mod sync;
 mod watch;
@@ -23,6 +24,7 @@ mod write;
 
 pub(crate) use branch_menu::{MenuContext, new_branch_menu};
 pub(crate) use branches::CheckoutChoice;
+pub(crate) use diff_view::DiffView;
 pub(crate) use panel::letter_color;
 
 /// The git work in flight. Replacing a task drops the previous one, so only the latest result is
@@ -163,6 +165,7 @@ impl AppView {
                             *current = Some(Arc::new(status));
                             view.rebuild_git_rows(cx);
                             view.load_commit_stats(cx);
+                            view.reload_git_diff(cx);
                             // A commit, checkout or fetch made anywhere moves the branches too.
                             view.load_branches(cx);
                             cx.notify();

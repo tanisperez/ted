@@ -13,7 +13,16 @@ description: The Git panel of ted: see what changed in a folder, stage, discard 
     <li><strong>Changes</strong>: tracked files that were modified (<code>M</code>), added (<code>A</code>), deleted (<code>D</code>, struck through), renamed (<code>R</code>) or that have a conflict (<code>!</code>).</li>
     <li><strong>Unversioned</strong>: files git does not track yet (<code>U</code>).</li>
 </ul>
-<p>Files are grouped by folder; the list button in the header shows them as a flat list with their folder next to the name. Click a group or a folder to fold it, and a file to open it.</p>
+<p>Files are grouped by folder; the list button in the header shows them as a flat list with their folder next to the name. Click a group or a folder to fold it, and a file to see <a href="#diff">its changes</a>.</p>
+
+<h2 id="diff">The changes of a file</h2>
+<p>Clicking a file in the Git panel opens its changes in a tab, <code>README.md (changes)</code>: the whole file against the last commit, in one column, with the line numbers of both versions. Removed lines are red and marked <code>−</code>, added lines are green and marked <code>+</code>, and inside a changed line the words that changed are highlighted. The header sums up the lines added and removed and the number of changes. There is one changes tab: clicking another file shows that one in the same tab, and it follows the file as you edit and save it.</p>
+<p>Each change has two buttons on its first line:</p>
+<ul>
+    <li><strong>Stage</strong> puts only that change in the index, so a commit can take part of a file. A staged change shows <strong>Unstage</strong> instead.</li>
+    <li><strong>Revert</strong> puts the lines back as they were in the last commit, in the file and in the index. ted asks first, unless <strong>Confirm before discarding changes</strong> is off.</li>
+</ul>
+<p><strong>Open file</strong> opens the file itself in its own tab, to edit it.</p>
 
 <h2 id="explorer">In the explorer</h2>
 <p>Inside a repository the explorer shows the same letters next to the changed files, in their colors, and a dot after each folder that holds a change, in the color of the most important one (a conflict, then a deletion, a modification, a rename, an addition, an unversioned file). They follow the status as it changes.</p>

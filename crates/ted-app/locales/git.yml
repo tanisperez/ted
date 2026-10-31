@@ -336,3 +336,39 @@ _version: 2
 "git.failure.pull_and_push":
   en: "Pull and push"
   es: "Pull y push"
+"git.diff.tab":
+  en: "%{name} (changes)"
+  es: "%{name} (cambios)"
+"git.diff.open_file":
+  en: "Open file"
+  es: "Abrir archivo"
+"git.diff.blocks.one":
+  en: "%{count} change"
+  es: "%{count} cambio"
+"git.diff.blocks.other":
+  en: "%{count} changes"
+  es: "%{count} cambios"
+"git.diff.stage":
+  en: "Stage"
+  es: "Preparar"
+"git.diff.unstage":
+  en: "Unstage"
+  es: "Quitar"
+"git.diff.revert":
+  en: "Revert"
+  es: "Revertir"
+"git.diff.revert_title":
+  en: "Revert this change?"
+  es: "¿Revertir este cambio?"
+"git.diff.revert_text":
+  en: "The lines go back to the last commit. This cannot be undone."
+  es: "Las líneas vuelven a como estaban en el último commit. No se puede deshacer."
+"git.diff.error":
+  en: "The diff could not be read"
+  es: "No se pudo leer el diff"
+"git.diff.binary":
+  en: "Binary file: no text diff"
+  es: "Archivo binario: sin diff de texto"
+"git.diff.no_changes":
+  en: "No changes against the last commit"
+  es: "Sin cambios respecto al último commit"

@@ -519,7 +519,8 @@ fn render_change_row(
                     .text_color(palette.fg_subtle),
             );
             let path = row.path.clone();
-            let deleted = *deleted;
+            let repo_path = row.repo_paths.first().cloned().unwrap_or_default();
+            let (letter, deleted) = (*letter, *deleted);
             // A flat list (depth 1) names the folder each file is in.
             let folder = (row.depth == 1)
                 .then(|| {
@@ -536,9 +537,7 @@ fn render_change_row(
                 .trailing(discard)
                 .suffix(letter_element)
                 .on_click(cx.listener(move |view, _, window, cx| {
-                    if !deleted {
-                        view.open_changed_file(&path, window, cx);
-                    }
+                    view.open_git_diff(repo_path.clone(), path.clone(), letter, window, cx);
                 }))
                 .into_any_element()
         }

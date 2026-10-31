@@ -15,7 +15,7 @@ use crate::state::launch::shorten_path;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{ICON_BUTTON_LG, RADIUS_SM};
 
-use super::root::AppView;
+use super::root::{AppView, DocumentView};
 
 impl AppView {
     /// Renders the tab bar.
@@ -42,9 +42,13 @@ impl AppView {
                 Some(path) => shorten_path(path, home.as_deref()),
                 None => name.clone(),
             };
+            let icon = match &document.view {
+                DocumentView::Diff(_) => IconName::GitCompare,
+                _ => IconName::File,
+            };
             tabs = tabs.item(
                 DocumentTab::new(name)
-                    .icon(IconName::File)
+                    .icon(icon)
                     .dirty(dirty)
                     .selected(active == Some(index))
                     .tooltip(tooltip)

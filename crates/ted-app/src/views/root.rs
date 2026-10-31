@@ -76,6 +76,8 @@ pub(crate) enum DocumentView {
     /// It could not be shown: a title and a detail.
     Message(SharedString, Option<SharedString>),
     Editor(Entity<EditorView>),
+    /// The diff of a changed file (`views/git/diff_view.rs`). There is one, reused.
+    Diff(Entity<super::git::DiffView>),
 }
 
 /// One open file: a tab in folder mode, the whole window in file mode.
@@ -87,6 +89,8 @@ pub(crate) struct Document {
     /// The number in the name of a new document ("Untitled 2"), from 1. Unused with a path.
     pub(crate) untitled: usize,
     pub(crate) view: DocumentView,
+    /// The name shown instead of the file's: the diff tab's.
+    pub(crate) title: Option<String>,
     /// Keeps the window title in step with the editor (its dirty state).
     _subscription: Option<Subscription>,
 }
@@ -94,6 +98,9 @@ pub(crate) struct Document {
 impl Document {
     /// The name of its tab and of the window title: the file name, or "Untitled".
     pub(crate) fn name(&self) -> String {
+        if let Some(title) = &self.title {
+            return title.clone();
+        }
         match (&self.path, self.untitled) {
             (Some(path), _) => launch::display_name(path),
             (None, 1) => t!("open.untitled").into_owned(),
@@ -415,6 +422,7 @@ impl AppView {
             path: Some(path.clone()),
             untitled: 0,
             view: DocumentView::Loading,
+            title: None,
             _subscription: None,
         });
         self.load(id, path, window, cx);
@@ -460,7 +468,30 @@ impl AppView {
             path: None,
             untitled,
             view: DocumentView::Editor(editor),
+            title: None,
             _subscription: Some(subscription),
+        });
+        self.document_shown(window, cx);
+    }
+
+    /// Opens a document that is not a file (the diff tab) in a new tab, named `title`.
+    pub(crate) fn open_document_view(
+        &mut self,
+        view: DocumentView,
+        title: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let id = self.next_document;
+        self.next_document += 1;
+        self.content = Content::Documents;
+        self.documents.open(Document {
+            id,
+            path: None,
+            untitled: 0,
+            view,
+            title,
+            _subscription: None,
         });
         self.document_shown(window, cx);
     }
@@ -761,6 +792,7 @@ impl Render for AppView {
                         div().flex_1().min_h_0().child(editor.clone())
                     }
                     Some(DocumentView::Loading) => div().flex_1(),
+                    Some(DocumentView::Diff(diff)) => div().flex_1().min_h_0().child(diff.clone()),
                     Some(DocumentView::Message(title, detail)) => {
                         self.render_message(title, detail.as_ref(), cx)
                     }
