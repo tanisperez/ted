@@ -162,6 +162,7 @@ impl AppView {
                             cx.notify();
                         });
                         this.refresh_git_status(cx);
+                        this.update_gutter(&editor, cx);
                     }
                     Err(error) => {
                         log::warn!("{error}");

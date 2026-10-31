@@ -691,13 +691,17 @@ impl AppView {
             }
         };
         match &document.view {
-            DocumentView::Editor(editor) => editor.update(cx, |editor, cx| {
-                editor.state.buffer = buffer;
-                editor.state.expected_lines = None;
-                editor.state.read_only = lossy;
-                editor.state.disk_modified = modified;
-                cx.notify();
-            }),
+            DocumentView::Editor(editor) => {
+                let editor = editor.clone();
+                editor.update(cx, |editor, cx| {
+                    editor.state.buffer = buffer;
+                    editor.state.expected_lines = None;
+                    editor.state.read_only = lossy;
+                    editor.state.disk_modified = modified;
+                    cx.notify();
+                });
+                self.update_gutter(&editor, cx);
+            }
             _ => {
                 // Only the start of the file: make room in the gutter for all its lines.
                 let expected_lines = (file_size > buffer.len() as u64)
@@ -726,7 +730,8 @@ impl AppView {
                     let focus = editor.read(cx).focus_handle().clone();
                     focus.focus(window, cx);
                 }
-                document.view = DocumentView::Editor(editor);
+                document.view = DocumentView::Editor(editor.clone());
+                self.update_gutter(&editor, cx);
             }
         }
         cx.notify();

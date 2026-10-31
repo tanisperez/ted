@@ -29,6 +29,7 @@ use crate::state::editor::{
     next_occurrence,
 };
 use crate::state::find::Find;
+use crate::state::git_gutter::MarkKind;
 use crate::state::minimap::{
     EditorMeasures, LINE_HEIGHT as MINIMAP_LINE, MAX_COLUMNS as MINIMAP_COLUMNS, MinimapLayout,
     line_blocks,
@@ -48,6 +49,10 @@ const LONG_LINE_MARGIN: usize = 64;
 const MIN_THUMB: f32 = 24.0;
 /// Width of the text cursor, in pixels.
 const CURSOR_WIDTH: f32 = 2.0;
+/// The x of the git change marks from the left of the gutter.
+const GIT_MARK_LEFT: f32 = 4.0;
+/// The width of a git change mark (and the height of a deletion mark).
+const GIT_MARK_WIDTH: f32 = 3.0;
 
 actions!(
     editor,
@@ -777,6 +782,8 @@ pub struct EditorLayout {
     /// The y of the first visible line, relative to the top of the element.
     first_y: Pixels,
     numbers: Vec<ShapedLine>,
+    /// The git change marks of the visible lines, in the gutter.
+    git_marks: Vec<(Bounds<Pixels>, Hsla)>,
     painted: Vec<PaintedLine>,
     cursors: Vec<Bounds<Pixels>>,
     current_lines: Vec<Bounds<Pixels>>,
@@ -1093,6 +1100,46 @@ impl Element for EditorElement {
                 })
                 .collect();
 
+            // The git change marks, only while the text is the one they were computed for.
+            let mut git_marks = Vec::new();
+            if let Some(marks) = &state.git_marks
+                && marks.version == state.buffer.version()
+            {
+                let x = gutter.left() + px(GIT_MARK_LEFT);
+                for mark in marks.on_lines(lines.clone()) {
+                    let (color, top, height) = match mark.kind {
+                        MarkKind::Added | MarkKind::Modified => {
+                            let first = mark.lines.start.max(lines.start);
+                            let last = mark.lines.end.min(lines.end);
+                            (
+                                if mark.kind == MarkKind::Added {
+                                    palette.success
+                                } else {
+                                    palette.accent
+                                },
+                                row_top(first),
+                                line_height * last.saturating_sub(first) as f32,
+                            )
+                        }
+                        MarkKind::Deleted => {
+                            let line = mark.lines.start.clamp(lines.start, lines.end);
+                            (
+                                palette.danger,
+                                row_top(line) - px(GIT_MARK_WIDTH / 2.0),
+                                px(GIT_MARK_WIDTH),
+                            )
+                        }
+                    };
+                    // A deletion is a short horizontal bar between two lines.
+                    let width = if mark.kind == MarkKind::Deleted {
+                        GIT_MARK_WIDTH * 3.0
+                    } else {
+                        GIT_MARK_WIDTH
+                    };
+                    git_marks.push((Bounds::new(point(x, top), size(px(width), height)), color));
+                }
+            }
+
             let minimap = minimap_area.map(|area| {
                 let layout = MinimapLayout::new(EditorMeasures {
                     lines: state.buffer.line_count(),
@@ -1185,6 +1232,7 @@ impl Element for EditorElement {
                 line_height,
                 first_y: px(first_y),
                 numbers,
+                git_marks,
                 painted,
                 cursors,
                 current_lines,
@@ -1261,6 +1309,9 @@ impl Element for EditorElement {
         // Line numbers, right aligned, never scrolled horizontally.
         let number_right = layout.gutter.right() - px(EDITOR_GUTTER_RIGHT);
         window.with_content_mask(Some(editor_mask), |window| {
+            for (rect, color) in &layout.git_marks {
+                window.paint_quad(fill(*rect, *color));
+            }
             for (row, number) in layout.numbers.iter().enumerate() {
                 let origin = point(number_right - number.width, top + line_height * row as f32);
                 let _ = number.paint(origin, line_height, TextAlign::Left, None, window, cx);

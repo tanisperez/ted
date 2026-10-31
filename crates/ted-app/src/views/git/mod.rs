@@ -17,6 +17,7 @@ use super::root::AppView;
 mod branch_menu;
 mod branches;
 mod diff_view;
+mod gutter;
 mod history_view;
 mod panel;
 mod sync;
@@ -169,6 +170,7 @@ impl AppView {
                             view.load_commit_stats(cx);
                             view.reload_git_diff(cx);
                             view.update_git_history(cx);
+                            view.update_all_gutters(cx);
                             // A commit, checkout or fetch made anywhere moves the branches too.
                             view.load_branches(cx);
                             cx.notify();

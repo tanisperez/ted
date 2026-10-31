@@ -101,9 +101,24 @@ highlighting more than the visible range, searching a whole file.
   (`src/highlighter/`, Apache licensed) before adding new crates. `tree-sitter-make` is the one
   grammar gpui-component does not build by default; ted pins the version of its
   `tree-sitter-make` feature (1.1.1). `cargo tree -d --depth 0 | grep gpui` must stay empty.
-- **gpui-kit** 0.8.0 and **telaio** (`telaio-ui`, `telaio-app`) pinned to one tag in
-  `[workspace.dependencies]`, as in Postino.
+- **gpui-kit** 0.8.0 and **telaio** (`telaio-ui`, `telaio-app`, `telaio-git`) pinned to one tag
+  in `[workspace.dependencies]`, as in Postino.
 - **Settings** in `settings.toml` under the config dir, applied at once.
+
+## Git
+
+Git is folder mode only, through `telaio-git`, which runs the `git` executable (never a library)
+and is shared with Postino. Every git command runs on the background executor; the results land
+in `state/git.rs` and render only reads them. The views are in `views/git/`: the panel and its
+commit box, the branch menu, the diff tab, the history tab, the explorer marks and the gutter
+marks of the editor.
+
+Keeping the status current costs nothing while idle: a non recursive watcher on `.git` (plus its
+`refs`) sees commands run in a terminal, ted's own saves and git commands read it at once, and
+getting the window focus back reads it for files other programs changed. The work tree is not
+watched recursively: one OS watch per folder and a walk of the whole tree would break the target
+of opening a folder of 100,000 files at once. The automatic fetch also runs on focus, at most
+every five minutes, never on a timer.
 
 ## Zed as inspiration only
 
@@ -115,8 +130,8 @@ Only `gpui` itself is Apache-2.0.
 ## Modes
 
 - **File mode**: `ted some/file.txt` opens that file alone, with no explorer and no tabs.
-- **Folder mode**: `ted some/folder` (or Open folder) shows the explorer, the document tabs and,
-  later, the Git panel.
+- **Folder mode**: `ted some/folder` (or Open folder) shows the explorer, the document tabs and
+  the Git panel.
 - **Empty state**: with no argument, the recent folders and recent files.
 
 ## Out of scope for 0.1.0

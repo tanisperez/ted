@@ -136,6 +136,8 @@ pub struct EditorState {
     pub disk_modified: Option<SystemTime>,
     /// The language and the syntax tree of the text.
     pub syntax: Syntax,
+    /// The git change marks of the gutter, for the file as saved (`state::git_gutter`).
+    pub git_marks: Option<super::git_gutter::GitMarks>,
 }
 
 impl EditorState {
