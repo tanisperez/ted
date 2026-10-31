@@ -6,6 +6,7 @@ pub mod editor;
 pub mod explorer;
 pub mod find;
 pub mod git;
+pub mod git_branches;
 pub mod git_sync;
 pub mod launch;
 pub mod locale;

@@ -5,7 +5,9 @@
 //! folder (folder mode, with the explorer and one tab per open file). Files load in the
 //! background into their document; a load whose document was closed meanwhile is dropped.
 
+use std::cell::RefCell;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::input::{InputEvent, InputState, TextareaState};
@@ -37,7 +39,7 @@ use crate::theme::metrics::{
 
 use super::editor::EditorView;
 use super::explorer::{ExplorerEvent, ExplorerView};
-use super::git::GitTasks;
+use super::git::{CheckoutChoice, GitTasks, MenuContext, new_branch_menu};
 
 /// Files at least this big show their first [`HEAD_BYTES`] while the rest loads.
 const HEAD_THRESHOLD: u64 = 8 * 1024 * 1024;
@@ -151,6 +153,12 @@ pub struct AppView {
     pub(crate) git_tasks: GitTasks,
     /// The Git panel's commit message.
     pub(crate) commit_input: Entity<TextareaState>,
+    /// The branch menu of the status bar.
+    pub(crate) branch_menu: Entity<telaio_ui::components::SearchableMenuState>,
+    /// What the branch menu's submenus and create row need to know, updated on every rebuild.
+    pub(crate) branch_menu_context: Rc<RefCell<MenuContext>>,
+    /// The choice of the checkout dialog while it is open.
+    pub(crate) checkout_choice: CheckoutChoice,
     /// Checks the open file on disk when the window gets the focus back.
     _activation: Subscription,
 }
@@ -181,6 +189,8 @@ impl AppView {
             }
         })
         .detach();
+        let branch_menu_context = Rc::new(RefCell::new(MenuContext::default()));
+        let branch_menu = new_branch_menu(Rc::clone(&branch_menu_context), window, cx);
         let mut view = Self {
             settings,
             recents: recents::load(),
@@ -204,6 +214,9 @@ impl AppView {
             git: GitState::default(),
             git_tasks: GitTasks::default(),
             commit_input,
+            branch_menu,
+            branch_menu_context,
+            checkout_choice: CheckoutChoice::default(),
             _activation: activation,
         };
         view.detect_git(cx);

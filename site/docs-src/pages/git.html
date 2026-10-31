@@ -30,5 +30,22 @@ description: The Git panel of ted: see what changed in a folder, stage, discard 
 </ul>
 <p>ted runs git with your own configuration: your name and email, your hooks, and your credential helper or SSH agent for the remote. While a commit or a push runs, the status bar says so. When one fails, a notification explains why in plain words, and <strong>Show git output</strong> shows what git printed.</p>
 
+<h2 id="branches">Branches</h2>
+<p>The status bar shows the current branch (or the short id of the commit, when <code>HEAD</code> is detached), with an up arrow and the number of commits to push and a down arrow and the number to pull. Click it to open the branch menu:</p>
+<ul>
+    <li>The search box filters the branches and the actions as you type.</li>
+    <li><strong>New branch</strong>, <strong>Pull</strong>, <strong>Push</strong> (with the number of commits to push) and <strong>Fetch</strong> at the top. Pull merges or rebases as your git configuration says (<code>pull.rebase</code>).</li>
+    <li>The branches in groups: <strong>Recent</strong> (the current one and the last ones you checked out), <strong>Local</strong> and one group per remote. Each one shows its last commit, how long ago it was made, and how far it is ahead or behind its upstream.</li>
+    <li>Click a branch, or press <kbd>Enter</kbd> on it, to check it out. A remote branch checks out its local branch, creating it when needed.</li>
+    <li>The arrow at the end of a branch opens its submenu: check out, a new branch from it, rename and delete. A branch with commits that are not merged anywhere asks again before it is deleted.</li>
+    <li>Type a name that does not exist and press <kbd>Ctrl</kbd> <kbd>Enter</kbd> to create that branch from the current one and check it out.</li>
+</ul>
+<p>When you check out another branch with uncommitted changes, ted asks what to do with them:</p>
+<ul>
+    <li><strong>Stash and check out</strong> keeps them in a stash named after the branch they belong to (<code>ted-auto:main</code>). When you come back to that branch, ted restores them and says so.</li>
+    <li><strong>Bring changes</strong> takes them to the other branch, which only works when they do not conflict with it.</li>
+</ul>
+<p>After a checkout or a pull, the explorer follows the files on disk, and an open file that changed is reloaded, asking first when it has unsaved changes. A rejected push offers <strong>Pull and push</strong>.</p>
+
 <h2 id="status">Refreshing</h2>
 <p>The status is read when the folder opens and when the panel is shown; the circular arrow in the header reads it again. A failed git command shows git's own message in a notification.</p>

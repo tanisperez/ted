@@ -5,11 +5,13 @@
 //! repository the branch comes before the folder path.
 
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::Button;
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
+use telaio_ui::components::{NeutralButtonExt, SearchableMenu};
 
 use crate::actions::{ToggleExplorer, ToggleGit};
 use crate::state::launch::{Target, shorten_path};
@@ -57,13 +59,40 @@ impl AppView {
                 .child(div().w(px(1.0)).h(px(14.0)).bg(palette.border))
             })
             .children(self.git.branch_label().map(|branch| {
-                h_flex()
-                    .id("status-branch")
+                let (ahead, behind) = self
+                    .git
+                    .status()
+                    .map_or((0, 0), |(_, status)| (status.ahead, status.behind));
+                let count = |icon, count: u32| {
+                    (count > 0).then(|| {
+                        h_flex()
+                            .items_center()
+                            .gap(px(2.0))
+                            .child(Icon::new(icon).with_size(px(11.0)))
+                            .child(telaio_app::number::format_integer(u64::from(count)))
+                    })
+                };
+                let content = h_flex()
                     .items_center()
                     .gap(px(6.0))
                     .text_color(palette.accent_text)
                     .child(Icon::new(IconName::GitBranch).with_size(px(13.0)))
                     .child(branch)
+                    .child(Icon::new(IconName::ChevronUp).with_size(px(11.0)))
+                    .children(count(IconName::ArrowUp, ahead))
+                    .children(count(IconName::ArrowDown, behind));
+                SearchableMenu::new("status-branch-menu", &self.branch_menu).trigger(
+                    Button::new("status-branch")
+                        .neutral_ghost(cx, palette.accent_text)
+                        .compact()
+                        .h(px(22.0))
+                        .px(px(6.0))
+                        .mx(px(-6.0))
+                        .rounded(px(RADIUS_MD - 2.0))
+                        .text_size(px(11.5))
+                        .tooltip(t!("git.menu.tooltip"))
+                        .child(content),
+                )
             }))
             .children(folder.map(|root| {
                 let label = shorten_path(&root, std::env::home_dir().as_deref());

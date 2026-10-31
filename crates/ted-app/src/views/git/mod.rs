@@ -14,9 +14,14 @@ use crate::state::launch::Target;
 
 use super::root::AppView;
 
+mod branch_menu;
+mod branches;
 mod panel;
 mod sync;
 mod write;
+
+pub(crate) use branch_menu::{MenuContext, new_branch_menu};
+pub(crate) use branches::CheckoutChoice;
 
 /// The git work in flight. Replacing a task drops the previous one, so only the latest result is
 /// applied.
@@ -29,6 +34,8 @@ pub(crate) struct GitTasks {
     write: Option<Task<()>>,
     /// The commit box's summary line being read.
     commit_stats: Option<Task<()>>,
+    /// The branches being read for the menu (`branches.rs`).
+    branches: Option<Task<()>>,
 }
 
 impl AppView {
@@ -70,6 +77,7 @@ impl AppView {
     /// opens or closes and after git is detected again.
     pub(crate) fn discover_git_repo(&mut self, cx: &mut Context<Self>) {
         self.git.repo = RepoState::Unknown;
+        self.git.branches = None;
         self.git_tasks.status = None;
         self.git.collapsed.clear();
         self.rebuild_git_rows();
@@ -105,6 +113,7 @@ impl AppView {
                     }
                 };
                 view.refresh_git_status(cx);
+                view.load_branches(cx);
                 cx.notify();
             });
         }));
@@ -145,6 +154,8 @@ impl AppView {
                             *current = Some(Arc::new(status));
                             view.rebuild_git_rows();
                             view.load_commit_stats(cx);
+                            // A commit, checkout or fetch made anywhere moves the branches too.
+                            view.load_branches(cx);
                             cx.notify();
                         }
                     }

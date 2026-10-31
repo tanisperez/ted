@@ -1,4 +1,4 @@
-//! Plain data behind commit and push (ported from Postino's `state/git_sync.rs`): the operation
+//! Plain data behind commit, push, pull, fetch and the branch commands (ported from Postino's `state/git_sync.rs`): the operation
 //! in flight for the status bar, the commit box's summary line and checks, and the last failure
 //! with git's raw output. `views/git/sync.rs` runs the commands and stores the results here.
 
@@ -12,6 +12,14 @@ pub enum GitOp {
     Commit,
     /// `git push`.
     Push,
+    /// `git pull`.
+    Pull,
+    /// `git fetch`.
+    Fetch,
+    /// Switching to another branch, with the stash around it.
+    Checkout,
+    /// Creating, renaming or deleting a branch.
+    Branch,
 }
 
 impl GitOp {
@@ -20,6 +28,10 @@ impl GitOp {
         match self {
             GitOp::Commit => t!("git.sync.committing"),
             GitOp::Push => t!("git.sync.pushing"),
+            GitOp::Pull => t!("git.sync.pulling"),
+            GitOp::Fetch => t!("git.sync.fetching"),
+            GitOp::Checkout => t!("git.sync.checking_out"),
+            GitOp::Branch => t!("git.sync.branching"),
         }
         .into_owned()
     }
@@ -43,6 +55,11 @@ impl GitFailure {
             (GitOp::Push, FailureKind::Rejected) => t!("git.failure.push_rejected"),
             (GitOp::Commit, _) => t!("git.failure.commit"),
             (GitOp::Push, _) => t!("git.failure.push"),
+            (GitOp::Pull, FailureKind::Conflicts) => t!("git.failure.pull_conflicts"),
+            (GitOp::Pull, _) => t!("git.failure.pull"),
+            (GitOp::Fetch, _) => t!("git.failure.fetch"),
+            (GitOp::Checkout, _) => t!("git.failure.checkout"),
+            (GitOp::Branch, _) => t!("git.failure.branch"),
         }
         .into_owned()
     }

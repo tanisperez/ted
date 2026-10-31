@@ -10,7 +10,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
-use telaio_git::{GitError, PushTarget};
+use telaio_git::{FailureKind, GitError, PullMode, PushTarget};
 
 use telaio_ui::components::{
     ConfirmDialog, ModalPlacement, NeutralButtonExt, PrimaryButton, framed_dialog, modal_body,
@@ -30,7 +30,7 @@ impl AppView {
     /// Runs `work` as `op` after the write in flight, with the op in the status bar, then reads
     /// the status again. `done` gets the result on success; a failure goes to
     /// [`Self::show_git_failure`] unless `quiet` (an automatic fetch never nags).
-    fn run_git_op<T: Send + 'static>(
+    pub(super) fn run_git_op<T: Send + 'static>(
         &mut self,
         op: GitOp,
         quiet: bool,
@@ -251,8 +251,46 @@ impl AppView {
         );
     }
 
-    /// A notification with the failure in plain language and "Show git output".
-    fn show_git_failure(
+    /// Pulls (as git config says: merge unless `pull.rebase` is set), and pushes afterwards when
+    /// `then_push` ("Pull and push" after a rejected push).
+    pub(crate) fn pull(&mut self, then_push: bool, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(repo) = self.git.repo().cloned() else {
+            return;
+        };
+        self.run_git_op(
+            GitOp::Pull,
+            false,
+            move || repo.pull(PullMode::FollowConfig),
+            move |view, (), window, cx| {
+                log::info!("pulled");
+                view.after_head_moved(window, cx);
+                if then_push {
+                    view.start_push(false, window, cx);
+                }
+            },
+            window,
+            cx,
+        );
+    }
+
+    /// Fetches from the remote. `auto` is the automatic fetch: silent when it fails.
+    pub(crate) fn fetch(&mut self, auto: bool, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(repo) = self.git.repo().cloned() else {
+            return;
+        };
+        self.run_git_op(
+            GitOp::Fetch,
+            auto,
+            move || repo.fetch(),
+            |_, (), _, _| log::debug!("fetched"),
+            window,
+            cx,
+        );
+    }
+
+    /// A notification with the failure in plain language, "Pull and push" for a rejected push,
+    /// and "Show git output".
+    pub(crate) fn show_git_failure(
         &mut self,
         failure: GitFailure,
         window: &mut Window,
@@ -264,6 +302,8 @@ impl AppView {
             .and_then(|(_, status)| status.upstream.clone());
         let title = failure.title();
         let message = failure.message(upstream.as_deref());
+        let rejected = failure.op == GitOp::Push && failure.kind == FailureKind::Rejected;
+        let weak = cx.weak_entity();
         let output: SharedString = failure.output.into();
         let notification = Notification::error(message)
             .title(title)
@@ -285,6 +325,22 @@ impl AppView {
                 h_flex()
                     .mt(px(8.0))
                     .gap(px(6.0))
+                    .when(rejected, |row| {
+                        let weak = weak.clone();
+                        row.child(
+                            PrimaryButton::new(
+                                "git-failure-pull-push",
+                                t!("git.failure.pull_and_push"),
+                            )
+                            .icon(Icon::new(gpui_kit::assets::IconName::ArrowDown))
+                            .on_click(cx.listener(
+                                move |note, _, window, cx| {
+                                    note.dismiss(window, cx);
+                                    let _ = weak.update(cx, |view, cx| view.pull(true, window, cx));
+                                },
+                            )),
+                        )
+                    })
                     .child(show_output)
                     .into_any_element()
             });
