@@ -11,9 +11,7 @@
 use std::fmt;
 
 use ted_core::Buffer;
-use ted_syntax::{
-    Highlight, HighlightSpan, Language, SyntaxTree, highlight_batch_line, highlight_log_line,
-};
+use ted_syntax::{Highlight, HighlightSpan, Language, SyntaxTree, highlight_log_line};
 
 use super::editor::advance;
 
@@ -233,13 +231,13 @@ impl Syntax {
             let prefix = slice.slice(..prefix_end).to_string();
             return clip(highlight_log_line(&prefix), window);
         }
-        if self.language == Language::Batch {
+        if let Some(highlight_line) = self.language.line_highlighter() {
             // From the start of the line, so a string or a comment opened before the window
             // still colors it.
             let slice = buffer.line(line);
             let end = slice.floor_char_boundary(slice.len().min(window.end));
             let text = slice.slice(..end).to_string();
-            return clip(highlight_batch_line(&text), window);
+            return clip(highlight_line(&text), window);
         }
         let Some(tree) = &self.tree else {
             return Vec::new();

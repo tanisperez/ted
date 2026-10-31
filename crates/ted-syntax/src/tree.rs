@@ -203,6 +203,7 @@ mod tests {
             Language::Shell,
             Language::Python,
             Language::PowerShell,
+            Language::Css,
         ] {
             assert!(grammar(l).is_some(), "{l:?}");
         }
@@ -233,6 +234,9 @@ mod tests {
         assert_eq!(d("Tools.psm1"), Language::PowerShell);
         assert_eq!(d("build.bat"), Language::Batch);
         assert_eq!(d("run.CMD"), Language::Batch);
+        assert_eq!(d("site/style.css"), Language::Css);
+        assert_eq!(d("repo/.editorconfig"), Language::EditorConfig);
+        assert_eq!(d("repo/.gitignore"), Language::GitIgnore);
         assert_eq!(Language::Rust.name(), "Rust");
         let s = Language::from_shebang;
         assert_eq!(s("#!/bin/sh"), Some(Language::Shell));
@@ -367,6 +371,22 @@ mod tests {
         has(Language::PowerShell, src, "3.14", Number);
         has(Language::PowerShell, src, "ForEach-Object", Function);
         has(Language::PowerShell, src, "Name", Property);
+    }
+
+    #[test]
+    fn css_highlights() {
+        let src = "/* hi */\n@media screen {\n  .card > p:hover { color: #fff; margin: 4px auto !important; display: block; }\n}\n";
+        has(Language::Css, src, "/* hi */", Comment);
+        has(Language::Css, src, "@media", Keyword);
+        has(Language::Css, src, "card", Property);
+        has(Language::Css, src, "p", Tag);
+        has(Language::Css, src, "hover", Attribute);
+        has(Language::Css, src, "color", Property);
+        has(Language::Css, src, "#fff", String);
+        has(Language::Css, src, "4", Number);
+        has(Language::Css, src, "px", Type);
+        has(Language::Css, src, "auto", Constant);
+        has(Language::Css, src, "!important", Keyword);
     }
 
     #[test]

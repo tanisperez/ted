@@ -48,6 +48,8 @@ tree-sitter-python = "=0.23.6"
 # PowerShell: not in gpui-component; the maintained grammar of airbus-cert, built for tree-sitter
 # 0.26.
 tree-sitter-powershell = "=0.26.6"
+# CSS: the version gpui-component pins.
+tree-sitter-css = "=0.23.2"
 # Find in file: a literal searched with the case rules of Unicode. The version gpui already builds.
 regex = "1.13"
 # Folder explorer: gitignore matching, file watching and the batched channel. The exact versions

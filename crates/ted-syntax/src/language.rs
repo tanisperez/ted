@@ -2,6 +2,8 @@
 
 use std::path::Path;
 
+use crate::HighlightSpan;
+
 /// A language of the editor. `Log` and `PlainText` have no tree-sitter grammar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Language {
@@ -17,6 +19,9 @@ pub enum Language {
     Python,
     PowerShell,
     Batch,
+    Css,
+    EditorConfig,
+    GitIgnore,
     Log,
     PlainText,
 }
@@ -34,6 +39,8 @@ impl Language {
             ".bashrc" | ".bash_profile" | ".bash_logout" | ".profile" | ".zshrc" | ".zshenv"
             | ".zprofile" | "PKGBUILD" => return Language::Shell,
             ".babelrc" | ".prettierrc" | ".eslintrc" | "composer.lock" => return Language::Json,
+            ".editorconfig" => return Language::EditorConfig,
+            ".gitignore" => return Language::GitIgnore,
             _ => {}
         }
         let Some(extension) = path.extension().and_then(|e| e.to_str()) else {
@@ -53,6 +60,7 @@ impl Language {
             "py" | "pyw" | "pyi" => Language::Python,
             "ps1" | "psm1" | "psd1" => Language::PowerShell,
             "bat" | "cmd" => Language::Batch,
+            "css" => Language::Css,
             "log" => Language::Log,
             _ => Language::PlainText,
         }
@@ -75,9 +83,21 @@ impl Language {
         }
     }
 
-    /// Whether a tree-sitter grammar highlights it (not logs, batch files nor plain text).
+    /// Whether a tree-sitter grammar highlights it (not logs, the languages of
+    /// [`Language::line_highlighter`] nor plain text).
     pub fn has_grammar(self) -> bool {
-        !matches!(self, Language::Log | Language::Batch | Language::PlainText)
+        !matches!(self, Language::Log | Language::PlainText) && self.line_highlighter().is_none()
+    }
+
+    /// The highlighter of a language colored one line at a time, with no tree: batch files and
+    /// the line based config files. Logs have their own, bounded to the start of the line.
+    pub fn line_highlighter(self) -> Option<fn(&str) -> Vec<HighlightSpan>> {
+        match self {
+            Language::Batch => Some(crate::highlight_batch_line),
+            Language::EditorConfig => Some(crate::highlight_editorconfig_line),
+            Language::GitIgnore => Some(crate::highlight_gitignore_line),
+            _ => None,
+        }
     }
 
     /// The label of the status bar.
@@ -95,6 +115,9 @@ impl Language {
             Language::Python => "Python",
             Language::PowerShell => "PowerShell",
             Language::Batch => "Batch",
+            Language::Css => "CSS",
+            Language::EditorConfig => "EditorConfig",
+            Language::GitIgnore => "Gitignore",
             Language::Log => "Log",
             Language::PlainText => "Plain text",
         }

@@ -12,10 +12,12 @@
 //!    once (its ranges follow the text), and reparse in the background passing that tree as
 //!    `previous`.
 //!
-//! Logs and batch files have no tree: [`highlight_log_line`] and [`highlight_batch_line`] work
-//! on the text of one line.
+//! Logs, batch files and the line based config files have no tree: [`highlight_log_line`] and
+//! the highlighters of [`Language::line_highlighter`] work on the text of one line.
 
 mod batch;
+mod editorconfig;
+mod gitignore;
 mod grammar;
 mod highlight;
 mod language;
@@ -23,6 +25,8 @@ mod log;
 mod tree;
 
 pub use batch::highlight_batch_line;
+pub use editorconfig::highlight_editorconfig_line;
+pub use gitignore::highlight_gitignore_line;
 pub use highlight::{Highlight, HighlightSpan};
 pub use language::Language;
 pub use log::highlight_log_line;

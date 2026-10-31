@@ -121,6 +121,13 @@ const POWERSHELL_EXTRA: &str = r#"
 ((variable) @constant (#match? @constant "^\\$(?i:null)$"))
 "#;
 
+// The bundled css query leaves the plain values of a declaration (`block`, `red`) uncolored,
+// and its later `class_name` pattern paints pseudo classes (`:hover`) as classes.
+const CSS_EXTRA: &str = r#"
+(declaration (plain_value) @constant)
+(pseudo_class_selector (class_name) @attribute)
+"#;
+
 /// The grammar of a language, `None` for those without one (or if its query failed to compile,
 /// which the tests rule out).
 pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
@@ -134,6 +141,7 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
     static BASH: OnceLock<Option<Grammar>> = OnceLock::new();
     static PYTHON: OnceLock<Option<Grammar>> = OnceLock::new();
     static POWERSHELL: OnceLock<Option<Grammar>> = OnceLock::new();
+    static CSS: OnceLock<Option<Grammar>> = OnceLock::new();
 
     let (cell, ts_language, query) = match language {
         Language::Rust => (
@@ -188,7 +196,16 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
                 tree_sitter_powershell::HIGHLIGHTS_QUERY
             ),
         ),
-        Language::Log | Language::Batch | Language::PlainText => return None,
+        Language::Css => (
+            &CSS,
+            tree_sitter_css::LANGUAGE,
+            format!("{}\n{CSS_EXTRA}", tree_sitter_css::HIGHLIGHTS_QUERY),
+        ),
+        Language::Log
+        | Language::Batch
+        | Language::EditorConfig
+        | Language::GitIgnore
+        | Language::PlainText => return None,
     };
 
     cell.get_or_init(|| {
@@ -216,8 +233,23 @@ mod tests {
     fn has_grammar_matches_the_grammars() {
         use Language::*;
         for language in [
-            Rust, JavaScript, Json, Toml, Markdown, Xml, Html, Make, Shell, Python, PowerShell,
-            Batch, Log, PlainText,
+            Rust,
+            JavaScript,
+            Json,
+            Toml,
+            Markdown,
+            Xml,
+            Html,
+            Make,
+            Shell,
+            Python,
+            PowerShell,
+            Batch,
+            Css,
+            EditorConfig,
+            GitIgnore,
+            Log,
+            PlainText,
         ] {
             assert_eq!(
                 language.has_grammar(),
