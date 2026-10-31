@@ -1,4 +1,4 @@
-//! The document tabs of folder mode (telaio's `DocumentTabs`): one per open file, with its name,
+//! The document tabs of folder mode (telaio's `DocumentTabs`): one per open document, with its name,
 //! the dirty dot and the close button. A click shows the file, the cross or a middle click closes
 //! it, and dragging reorders.
 
@@ -6,7 +6,7 @@ use gpui_kit::assets::IconName;
 use gpui_kit::prelude::*;
 use telaio_ui::components::{DocumentTab, DocumentTabs};
 
-use crate::state::launch::{display_name, shorten_path};
+use crate::state::launch::shorten_path;
 
 use super::root::AppView;
 
@@ -26,16 +26,21 @@ impl AppView {
         for (index, document) in self.documents.items().iter().enumerate() {
             let dirty = document
                 .editor()
-                .is_some_and(|editor| editor.read(cx).state.is_dirty());
+                .is_some_and(|editor| editor.read(cx).state.has_unsaved());
             let id = document.id;
             let select = weak.clone();
             let close = weak.clone();
+            let name = document.name();
+            let tooltip = match &document.path {
+                Some(path) => shorten_path(path, home.as_deref()),
+                None => name.clone(),
+            };
             tabs = tabs.item(
-                DocumentTab::new(display_name(&document.path))
+                DocumentTab::new(name)
                     .icon(IconName::File)
                     .dirty(dirty)
                     .selected(active == Some(index))
-                    .tooltip(shorten_path(&document.path, home.as_deref()))
+                    .tooltip(tooltip)
                     .on_click(move |window, cx| {
                         let _ = select.update(cx, |view, cx| {
                             if let Some(index) =

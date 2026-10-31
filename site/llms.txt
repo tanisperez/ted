@@ -20,7 +20,7 @@ ted is written in Rust on gpui, the GPU accelerated UI framework of the Zed edit
 - [Find in file](https://ted.tanis.codes/docs/find.html): Find text in the open file: the find bar, the match counter, case sensitivity and big files.
 - [Syntax highlighting](https://ted.tanis.codes/docs/highlighting.html): The languages ted highlights, how it detects them, and how it handles logs and big files.
 - [Big files and logs](https://ted.tanis.codes/docs/big-files.html): How ted opens, scrolls and searches files of hundreds of megabytes.
-- [Saving and changes on disk](https://ted.tanis.codes/docs/saving.html): How ted saves, what it cleans up, and how it protects unsaved changes and files changed by other programs.
+- [Saving and changes on disk](https://ted.tanis.codes/docs/saving.html): How ted saves, how new documents work, what it cleans up, and how it protects unsaved changes and files changed by other programs.
 - [Keyboard shortcuts](https://ted.tanis.codes/docs/keyboard-shortcuts.html): Every keyboard shortcut of ted on Windows, Linux and macOS.
 - [Settings](https://ted.tanis.codes/docs/settings.html): Every setting of ted, its default, and the settings.toml file.
 - [Command line](https://ted.tanis.codes/docs/command-line.html): Running ted from a terminal: opening files and folders, options and environment variables.

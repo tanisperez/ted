@@ -1,4 +1,5 @@
-//! The open documents and their files: saving (`Ctrl+S`), asking before unsaved changes are lost
+//! The open documents and their files: saving (`Ctrl+S`, with the save dialog for a new
+//! document), asking before unsaved changes are lost
 //! (closing a tab, opening something else, closing the window), and noticing when another program changed the
 //! file. Every file access runs on the background executor.
 //!
@@ -13,12 +14,12 @@ use gpui_kit::*;
 use rust_i18n::t;
 use ted_workspace::{FileContent, load_file, modified_time, save_file};
 
-use crate::state::launch::display_name;
+use crate::state::launch::{Target, display_name};
 
 use super::choice::{Choice, ChoiceStyle, ask};
 use super::editor::EditorView;
 
-use super::root::AppView;
+use super::root::{AppView, Document};
 
 impl AppView {
     /// Saves the document shown. The task resolves to whether the file was written.
@@ -29,17 +30,73 @@ impl AppView {
         }
     }
 
-    /// Saves the document of `editor`. The task resolves to whether the file was written.
+    /// Saves the document of `editor`, asking where first when it has no file yet. The task
+    /// resolves to whether the file was written.
     fn save_editor(
         &mut self,
         editor: Entity<EditorView>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Task<bool> {
-        let state = &editor.read(cx).state;
-        let Some(path) = state.path.clone() else {
-            return Task::ready(false);
+        match editor.read(cx).state.path.clone() {
+            Some(path) => self.write(editor, path, window, cx),
+            None => self.save_as(editor, window, cx),
+        }
+    }
+
+    /// Asks with the save dialog where to write a new document (in folder mode, starting at the
+    /// folder), then writes it there and turns it into a normal file.
+    fn save_as(
+        &mut self,
+        editor: Entity<EditorView>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Task<bool> {
+        let directory = match &self.target {
+            Some(Target::Folder(root)) => root.clone(),
+            _ => std::env::home_dir().unwrap_or_default(),
         };
+        let name = self.document_name(&editor);
+        let receiver = cx.prompt_for_new_path(&directory, Some(&name));
+        cx.spawn_in(window, async move |this, cx| {
+            let Ok(Ok(Some(path))) = receiver.await else {
+                return false;
+            };
+            let Ok(writing) = this.update_in(cx, |this, window, cx| {
+                this.write(editor.clone(), path.clone(), window, cx)
+            }) else {
+                return false;
+            };
+            if !writing.await {
+                return false;
+            }
+            let _ = this.update_in(cx, |this, window, cx| {
+                this.saved_as(&editor, path, window, cx)
+            });
+            true
+        })
+    }
+
+    /// The name of the document of `editor`, as its tab shows it.
+    fn document_name(&self, editor: &Entity<EditorView>) -> String {
+        self.documents
+            .items()
+            .iter()
+            .find(|document| document.editor() == Some(editor))
+            .map(Document::name)
+            .unwrap_or_default()
+    }
+
+    /// Writes the text of `editor` to `path`, after the whitespace cleanup. The task resolves to
+    /// whether the file was written.
+    fn write(
+        &mut self,
+        editor: Entity<EditorView>,
+        path: std::path::PathBuf,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Task<bool> {
+        let state = &editor.read(cx).state;
         if state.read_only {
             window.push_notification(Notification::warning(t!("save.read_only").into_owned()), cx);
             return Task::ready(false);
@@ -128,19 +185,13 @@ impl AppView {
     ) {
         let mut dirty: Vec<_> = editors
             .into_iter()
-            .filter(|editor| editor.read(cx).state.is_dirty())
+            .filter(|editor| editor.read(cx).state.has_unsaved())
             .collect();
         if dirty.is_empty() {
             return then(self, window, cx);
         }
         let editor = dirty.remove(0);
-        let name = editor
-            .read(cx)
-            .state
-            .path
-            .as_deref()
-            .map(display_name)
-            .unwrap_or_default();
+        let name = self.document_name(&editor);
         let answer = ask(
             window,
             cx,
@@ -181,7 +232,7 @@ impl AppView {
         let editors = self.editors();
         let dirty = editors
             .iter()
-            .any(|editor| editor.read(cx).state.is_dirty());
+            .any(|editor| editor.read(cx).state.has_unsaved());
         if self.closing || !dirty {
             return true;
         }

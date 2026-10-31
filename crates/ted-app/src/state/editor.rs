@@ -1115,6 +1115,15 @@ impl EditorState {
         self.history.is_dirty()
     }
 
+    /// Whether closing it loses something: the changes since the file was saved, or any text at
+    /// all in a new document that has no file yet.
+    pub fn has_unsaved(&self) -> bool {
+        match self.path {
+            Some(_) => self.is_dirty(),
+            None => !self.buffer.is_empty(),
+        }
+    }
+
     /// Applies the save cleanup (`ted_core::cleanup_edits`) as one undo step, keeping the cursors
     /// on their lines.
     pub fn apply_cleanup(&mut self, edits: Vec<Edit>) {
@@ -1648,6 +1657,21 @@ mod tests {
         state.undo();
         assert_eq!(state.buffer.to_text(), "a  \nbc  \nd");
         assert!(!state.is_dirty());
+    }
+
+    #[test]
+    fn a_new_document_has_unsaved_text_only_when_it_has_text() {
+        let mut state = editor("");
+        assert!(!state.has_unsaved());
+        state.insert("hi", EditKind::Typing);
+        assert!(state.has_unsaved());
+        state.backspace();
+        state.backspace();
+        // Typed and deleted: nothing to lose, although the history moved.
+        assert!(state.is_dirty());
+        assert!(!state.has_unsaved());
+        state.path = Some("notes.txt".into());
+        assert!(state.has_unsaved());
     }
 
     #[test]

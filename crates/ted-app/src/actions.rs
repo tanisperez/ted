@@ -9,6 +9,8 @@ use gpui_kit::{App, KeyBinding, actions};
 actions!(
     ted,
     [
+        /// Creates a new untitled document (`Ctrl+N`).
+        NewFile,
         /// Opens a file with the native dialog (`Ctrl+O`).
         OpenFile,
         /// Opens a folder with the native dialog (`Ctrl+Shift+O`).
@@ -47,6 +49,7 @@ pub mod hints {
 pub fn bind_keys(cx: &mut App) {
     #[cfg(target_os = "macos")]
     cx.bind_keys([
+        KeyBinding::new("cmd-n", NewFile, None),
         KeyBinding::new("cmd-o", OpenFile, None),
         KeyBinding::new("cmd-shift-o", OpenFolder, None),
         KeyBinding::new("ctrl-1", ToggleExplorer, None),
@@ -56,6 +59,7 @@ pub fn bind_keys(cx: &mut App) {
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
+        KeyBinding::new("ctrl-n", NewFile, None),
         KeyBinding::new("ctrl-o", OpenFile, None),
         KeyBinding::new("ctrl-shift-o", OpenFolder, None),
         KeyBinding::new("alt-1", ToggleExplorer, None),

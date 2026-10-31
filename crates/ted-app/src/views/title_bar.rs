@@ -58,7 +58,11 @@ impl AppView {
         let (icon, label) = match &self.target {
             Some(Target::Folder(path)) => (IconName::Folder, display_name(path)),
             Some(Target::File(path)) => (IconName::FileText, display_name(path)),
-            None => (IconName::FolderClock, t!("open.recent").into_owned()),
+            // A new document, not saved yet.
+            None => match self.documents.active() {
+                Some(document) => (IconName::FileText, document.name()),
+                None => (IconName::FolderClock, t!("open.recent").into_owned()),
+            },
         };
         let current = self
             .target

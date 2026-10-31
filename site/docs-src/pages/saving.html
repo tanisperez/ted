@@ -1,5 +1,5 @@
 title: Saving and changes on disk
-description: How ted saves, what it cleans up, and how it protects unsaved changes and files changed by other programs.
+description: How ted saves, how new documents work, what it cleans up, and how it protects unsaved changes and files changed by other programs.
 ---
 <h1>Saving and changes on disk</h1>
 <p class="lead"><kbd>Ctrl</kbd> <kbd>S</kbd> saves the file shown. ted never loses a change without asking.</p>
@@ -10,6 +10,10 @@ description: How ted saves, what it cleans up, and how it protects unsaved chang
     <li>Saving removes the spaces and tabs at the end of every line and ends the file with a line break, as one step that undo can revert. Both can be turned off in <a href="settings.html#files">Settings</a>.</li>
     <li>A file with unsaved changes shows a dot in its tab, in place of the cross, and before its name in the window title. Undoing back to the saved text makes it clean again.</li>
 </ul>
+
+<h2>New documents</h2>
+<p><kbd>Ctrl</kbd> <kbd>N</kbd> creates a new empty document named <strong>Untitled</strong> (<strong>Untitled 2</strong>, <strong>Untitled 3</strong> when there are several). It lives only in memory until it is saved. In folder mode it opens in a new tab; otherwise it fills the window alone, in place of what was open.</p>
+<p>Saving it opens the save dialog, at the folder in folder mode. Once saved it is a normal file: its tab takes the file name, and its language comes from the extension. A new document with no text closes without asking.</p>
 
 <h2>Unsaved changes</h2>
 <p>Closing a tab, closing the window, or opening another folder with unsaved changes asks <strong>Save the changes to name?</strong>, with <strong>Don't save</strong>, <strong>Cancel</strong> and <strong>Save</strong>, once per file. <strong>Cancel</strong> stops there and nothing closes.</p>

@@ -14,12 +14,14 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
+use ted_core::Buffer;
 use ted_syntax::Language;
 use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
 use telaio_ui::components::EmptyState;
 
 use crate::actions::{
-    CloseTab, NextTab, OpenFile, OpenFolder, OpenSettings, PreviousTab, Save, ToggleExplorer,
+    CloseTab, NewFile, NextTab, OpenFile, OpenFolder, OpenSettings, PreviousTab, Save,
+    ToggleExplorer,
 };
 use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::launch::{self, LaunchError, Target};
@@ -66,13 +68,25 @@ pub(crate) enum DocumentView {
 pub(crate) struct Document {
     /// Tells the loads apart: a load whose document was closed meanwhile is dropped.
     pub(crate) id: u64,
-    pub(crate) path: PathBuf,
+    /// `None` for a new document, kept in memory until it is saved.
+    pub(crate) path: Option<PathBuf>,
+    /// The number in the name of a new document ("Untitled 2"), from 1. Unused with a path.
+    pub(crate) untitled: usize,
     pub(crate) view: DocumentView,
     /// Keeps the window title in step with the editor (its dirty state).
     _subscription: Option<Subscription>,
 }
 
 impl Document {
+    /// The name of its tab and of the window title: the file name, or "Untitled".
+    pub(crate) fn name(&self) -> String {
+        match (&self.path, self.untitled) {
+            (Some(path), _) => launch::display_name(path),
+            (None, 1) => t!("open.untitled").into_owned(),
+            (None, number) => t!("open.untitled_numbered", number = number).into_owned(),
+        }
+    }
+
     pub(crate) fn editor(&self) -> Option<&Entity<EditorView>> {
         match &self.view {
             DocumentView::Editor(editor) => Some(editor),
@@ -306,7 +320,10 @@ impl AppView {
     /// Shows `path`: its tab when it is already open, otherwise a new one that loads it.
     fn open_document(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
         self.content = Content::Documents;
-        if let Some(index) = self.documents.position(|document| document.path == path) {
+        if let Some(index) = self
+            .documents
+            .position(|document| document.path.as_deref() == Some(path.as_path()))
+        {
             self.activate_document(index, window, cx);
             return;
         }
@@ -314,11 +331,84 @@ impl AppView {
         self.next_document += 1;
         self.documents.open(Document {
             id,
-            path: path.clone(),
+            path: Some(path.clone()),
+            untitled: 0,
             view: DocumentView::Loading,
             _subscription: None,
         });
         self.load(id, path, window, cx);
+        self.document_shown(window, cx);
+    }
+
+    /// Creates a new untitled document (`Ctrl+N`): a new tab in folder mode, otherwise the editor
+    /// alone, replacing what is open (asking first when that has unsaved changes).
+    pub(crate) fn new_document(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.explorer.is_some() {
+            return self.open_untitled(window, cx);
+        }
+        let editors = self.editors();
+        self.confirm_discard(editors, window, cx, |this, window, cx| {
+            this.documents.clear();
+            this.target = None;
+            this.open_untitled(window, cx);
+        });
+    }
+
+    /// Opens an empty document with no file, named with the lowest number no other one uses.
+    fn open_untitled(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        log::info!("creating a new document");
+        let mut untitled = 1;
+        while self
+            .documents
+            .position(|document| document.path.is_none() && document.untitled == untitled)
+            .is_some()
+        {
+            untitled += 1;
+        }
+        let mut state = EditorState::new(Buffer::default());
+        state.syntax = Syntax::new(Language::PlainText, self.settings.highlight_max_bytes());
+        let editor = cx.new(|cx| EditorView::new(state, cx));
+        let subscription = cx.observe_in(&editor, window, |this, _, window, cx| {
+            this.update_title(window, cx)
+        });
+        let id = self.next_document;
+        self.next_document += 1;
+        self.content = Content::Documents;
+        self.documents.open(Document {
+            id,
+            path: None,
+            untitled,
+            view: DocumentView::Editor(editor),
+            _subscription: Some(subscription),
+        });
+        self.document_shown(window, cx);
+    }
+
+    /// After a new document was saved as `path`: it becomes a normal file, with its name, its
+    /// language and its place in the recents.
+    pub(crate) fn saved_as(
+        &mut self,
+        editor: &Entity<EditorView>,
+        path: PathBuf,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let max_bytes = self.settings.highlight_max_bytes();
+        editor.update(cx, |editor, cx| {
+            let state = &mut editor.state;
+            state.syntax = Syntax::new(detect_language(&path, &state.buffer), max_bytes);
+            state.path = Some(path.clone());
+            cx.notify();
+        });
+        if let Some(index) = self
+            .documents
+            .position(|document| document.editor() == Some(editor))
+            && let Some(document) = self.documents.get_mut(index)
+        {
+            document.path = Some(path.clone());
+        }
+        self.recents.add(&Target::File(path));
+        recents::save(&self.recents);
         self.document_shown(window, cx);
     }
 
@@ -339,8 +429,10 @@ impl AppView {
     /// explorer and retitle the window.
     pub(crate) fn document_shown(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // Without a folder, the title bar's switcher names the file shown.
-        if let (Some(Target::File(_)), Some(document)) = (&self.target, self.documents.active()) {
-            self.target = Some(Target::File(document.path.clone()));
+        if self.explorer.is_none()
+            && let Some(document) = self.documents.active()
+        {
+            self.target = document.path.clone().map(Target::File);
         }
         match self.documents.active() {
             Some(document) => {
@@ -348,8 +440,8 @@ impl AppView {
                     let focus = editor.read(cx).focus_handle().clone();
                     focus.focus(window, cx);
                 }
-                if let Some((explorer, _)) = &self.explorer {
-                    let path = document.path.clone();
+                if let (Some((explorer, _)), Some(path)) = (&self.explorer, &document.path) {
+                    let path = path.clone();
                     explorer.update(cx, |explorer, cx| explorer.reveal(&path, cx));
                 }
             }
@@ -411,13 +503,11 @@ impl AppView {
     pub(crate) fn update_title(&mut self, window: &mut Window, cx: &App) {
         let dirty = self
             .editor()
-            .is_some_and(|editor| editor.read(cx).state.is_dirty());
-        let name = self
-            .documents
-            .active()
-            .map(|document| document.path.as_path())
-            .or(self.target.as_ref().map(Target::path))
-            .map(launch::display_name);
+            .is_some_and(|editor| editor.read(cx).state.has_unsaved());
+        let name = self.documents.active().map(Document::name).or(self
+            .target
+            .as_ref()
+            .map(|target| launch::display_name(target.path())));
         let title = match name {
             Some(name) if dirty => format!("\u{25cf} {name} \u{b7} ted"),
             Some(name) => format!("{name} \u{b7} ted"),
@@ -510,15 +600,7 @@ impl AppView {
                 } else {
                     max_bytes
                 };
-                // A script without an extension names its language in its first line.
-                let language = match Language::detect(&path) {
-                    Language::PlainText if state.buffer.line_len(0) <= SHEBANG_MAX => {
-                        let first_line = state.buffer.line(0).to_string();
-                        Language::from_shebang(&first_line).unwrap_or(Language::PlainText)
-                    }
-                    language => language,
-                };
-                state.syntax = Syntax::new(language, max_bytes);
+                state.syntax = Syntax::new(detect_language(&path, &state.buffer), max_bytes);
                 state.path = Some(path);
                 state.disk_modified = modified;
                 let editor = cx.new(|cx| EditorView::new(state, cx));
@@ -534,6 +616,18 @@ impl AppView {
             }
         }
         cx.notify();
+    }
+}
+
+/// The language of a file: from its name, or for a script without an extension, from the
+/// shebang in its first line.
+fn detect_language(path: &Path, buffer: &Buffer) -> Language {
+    match Language::detect(path) {
+        Language::PlainText if buffer.line_len(0) <= SHEBANG_MAX => {
+            let first_line = buffer.line(0).to_string();
+            Language::from_shebang(&first_line).unwrap_or(Language::PlainText)
+        }
+        language => language,
     }
 }
 
@@ -628,6 +722,7 @@ impl Render for AppView {
             .id("app")
             .key_context("App")
             .track_focus(&self.focus_handle)
+            .on_action(cx.listener(|this, _: &NewFile, window, cx| this.new_document(window, cx)))
             .on_action(
                 cx.listener(|this, _: &OpenFile, window, cx| this.prompt_open(false, window, cx)),
             )

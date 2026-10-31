@@ -15,6 +15,12 @@ _version: 2
 "welcome.tagline":
   en: "A fast, lightweight text editor"
   es: "Un editor de texto ligero y rápido"
+"open.untitled":
+  en: "Untitled"
+  es: "Sin título"
+"open.untitled_numbered":
+  en: "Untitled %{number}"
+  es: "Sin título %{number}"
 "welcome.start":
   en: "Start"
   es: "Empezar"
