@@ -4,7 +4,7 @@
 //! stores the results here; render only reads them.
 
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
 use ted_workspace::natural_cmp;
@@ -65,6 +65,8 @@ pub struct GitState {
     pub flat: bool,
     /// The panel's rows, rebuilt when the status, the tree or a folding changes, never in render.
     pub rows: Arc<Vec<ChangeRow>>,
+    /// The explorer's status letters, by path relative to the open folder ([`explorer_marks`]).
+    pub marks: Arc<HashMap<String, char>>,
     /// [`staged_outside`] of the last status.
     pub staged_outside: Arc<Vec<String>>,
     /// The commit box: Amend and what the next commit includes.
@@ -253,6 +255,41 @@ pub fn staged_outside(status: &Status, prefix: &str) -> Vec<String> {
         .filter(|entry| entry.index != Change::Unmodified && !inside(&entry.path, prefix))
         .map(|entry| entry.path.clone())
         .collect()
+}
+
+/// The status letter of every changed file inside `prefix`, and of every folder above one, by
+/// path relative to `prefix` (`/` separated), for the explorer. A folder takes the most important
+/// letter of the files under it: a conflict, then a deletion, a change, a rename, an addition and
+/// an untracked file.
+pub fn explorer_marks(status: &Status, prefix: &str) -> HashMap<String, char> {
+    let (entries, _) = status.split_by_prefix(prefix);
+    let mut marks = HashMap::new();
+    for entry in entries {
+        let file = FileInfo::new(entry, prefix);
+        let letter = file.letter;
+        let mut path = file.path.as_str();
+        marks.insert(path.to_string(), letter);
+        while let Some((parent, _)) = path.rsplit_once('/') {
+            let mark = marks.entry(parent.to_string()).or_insert(letter);
+            if rank(letter) > rank(*mark) {
+                *mark = letter;
+            }
+            path = parent;
+        }
+    }
+    marks
+}
+
+/// How much a folder's mark matters: the higher, the more it wins over its siblings.
+fn rank(letter: char) -> u8 {
+    match letter {
+        '!' => 5,
+        'D' => 4,
+        'M' | 'T' => 3,
+        'R' => 2,
+        'A' => 1,
+        _ => 0,
+    }
 }
 
 /// Whether the repository relative `path` is inside `prefix`.
@@ -567,6 +604,25 @@ mod tests {
             rows[1].kind,
             ChangeRowKind::File { letter: '!', .. }
         ));
+    }
+
+    #[test]
+    fn explorer_marks_files_and_their_folders() {
+        let status = status(vec![
+            entry("api/src/a.txt", Change::Unmodified, Change::Modified),
+            entry("api/src/b.txt", Change::Added, Change::Unmodified),
+            untracked("api/new.txt"),
+            entry("api/gone.txt", Change::Unmodified, Change::Deleted),
+            entry("other/c.txt", Change::Unmodified, Change::Modified),
+        ]);
+        let marks = explorer_marks(&status, "api");
+        assert_eq!(marks.get("src/a.txt"), Some(&'M'));
+        assert_eq!(marks.get("src/b.txt"), Some(&'A'));
+        assert_eq!(marks.get("new.txt"), Some(&'U'));
+        assert_eq!(marks.get("gone.txt"), Some(&'D'));
+        // The folder takes the modification over the addition.
+        assert_eq!(marks.get("src"), Some(&'M'));
+        assert_eq!(marks.len(), 5);
     }
 
     #[test]

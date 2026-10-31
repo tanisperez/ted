@@ -15,6 +15,9 @@ description: The Git panel of ted: see what changed in a folder, stage, discard 
 </ul>
 <p>Files are grouped by folder; the list button in the header shows them as a flat list with their folder next to the name. Click a group or a folder to fold it, and a file to open it.</p>
 
+<h2 id="explorer">In the explorer</h2>
+<p>Inside a repository the explorer shows the same letters next to the changed files, in their colors, and a dot after each folder that holds a change, in the color of the most important one (a conflict, then a deletion, a modification, a rename, an addition, an unversioned file). They follow the status as it changes.</p>
+
 <h2 id="staging">Staging</h2>
 <p>The checkbox of a file, a folder or a group stages or unstages everything under it, as <code>git add</code> and <code>git restore --staged</code> would. It mirrors the git index, so it agrees with the terminal: a file with staged and unstaged changes shows a dash. When files outside the open folder are staged, a notice over the list says so, because they would go into the next commit, and offers to unstage them.</p>
 

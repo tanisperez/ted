@@ -3,7 +3,7 @@
 //! watcher on the expanded folders. The tree logic is `state::explorer`; this view lists, watches,
 //! renders and takes the keyboard. Opening a file is an [`ExplorerEvent`] for the root view.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -19,6 +19,7 @@ use crate::state::explorer::{ExplorerTree, Listing};
 use crate::state::launch::display_name;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{EXPLORER_HEADER_HEIGHT, EXPLORER_LIST_PADDING};
+use crate::views::git::letter_color;
 
 actions!(
     explorer,
@@ -68,6 +69,8 @@ pub struct ExplorerView {
     pending_reveal: Option<PathBuf>,
     scroll: UniformListScrollHandle,
     focus_handle: FocusHandle,
+    /// The git status letters, by path relative to the root (`state::git::explorer_marks`).
+    git_marks: Arc<HashMap<String, char>>,
 }
 
 impl EventEmitter<ExplorerEvent> for ExplorerView {}
@@ -109,9 +112,16 @@ impl ExplorerView {
             pending_reveal: None,
             scroll: UniformListScrollHandle::new(),
             focus_handle: cx.focus_handle(),
+            git_marks: Arc::default(),
         };
         view.list(root, cx);
         view
+    }
+
+    /// Shows the git status letters `marks` from now on.
+    pub fn set_git_marks(&mut self, marks: Arc<HashMap<String, char>>, cx: &mut Context<Self>) {
+        self.git_marks = marks;
+        cx.notify();
     }
 
     /// Hides `excludes` from now on: lists the root and the expanded folders again.
@@ -251,6 +261,8 @@ impl Render for ExplorerView {
             cx.processor(|view, range: std::ops::Range<usize>, _window, cx| {
                 let palette = cx.palette();
                 let selected = view.tree.selected().map(Path::to_path_buf);
+                let root = view.tree.root().to_path_buf();
+                let marks = view.git_marks.clone();
                 range
                     .filter_map(|index| view.tree.rows().get(index).map(|row| (index, row)))
                     .map(|(index, row)| {
@@ -274,6 +286,19 @@ impl Render for ExplorerView {
                         }
                         if row.loading {
                             item = item.detail("…");
+                        }
+                        if let Some(letter) = git_mark(&marks, &root, &row.path) {
+                            // A folder shows a dot in the color of the change under it.
+                            let text = if folder { '\u{25cf}' } else { letter };
+                            item = item.suffix(
+                                div()
+                                    .w(px(12.0))
+                                    .font_family(cx.theme().mono_font_family.clone())
+                                    .text_size(px(if folder { 8.0 } else { 11.5 }))
+                                    .font_weight(FontWeight::MEDIUM)
+                                    .text_color(letter_color(letter, &palette))
+                                    .child(text.to_string()),
+                            );
                         }
                         item
                     })
@@ -324,4 +349,17 @@ impl Render for ExplorerView {
             )
             .child(list)
     }
+}
+
+/// The git status letter of `path` (a row of the explorer of `root`), if it has one.
+fn git_mark(marks: &HashMap<String, char>, root: &Path, path: &Path) -> Option<char> {
+    if marks.is_empty() {
+        return None;
+    }
+    let relative = path.strip_prefix(root).ok()?;
+    let key: Vec<String> = relative
+        .components()
+        .map(|part| part.as_os_str().to_string_lossy().into_owned())
+        .collect();
+    marks.get(&key.join("/")).copied()
 }

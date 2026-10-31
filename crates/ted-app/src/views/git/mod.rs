@@ -8,7 +8,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use telaio_git::{DiffSource, Executable};
 
-use crate::state::git::{GitAvailability, RepoState, change_rows, staged_outside};
+use crate::state::git::{GitAvailability, RepoState, change_rows, explorer_marks, staged_outside};
 use crate::state::git_sync::CommitStats;
 use crate::state::launch::Target;
 
@@ -22,6 +22,7 @@ mod write;
 
 pub(crate) use branch_menu::{MenuContext, new_branch_menu};
 pub(crate) use branches::CheckoutChoice;
+pub(crate) use panel::letter_color;
 
 /// The git work in flight. Replacing a task drops the previous one, so only the latest result is
 /// applied.
@@ -78,9 +79,11 @@ impl AppView {
     pub(crate) fn discover_git_repo(&mut self, cx: &mut Context<Self>) {
         self.git.repo = RepoState::Unknown;
         self.git.branches = None;
+        // A new explorer starts without marks.
+        self.git.marks = Arc::default();
         self.git_tasks.status = None;
         self.git.collapsed.clear();
-        self.rebuild_git_rows();
+        self.rebuild_git_rows(cx);
         let root = match &self.target {
             Some(Target::Folder(root)) if self.explorer.is_some() => root.clone(),
             _ => {
@@ -152,7 +155,7 @@ impl AppView {
                             && current.as_deref() != Some(&status)
                         {
                             *current = Some(Arc::new(status));
-                            view.rebuild_git_rows();
+                            view.rebuild_git_rows(cx);
                             view.load_commit_stats(cx);
                             // A commit, checkout or fetch made anywhere moves the branches too.
                             view.load_branches(cx);
@@ -162,7 +165,7 @@ impl AppView {
                     Err(error) => {
                         log::warn!("git status failed: {error}");
                         view.git.repo = RepoState::Error(error.to_string());
-                        view.rebuild_git_rows();
+                        view.rebuild_git_rows(cx);
                         cx.notify();
                     }
                 }
@@ -193,15 +196,23 @@ impl AppView {
     }
 
     /// Rebuilds the panel's rows from the last status and the foldings. Never called in render.
-    pub(crate) fn rebuild_git_rows(&mut self) {
-        let (rows, outside) = match self.git.status() {
+    pub(crate) fn rebuild_git_rows(&mut self, cx: &mut App) {
+        let (rows, outside, marks) = match self.git.status() {
             Some((repo, status)) => (
                 change_rows(status, repo.prefix(), &self.git.collapsed, self.git.flat),
                 staged_outside(status, repo.prefix()),
+                explorer_marks(status, repo.prefix()),
             ),
-            None => (Vec::new(), Vec::new()),
+            None => (Vec::new(), Vec::new(), Default::default()),
         };
         self.git.rows = Arc::new(rows);
         self.git.staged_outside = Arc::new(outside);
+        let marks = Arc::new(marks);
+        if *marks != *self.git.marks {
+            self.git.marks = marks.clone();
+            if let Some((explorer, _)) = &self.explorer {
+                explorer.update(cx, |explorer, cx| explorer.set_git_marks(marks, cx));
+            }
+        }
     }
 }

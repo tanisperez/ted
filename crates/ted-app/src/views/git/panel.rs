@@ -43,7 +43,7 @@ impl AppView {
         if !self.git.collapsed.remove(&key) {
             self.git.collapsed.insert(key);
         }
-        self.rebuild_git_rows();
+        self.rebuild_git_rows(cx);
         cx.notify();
     }
 
@@ -149,7 +149,7 @@ impl AppView {
                     .tooltip(grouping_tooltip)
                     .on_click(cx.listener(|view, _, _, cx| {
                         view.git.flat = !view.git.flat;
-                        view.rebuild_git_rows();
+                        view.rebuild_git_rows(cx);
                         cx.notify();
                     })),
             )
@@ -412,8 +412,8 @@ fn panel_empty(state: EmptyState) -> AnyElement {
 }
 
 /// The status letter's color: modified amber, added and untracked green, deleted and conflicts
-/// red, renamed blue.
-fn letter_color(letter: char, palette: &Palette) -> Hsla {
+/// red, renamed blue. Shared with the explorer.
+pub(crate) fn letter_color(letter: char, palette: &Palette) -> Hsla {
     match letter {
         'A' | 'U' => palette.success,
         'D' | '!' => palette.danger,
