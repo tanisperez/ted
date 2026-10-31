@@ -102,7 +102,8 @@ impl AppView {
             // stretched to the window and cut.
             .items_start()
             .px_4()
-            .py(px(64.0))
+            .pt(px(32.0))
+            .pb(px(64.0))
             .child(column);
         // The scrollbar over the area, as Postino's welcome tab. It shows only when the column
         // does not fit.
