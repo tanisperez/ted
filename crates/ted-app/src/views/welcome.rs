@@ -1,5 +1,5 @@
 //! The empty state: what the window shows with nothing open. A centered column with the logo,
-//! the two Open actions and the recent folders and files. Its rows are the design's recents menu
+//! the New file and Open actions and the recent folders and files, scrolled when it does not fit. Its rows are the design's recents menu
 //! rows (30 px, icon 14, name, path in 12 px `fg_subtle`), shown without the menu's card.
 
 use std::path::{Path, PathBuf};
@@ -34,11 +34,19 @@ impl AppView {
             .child(
                 section(t!("welcome.start"))
                     .child(self.action_row(
+                        "new-file",
+                        IconName::Plus,
+                        t!("open.new_file"),
+                        hints::NEW_FILE,
+                        |this, window, cx| this.new_document(window, cx),
+                        cx,
+                    ))
+                    .child(self.action_row(
                         "open-file",
                         IconName::File,
                         t!("welcome.open_file"),
                         hints::OPEN_FILE,
-                        false,
+                        |this, window, cx| this.prompt_open(false, window, cx),
                         cx,
                     ))
                     .child(self.action_row(
@@ -46,7 +54,7 @@ impl AppView {
                         IconName::FolderOpen,
                         t!("welcome.open_folder"),
                         hints::OPEN_FOLDER,
-                        true,
+                        |this, window, cx| this.prompt_open(true, window, cx),
                         cx,
                     )),
             );
@@ -88,6 +96,9 @@ impl AppView {
             .overflow_y_scroll()
             .flex()
             .justify_center()
+            // The column keeps its own height, so it overflows (and scrolls) instead of being
+            // stretched to the window and cut.
+            .items_start()
             .px_4()
             .py(px(64.0))
             .child(column)
@@ -115,14 +126,14 @@ impl AppView {
             .into_any_element()
     }
 
-    /// A row that opens a dialog: icon, label and the shortcut hint at the right.
+    /// An action: icon, label and the shortcut hint at the right.
     fn action_row(
         &self,
         id: &'static str,
         icon: IconName,
         label: impl Into<SharedString>,
         hint: &'static str,
-        folder: bool,
+        action: impl Fn(&mut Self, &mut Window, &mut Context<Self>) + 'static,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         let palette = cx.palette();
@@ -136,7 +147,7 @@ impl AppView {
                     .text_color(palette.fg_subtle)
                     .child(hint),
             )
-            .on_click(cx.listener(move |this, _, window, cx| this.prompt_open(folder, window, cx)))
+            .on_click(cx.listener(move |this, _, window, cx| action(this, window, cx)))
     }
 
     /// A recent folder or file: icon, name and the shortened path, which opens it when clicked.

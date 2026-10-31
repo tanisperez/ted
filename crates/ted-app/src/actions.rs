@@ -34,6 +34,7 @@ actions!(
 /// The shortcut labels shown next to the actions, as typed on this platform.
 #[cfg(target_os = "macos")]
 pub mod hints {
+    pub const NEW_FILE: &str = "\u{2318}N";
     pub const OPEN_FILE: &str = "\u{2318}O";
     pub const OPEN_FOLDER: &str = "\u{21e7}\u{2318}O";
 }
@@ -41,6 +42,7 @@ pub mod hints {
 /// The shortcut labels shown next to the actions, as typed on this platform.
 #[cfg(not(target_os = "macos"))]
 pub mod hints {
+    pub const NEW_FILE: &str = "Ctrl+N";
     pub const OPEN_FILE: &str = "Ctrl+O";
     pub const OPEN_FOLDER: &str = "Ctrl+Shift+O";
 }
