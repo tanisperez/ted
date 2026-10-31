@@ -161,6 +161,7 @@ impl AppView {
                             editor.state.disk_modified = modified;
                             cx.notify();
                         });
+                        this.refresh_git_status(cx);
                     }
                     Err(error) => {
                         log::warn!("{error}");

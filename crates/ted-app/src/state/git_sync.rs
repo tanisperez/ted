@@ -2,8 +2,14 @@
 //! in flight for the status bar, the commit box's summary line and checks, and the last failure
 //! with git's raw output. `views/git/sync.rs` runs the commands and stores the results here.
 
+use std::time::{Duration, Instant};
+
 use rust_i18n::t;
 use telaio_git::{FailureKind, NumStat};
+
+/// The least time between two automatic fetches, so coming back to the window often costs at
+/// most one fetch every five minutes.
+pub const AUTO_FETCH_INTERVAL: Duration = Duration::from_secs(5 * 60);
 
 /// A git command that talks to the history or the remote, shown in the status bar while it runs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -124,6 +130,8 @@ pub struct SyncState {
     pub running: Option<GitOp>,
     /// The last failure, for "Show git output".
     pub failure: Option<GitFailure>,
+    /// When the last fetch started.
+    pub last_fetch: Option<Instant>,
 }
 
 /// Whether the commit message can be written: something is staged, or Amend is ticked (which may
@@ -138,9 +146,37 @@ pub fn can_commit(message: &str, stats: CommitStats, amend: bool, running: bool)
     !running && !message.trim().is_empty() && can_write_message(stats, amend)
 }
 
+/// Whether getting the focus back should fetch: the setting is on, the branch tracks a remote,
+/// nothing else is running, and the last fetch is old enough.
+pub fn auto_fetch_due(
+    enabled: bool,
+    has_upstream: bool,
+    running: bool,
+    last: Option<Instant>,
+    now: Instant,
+) -> bool {
+    enabled
+        && has_upstream
+        && !running
+        && last.is_none_or(|last| now.saturating_duration_since(last) >= AUTO_FETCH_INTERVAL)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn auto_fetch_waits_five_minutes() {
+        let now = Instant::now();
+        assert!(auto_fetch_due(true, true, false, None, now));
+        assert!(!auto_fetch_due(false, true, false, None, now));
+        assert!(!auto_fetch_due(true, false, false, None, now));
+        assert!(!auto_fetch_due(true, true, true, None, now));
+        let recent = now - Duration::from_secs(60);
+        assert!(!auto_fetch_due(true, true, false, Some(recent), now));
+        let old = now - AUTO_FETCH_INTERVAL;
+        assert!(auto_fetch_due(true, true, false, Some(old), now));
+    }
 
     #[test]
     fn stats_add_up_the_numstat() {

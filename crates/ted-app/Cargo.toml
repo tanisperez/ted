@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 gpui-kit = { workspace = true }
 async-channel = { workspace = true }
+notify = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 toml = { workspace = true }
 log = { workspace = true }

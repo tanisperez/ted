@@ -175,6 +175,7 @@ impl AppView {
         let activation = cx.observe_window_activation(window, |this, window, cx| {
             if window.is_window_active() {
                 this.check_disk(window, cx);
+                this.git_window_activated(window, cx);
             }
         });
         let commit_input = cx.new(|cx| {

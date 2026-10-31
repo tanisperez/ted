@@ -107,8 +107,34 @@ pub(crate) fn git_sections(
 ) -> Vec<AnyElement> {
     vec![
         executable_section(weak.clone(), palette, availability, select),
+        sync_section(weak.clone(), palette, settings),
         changes_section(weak, palette, settings),
     ]
+}
+
+/// "Sync": the automatic fetch.
+fn sync_section(weak: WeakEntity<AppView>, palette: &Palette, settings: &Settings) -> AnyElement {
+    v_flex()
+        .gap(px(14.0))
+        .child(SectionHeading::new(t!("settings.git.sync_title")))
+        .child(
+            LabeledRow::new(
+                t!("settings.git.fetch"),
+                switch(
+                    "settings-git-fetch",
+                    settings.git_fetch_automatically,
+                    palette,
+                    move |on, window, cx| {
+                        let _ = weak.update(cx, |view, cx| {
+                            view.settings.git_fetch_automatically = on;
+                            view.apply_settings(window, cx);
+                        });
+                    },
+                ),
+            )
+            .description(t!("settings.git.fetch_description")),
+        )
+        .into_any_element()
 }
 
 /// "Changes": the confirmation before discarding and what Ctrl+Enter does in the message.

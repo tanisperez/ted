@@ -6274,6 +6274,7 @@ dependencies = [
  "fastrand",
  "gpui-kit",
  "log",
+ "notify",
  "pretty_assertions",
  "rust-i18n",
  "serde",

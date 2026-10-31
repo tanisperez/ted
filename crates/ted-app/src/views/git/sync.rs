@@ -17,7 +17,7 @@ use telaio_ui::components::{
     modal_footer, modal_header, open_confirm_dialog,
 };
 
-use crate::state::git_sync::{GitFailure, GitOp, can_commit};
+use crate::state::git_sync::{GitFailure, GitOp, auto_fetch_due, can_commit};
 use crate::state::locale::plural;
 use crate::theme::PaletteExt;
 
@@ -278,6 +278,7 @@ impl AppView {
         let Some(repo) = self.git.repo().cloned() else {
             return;
         };
+        self.git.sync.last_fetch = Some(std::time::Instant::now());
         self.run_git_op(
             GitOp::Fetch,
             auto,
@@ -286,6 +287,26 @@ impl AppView {
             window,
             cx,
         );
+    }
+
+    /// The window got the focus back: read the status (other programs may have changed files),
+    /// and fetch when the setting asks for it and the last fetch is at least five minutes old.
+    /// An event, never a timer.
+    pub(crate) fn git_window_activated(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some((_, status)) = self.git.status() else {
+            return;
+        };
+        let has_upstream = status.upstream.is_some();
+        self.refresh_git_status(cx);
+        if auto_fetch_due(
+            self.settings.git_fetch_automatically,
+            has_upstream,
+            self.git.sync.running.is_some(),
+            self.git.sync.last_fetch,
+            std::time::Instant::now(),
+        ) {
+            self.fetch(true, window, cx);
+        }
     }
 
     /// A notification with the failure in plain language, "Pull and push" for a rejected push,

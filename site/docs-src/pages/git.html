@@ -50,5 +50,11 @@ description: The Git panel of ted: see what changed in a folder, stage, discard 
 </ul>
 <p>After a checkout or a pull, the explorer follows the files on disk, and an open file that changed is reloaded, asking first when it has unsaved changes. A rejected push offers <strong>Pull and push</strong>.</p>
 
-<h2 id="status">Refreshing</h2>
-<p>The status is read when the folder opens and when the panel is shown; the circular arrow in the header reads it again. A failed git command shows git's own message in a notification.</p>
+<h2 id="status">Keeping it current</h2>
+<p>ted reads the status again by itself, and only when something may have changed, so an idle window does no work:</p>
+<ul>
+    <li>right after ted saves a file or runs a git command;</li>
+    <li>when git runs outside ted, a <code>git commit</code>, <code>git add</code> or <code>git checkout</code> in a terminal for example: ted watches the repository's <code>.git</code> folder;</li>
+    <li>when the window gets the focus back, for the files other programs changed meanwhile.</li>
+</ul>
+<p>The circular arrow in the header reads it at any time. With <strong>Fetch automatically</strong> on (the default), coming back to the window also fetches from the remote, at most every five minutes, so the status bar shows the commits to pull. A fetch never changes your files, and a failed automatic fetch stays silent. A failed git command shows git's own message in a notification.</p>

@@ -18,6 +18,7 @@ mod branch_menu;
 mod branches;
 mod panel;
 mod sync;
+mod watch;
 mod write;
 
 pub(crate) use branch_menu::{MenuContext, new_branch_menu};
@@ -37,6 +38,8 @@ pub(crate) struct GitTasks {
     commit_stats: Option<Task<()>>,
     /// The branches being read for the menu (`branches.rs`).
     branches: Option<Task<()>>,
+    /// The watcher of the open repository's `.git` folder (`watch.rs`).
+    watcher: Option<watch::GitWatcher>,
 }
 
 impl AppView {
@@ -83,6 +86,8 @@ impl AppView {
         self.git.marks = Arc::default();
         self.git_tasks.status = None;
         self.git.collapsed.clear();
+        self.git.sync.last_fetch = None;
+        self.git_tasks.watcher = None;
         self.rebuild_git_rows(cx);
         let root = match &self.target {
             Some(Target::Folder(root)) if self.explorer.is_some() => root.clone(),
@@ -115,6 +120,7 @@ impl AppView {
                         RepoState::Error(error.to_string())
                     }
                 };
+                view.watch_git(cx);
                 view.refresh_git_status(cx);
                 view.load_branches(cx);
                 cx.notify();

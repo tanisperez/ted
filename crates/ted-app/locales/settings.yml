@@ -165,3 +165,12 @@ _version: 2
 "settings.git.action_commit_and_push":
   en: "Commit and push"
   es: "Commit y push"
+"settings.git.sync_title":
+  en: "Sync"
+  es: "Sincronización"
+"settings.git.fetch":
+  en: "Fetch automatically"
+  es: "Fetch automático"
+"settings.git.fetch_description":
+  en: "When you come back to the window, at most every 5 minutes, so the status bar shows the commits to pull. Never merges."
+  es: "Al volver a la ventana, como mucho cada 5 minutos, para mostrar los commits pendientes en la barra de estado. Nunca fusiona."
