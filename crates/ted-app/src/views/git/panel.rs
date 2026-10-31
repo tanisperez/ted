@@ -114,7 +114,7 @@ impl AppView {
         self.open_settings(window, cx);
     }
 
-    /// The header's buttons: refresh, discard every change and list or tree.
+    /// The header's buttons: refresh, discard every change, list or tree, and the history.
     fn render_git_toolbar(&self, cx: &mut Context<Self>) -> AnyElement {
         let all_paths: Vec<String> = self
             .git
@@ -152,6 +152,11 @@ impl AppView {
                         view.rebuild_git_rows(cx);
                         cx.notify();
                     })),
+            )
+            .child(
+                IconButton::new("git-history", IconName::GitGraph)
+                    .tooltip(t!("git.panel.history"))
+                    .on_click(cx.listener(|view, _, window, cx| view.open_git_history(window, cx))),
             )
             .into_any_element()
     }

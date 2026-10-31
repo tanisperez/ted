@@ -372,3 +372,39 @@ _version: 2
 "git.diff.no_changes":
   en: "No changes against the last commit"
   es: "Sin cambios respecto al último commit"
+"git.panel.history":
+  en: "History"
+  es: "Historial"
+"git.log.tab":
+  en: "History"
+  es: "Historial"
+"git.log.search":
+  en: "Search messages or a commit id"
+  es: "Buscar en los mensajes o un id de commit"
+"git.log.commits.one":
+  en: "%{count} commit"
+  es: "%{count} commit"
+"git.log.commits.other":
+  en: "%{count} commits"
+  es: "%{count} commits"
+"git.log.commits_more.one":
+  en: "%{count} commit loaded"
+  es: "%{count} commit cargado"
+"git.log.commits_more.other":
+  en: "%{count} commits loaded"
+  es: "%{count} commits cargados"
+"git.log.files.one":
+  en: "%{count} file"
+  es: "%{count} archivo"
+"git.log.files.other":
+  en: "%{count} files"
+  es: "%{count} archivos"
+"git.log.error":
+  en: "The history could not be read"
+  es: "No se pudo leer el historial"
+"git.log.empty":
+  en: "No commits yet"
+  es: "Todavía no hay commits"
+"git.log.no_match":
+  en: "No commit matches"
+  es: "Ningún commit coincide"

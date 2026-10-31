@@ -13,7 +13,7 @@ use crate::state::git::RepoState;
 use crate::state::launch::Target;
 
 use super::super::root::DocumentView;
-use super::DiffView;
+use super::{DiffView, HistoryView};
 
 use super::super::root::AppView;
 
@@ -108,6 +108,43 @@ impl AppView {
         let diff = cx.new(|cx| DiffView::new(repo, repo_path, path, letter, app, cx));
         let title = diff.read(cx).title();
         self.open_document_view(DocumentView::Diff(diff), Some(title), window, cx);
+    }
+
+    /// Shows the history tab, opening it when needed.
+    pub(crate) fn open_git_history(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some((repo, status)) = self.git.status() else {
+            return;
+        };
+        let (repo, head) = (repo.clone(), status.head_oid.clone());
+        if let Some(index) = self
+            .documents
+            .position(|document| matches!(document.view, DocumentView::History(_)))
+        {
+            self.activate_document(index, window, cx);
+            cx.notify();
+            return;
+        }
+        let history = cx.new(|cx| HistoryView::new(repo, head, window, cx));
+        self.open_document_view(
+            DocumentView::History(history),
+            Some(HistoryView::title()),
+            window,
+            cx,
+        );
+    }
+
+    /// Tells the history tab where `HEAD` is now: it reads the log again when it moved.
+    pub(crate) fn update_git_history(&mut self, cx: &mut Context<Self>) {
+        let head = self
+            .git
+            .status()
+            .and_then(|(_, status)| status.head_oid.clone());
+        for document in self.documents.items() {
+            if let DocumentView::History(history) = &document.view {
+                let head = head.clone();
+                history.update(cx, |history, cx| history.head_changed(head, cx));
+            }
+        }
     }
 
     /// Reads the diff tab's patch again, after a status change.

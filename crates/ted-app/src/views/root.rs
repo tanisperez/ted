@@ -78,6 +78,8 @@ pub(crate) enum DocumentView {
     Editor(Entity<EditorView>),
     /// The diff of a changed file (`views/git/diff_view.rs`). There is one, reused.
     Diff(Entity<super::git::DiffView>),
+    /// The commit log of the repository (`views/git/history_view.rs`). There is one.
+    History(Entity<super::git::HistoryView>),
 }
 
 /// One open file: a tab in folder mode, the whole window in file mode.
@@ -793,6 +795,9 @@ impl Render for AppView {
                     }
                     Some(DocumentView::Loading) => div().flex_1(),
                     Some(DocumentView::Diff(diff)) => div().flex_1().min_h_0().child(diff.clone()),
+                    Some(DocumentView::History(history)) => {
+                        div().flex_1().min_h_0().child(history.clone())
+                    }
                     Some(DocumentView::Message(title, detail)) => {
                         self.render_message(title, detail.as_ref(), cx)
                     }

@@ -24,6 +24,11 @@ description: The Git panel of ted: see what changed in a folder, stage, discard 
 </ul>
 <p><strong>Open file</strong> opens the file itself in its own tab, to edit it.</p>
 
+<h2 id="history">History</h2>
+<p>The <strong>History</strong> button in the header of the Git panel opens the commit log of the repository in a tab: every branch, remote branch and tag, newest first, with the graph of how they branch and merge. Each commit shows its branches and tags, its subject, its author, how long ago it was made and its short id. The dot of the commit you have checked out is hollow. The log loads in pages as you scroll, so a repository with years of history opens at once.</p>
+<p>The search box filters the commits whose message contains the text, ignoring case; a commit id, or its first digits, finds that commit too. While a search is on, the graph is hidden.</p>
+<p>Click a commit to see its detail at the right: the whole message, the author and their email, the full id, and the files it changed with the lines added and removed. The log follows new commits, checkouts and pulls by itself.</p>
+
 <h2 id="explorer">In the explorer</h2>
 <p>Inside a repository the explorer shows the same letters next to the changed files, in their colors, and a dot after each folder that holds a change, in the color of the most important one (a conflict, then a deletion, a modification, a rename, an addition, an unversioned file). They follow the status as it changes.</p>
 
