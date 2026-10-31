@@ -4,6 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
+use gpui_kit::component::scroll::Scrollbar;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -90,10 +91,11 @@ impl AppView {
                 }),
             ));
         }
-        div()
+        let area = div()
             .id("welcome")
             .size_full()
             .overflow_y_scroll()
+            .track_scroll(&self.welcome_scroll)
             .flex()
             .justify_center()
             // The column keeps its own height, so it overflows (and scrolls) instead of being
@@ -101,7 +103,19 @@ impl AppView {
             .items_start()
             .px_4()
             .py(px(64.0))
-            .child(column)
+            .child(column);
+        // The scrollbar over the area, as Postino's welcome tab. It shows only when the column
+        // does not fit.
+        div()
+            .relative()
+            .size_full()
+            .child(area)
+            .child(
+                div()
+                    .absolute()
+                    .inset_0()
+                    .child(Scrollbar::vertical(&self.welcome_scroll)),
+            )
             .into_any_element()
     }
 

@@ -125,6 +125,8 @@ pub struct AppView {
     pub(crate) settings_category: SettingsCategory,
     /// The exclude patterns field of the Settings modal, made when it opens.
     pub(crate) exclude_input: Option<Entity<InputState>>,
+    /// The scroll of the empty state, for its scrollbar.
+    pub(crate) welcome_scroll: ScrollHandle,
     /// Checks the open file on disk when the window gets the focus back.
     _activation: Subscription,
 }
@@ -159,6 +161,7 @@ impl AppView {
             closing: false,
             settings_category: SettingsCategory::default(),
             exclude_input: None,
+            welcome_scroll: ScrollHandle::new(),
             _activation: activation,
         };
         view.update_title(window, cx);
