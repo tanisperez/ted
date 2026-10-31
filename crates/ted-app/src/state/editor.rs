@@ -974,6 +974,123 @@ impl EditorState {
         });
     }
 
+    /// Alt+Up and Alt+Down: moves the whole lines of every cursor and selection one line up or
+    /// down, past the line next to them. Cursors and selections move with their text. Nothing
+    /// moves when a block of lines is already at the start (or the end) of the document.
+    pub fn move_lines(&mut self, up: bool) {
+        if self.read_only {
+            return;
+        }
+        let before = self.selections();
+        // The lines of each selection, first and last. A selection that ends at the start of a
+        // line leaves that line alone.
+        let mut blocks: Vec<(usize, usize)> = before
+            .iter()
+            .map(|selection| {
+                let range = selection.range();
+                let first = self.buffer.byte_to_line(range.start);
+                let mut last = self.buffer.byte_to_line(range.end);
+                if last > first && range.end == self.buffer.line_to_byte(last) {
+                    last -= 1;
+                }
+                (first, last)
+            })
+            .collect();
+        blocks.sort_unstable();
+        // Adjacent blocks move as one: each would otherwise pass over the other.
+        let mut merged: Vec<(usize, usize)> = Vec::with_capacity(blocks.len());
+        for (first, last) in blocks {
+            match merged.last_mut() {
+                Some(block) if first <= block.1 + 1 => block.1 = block.1.max(last),
+                _ => merged.push((first, last)),
+            }
+        }
+        let at_edge = match up {
+            true => merged.first().is_some_and(|&(first, _)| first == 0),
+            false => merged
+                .last()
+                .is_some_and(|&(_, last)| last + 1 >= self.buffer.line_count()),
+        };
+        if merged.is_empty() || at_edge {
+            return;
+        }
+        let line_end = |line: usize| self.buffer.line_to_byte(line) + self.buffer.line_len(line);
+        // Each block swaps with the line next to it, keeping the line break between them, so
+        // the text keeps its length and the blocks their offsets. `delta` is how far the block's
+        // bytes move.
+        let mut edits = Vec::with_capacity(merged.len());
+        let mut moves: Vec<(Range<usize>, isize)> = Vec::with_capacity(merged.len());
+        for &(first, last) in &merged {
+            let block = self.buffer.line_to_byte(first)..line_end(last);
+            let (start, end, new_text, delta) = if up {
+                let other = self.buffer.line_to_byte(first - 1)..line_end(first - 1);
+                let ending = self.buffer.text_in(other.end..block.start);
+                let text = format!(
+                    "{}{ending}{}",
+                    self.buffer.text_in(block.clone()),
+                    self.buffer.text_in(other.clone())
+                );
+                (
+                    other.start,
+                    block.end,
+                    text,
+                    -((block.start - other.start) as isize),
+                )
+            } else {
+                let other = self.buffer.line_to_byte(last + 1)..line_end(last + 1);
+                let ending = self.buffer.text_in(block.end..other.start);
+                let text = format!(
+                    "{}{ending}{}",
+                    self.buffer.text_in(other.clone()),
+                    self.buffer.text_in(block.clone())
+                );
+                (
+                    block.start,
+                    other.end,
+                    text,
+                    (other.end - block.end) as isize,
+                )
+            };
+            edits.push(Edit {
+                start,
+                old_text: self.buffer.text_in(start..end),
+                new_text,
+            });
+            // A selection ending at the start of the line after the block moves with it.
+            let next = match last + 1 < self.buffer.line_count() {
+                true => self.buffer.line_to_byte(last + 1),
+                false => block.end,
+            };
+            moves.push((block.start..next + 1, delta));
+        }
+        // The text keeps its length. A selection that ended at the start of the line after a
+        // block moved down to the end of the document ends there.
+        let len = self.buffer.len();
+        let moved = |offset: usize| {
+            let delta = moves
+                .iter()
+                .find(|(range, _)| range.contains(&offset))
+                .map_or(0, |&(_, delta)| delta);
+            ((offset as isize + delta) as usize).min(len)
+        };
+        let after: Vec<Selection> = before
+            .iter()
+            .map(|selection| Selection {
+                anchor: moved(selection.anchor),
+                head: moved(selection.head),
+            })
+            .collect();
+        self.history.edit_many(
+            &mut self.buffer,
+            edits,
+            EditKind::Other,
+            before,
+            after.clone(),
+        );
+        self.set_selections(&after);
+        self.scroll_to_cursor();
+    }
+
     /// Ctrl+Alt+D: deletes the whole lines of every cursor and selection, line breaks included.
     /// Each cursor stays at its column on the line that takes their place.
     pub fn delete_lines(&mut self) {
@@ -1972,6 +2089,57 @@ mod tests {
         state.toggle_cursor(Position::new(1, 1));
         state.duplicate();
         assert_eq!(state.buffer.to_text(), "a\na\nb\nb\n");
+    }
+
+    #[test]
+    fn alt_up_and_down_move_the_line() {
+        let mut state = editor("one\ntwo\nthree");
+        at(&mut state, 1, 2);
+        state.move_lines(true);
+        assert_eq!(state.buffer.to_text(), "two\none\nthree");
+        assert_eq!(state.cursor, Position::new(0, 2));
+        // Already at the start: nothing moves.
+        state.move_lines(true);
+        assert_eq!(state.buffer.to_text(), "two\none\nthree");
+        state.move_lines(false);
+        state.move_lines(false);
+        // The last line has no line break: the one that was before it moves up to it.
+        assert_eq!(state.buffer.to_text(), "one\nthree\ntwo");
+        assert_eq!(state.cursor, Position::new(2, 2));
+        state.move_lines(false);
+        assert_eq!(state.buffer.to_text(), "one\nthree\ntwo");
+        state.undo();
+        state.undo();
+        state.undo();
+        assert_eq!(state.buffer.to_text(), "one\ntwo\nthree");
+    }
+
+    #[test]
+    fn alt_up_moves_the_lines_of_a_selection_with_crlf() {
+        let mut state = editor("a\r\nb\r\nc\r\nd");
+        // Lines 1 and 2, ending at the start of line 3: that line stays.
+        state.set_selection(Selection { anchor: 3, head: 9 });
+        state.move_lines(true);
+        assert_eq!(state.buffer.to_text(), "b\r\nc\r\na\r\nd");
+        assert_eq!(state.selection(), Selection { anchor: 0, head: 6 });
+        state.move_lines(false);
+        state.move_lines(false);
+        assert_eq!(state.buffer.to_text(), "a\r\nd\r\nb\r\nc");
+        assert_eq!(state.selected_text().as_deref(), Some("b\r\nc"));
+    }
+
+    #[test]
+    fn alt_down_moves_every_block_of_cursors() {
+        let mut state = editor("1\n2\n3\n4\n5\n6");
+        at(&mut state, 0, 1);
+        state.toggle_cursor(Position::new(1, 0));
+        state.toggle_cursor(Position::new(3, 1));
+        state.move_lines(false);
+        // Lines 1 and 2 move as one block, line 4 on its own.
+        assert_eq!(state.buffer.to_text(), "3\n1\n2\n5\n4\n6");
+        assert_eq!(cursors(&state), vec![3, 4, 9]);
+        state.move_lines(true);
+        assert_eq!(state.buffer.to_text(), "1\n2\n3\n4\n5\n6");
     }
 
     #[test]

@@ -124,6 +124,10 @@ actions!(
         DuplicateLine,
         /// Deletes the whole line.
         DeleteLine,
+        /// Moves the line one line up.
+        MoveLineUp,
+        /// Moves the line one line down.
+        MoveLineDown,
     ]
 );
 
@@ -195,6 +199,8 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-shift-j", UnselectOccurrence, context),
         KeyBinding::new("cmd-d", DuplicateLine, context),
         KeyBinding::new("cmd-alt-d", DeleteLine, context),
+        KeyBinding::new("alt-up", MoveLineUp, context),
+        KeyBinding::new("alt-down", MoveLineDown, context),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
@@ -217,6 +223,8 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("alt-shift-j", UnselectOccurrence, context),
         KeyBinding::new("ctrl-d", DuplicateLine, context),
         KeyBinding::new("ctrl-alt-d", DeleteLine, context),
+        KeyBinding::new("alt-up", MoveLineUp, context),
+        KeyBinding::new("alt-down", MoveLineDown, context),
     ]);
 }
 
@@ -542,6 +550,12 @@ impl Render for EditorView {
             .on_action(
                 cx.listener(|this, _: &DeleteLine, _, cx| this.edit(cx, EditorState::delete_lines)),
             )
+            .on_action(cx.listener(|this, _: &MoveLineUp, _, cx| {
+                this.edit(cx, |state| state.move_lines(true))
+            }))
+            .on_action(cx.listener(|this, _: &MoveLineDown, _, cx| {
+                this.edit(cx, |state| state.move_lines(false))
+            }))
             .on_action(cx.listener(|this, _: &CollapseCursors, _, cx| {
                 if this.state.collapse_cursors() {
                     cx.notify();

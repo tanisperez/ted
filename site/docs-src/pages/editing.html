@@ -21,6 +21,7 @@ description: Moving, selecting, the clipboard, undo, indentation and line ending
 
 <h2>Lines</h2>
 <p><kbd>Ctrl</kbd> <kbd>D</kbd> (<kbd>Cmd</kbd> <kbd>D</kbd> on macOS) duplicates the line below itself and moves the cursor to the copy. With a selection inside a line, it duplicates the selection right after it and selects the copy; with a selection over several lines, it duplicates those whole lines. <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>D</kbd> (<kbd>Cmd</kbd> <kbd>Alt</kbd> <kbd>D</kbd> on macOS) deletes the whole lines of the cursor or the selection. With several cursors, both act at each one, as one undo step.</p>
+<p><kbd>Alt</kbd> <kbd>↑</kbd> and <kbd>Alt</kbd> <kbd>↓</kbd> (<kbd>Option</kbd> on macOS) move the line of the cursor one line up or down, and with a selection, the whole lines it touches. The cursor and the selection move with the text. With several cursors, every block of lines moves, as one undo step; nothing moves when a block is already at the start or the end of the file.</p>
 <p>Some Linux desktops use <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>D</kbd> to show the desktop. There, the desktop takes the shortcut before ted sees it, and the shortcut has to be freed in the desktop's settings.</p>
 
 <h2>Indentation</h2>
