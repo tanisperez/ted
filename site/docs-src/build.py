@@ -42,6 +42,7 @@ NAV = [
     ("Guides", [
         ("editing.html", "Editing text"),
         ("folders-and-tabs.html", "Folders and tabs"),
+        ("git.html", "Git"),
         ("find.html", "Find in file"),
         ("highlighting.html", "Syntax highlighting"),
         ("big-files.html", "Big files and logs"),

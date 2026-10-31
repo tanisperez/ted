@@ -7,7 +7,7 @@ mod load;
 mod save;
 mod watch;
 
-pub use list::{DirEntry, EntryKind, ExplorerFilter, ListError, list_dir};
+pub use list::{DirEntry, EntryKind, ExplorerFilter, ListError, list_dir, natural_cmp};
 pub use load::{FileContent, LoadError, LoadedFile, load_file, load_head};
 pub use save::{SaveError, modified_time, save_file};
 pub use watch::{FolderWatcher, WatchError};

@@ -462,7 +462,7 @@ Differences to settle, with the choice to follow in the meantime:
 
 - The prototype strings are Spanish; ted's source language is English. Strings in this file are
   the English equivalents.
-- The prototype pins telaio `v0.9.0` and `ropey = "1.6"`; ted pins telaio `v0.9.1` and uses the
+- The prototype pins telaio `v0.9.0` and `ropey = "1.6"`; ted pins telaio `v0.10.0` and uses the
   `ropey` of `gpui-component` (2.0.0-beta.1).
 - The prototype's selected tree row and category use a solid `accent_subtle`; telaio's `TreeRow`
   uses `list_active` (`accent_subtle` at 20% alpha). Use telaio's component and its look.

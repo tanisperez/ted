@@ -26,22 +26,24 @@ pub const UI_FONT_SIZE_STEP: f32 = 1.0;
 /// Step of the editor font size stepper, in points.
 pub const MONO_FONT_SIZE_STEP: f32 = 0.5;
 
-/// The categories of the Settings modal, in the order of its left column. Git and Languages join
-/// them with their features.
+/// The categories of the Settings modal, in the order of its left column. Languages joins them
+/// with its feature.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SettingsCategory {
     #[default]
     Appearance,
     Editor,
     Files,
+    Git,
     About,
 }
 
 impl SettingsCategory {
-    pub const ALL: [SettingsCategory; 4] = [
+    pub const ALL: [SettingsCategory; 5] = [
         SettingsCategory::Appearance,
         SettingsCategory::Editor,
         SettingsCategory::Files,
+        SettingsCategory::Git,
         SettingsCategory::About,
     ];
 
@@ -51,6 +53,7 @@ impl SettingsCategory {
             SettingsCategory::Appearance => t!("settings.category.appearance"),
             SettingsCategory::Editor => t!("settings.category.editor"),
             SettingsCategory::Files => t!("settings.category.files"),
+            SettingsCategory::Git => t!("settings.category.git"),
             SettingsCategory::About => t!("settings.category.about"),
         }
         .into_owned()
@@ -112,6 +115,40 @@ impl ThemeChoice {
     }
 }
 
+/// What Ctrl+Enter does in the commit message, chosen in Settings, "Git". Stored in
+/// `settings.toml` as `git_commit_action = "commit" | "commit_and_push"`, as in Postino.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GitCommitAction {
+    /// Commit only.
+    #[default]
+    Commit,
+    /// Commit, then push.
+    CommitAndPush,
+}
+
+impl GitCommitAction {
+    /// Every choice, in the order the Settings view lists them.
+    pub const ALL: [GitCommitAction; 2] = [GitCommitAction::Commit, GitCommitAction::CommitAndPush];
+
+    fn parse(text: &str) -> Option<Self> {
+        match text.to_ascii_lowercase().as_str() {
+            "commit" => Some(GitCommitAction::Commit),
+            "commit_and_push" => Some(GitCommitAction::CommitAndPush),
+            _ => None,
+        }
+    }
+
+    /// The label shown in the Settings view.
+    pub fn label(self) -> String {
+        match self {
+            GitCommitAction::Commit => t!("settings.git.action_commit"),
+            GitCommitAction::CommitAndPush => t!("settings.git.action_commit_and_push"),
+        }
+        .into_owned()
+    }
+}
+
 /// User-configurable settings.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Settings {
@@ -151,6 +188,17 @@ pub struct Settings {
     pub explorer_exclude: Vec<String>,
     /// How much is written to the log file.
     pub log_level: LogLevel,
+    /// The git executable to use, `None` to search the `PATH`. Absent from the file when
+    /// auto-detecting.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub git_executable: Option<PathBuf>,
+    /// Whether the open repository is fetched every few minutes, so the status bar shows the
+    /// commits to pull.
+    pub git_fetch_automatically: bool,
+    /// Whether discarding changes asks first.
+    pub git_confirm_discard: bool,
+    /// What Ctrl+Enter does in the commit message.
+    pub git_commit_action: GitCommitAction,
 }
 
 impl Settings {
@@ -181,6 +229,10 @@ impl Default for Settings {
                 .map(String::from)
                 .to_vec(),
             log_level: LogLevel::default(),
+            git_executable: None,
+            git_fetch_automatically: true,
+            git_confirm_discard: true,
+            git_commit_action: GitCommitAction::default(),
         }
     }
 }
@@ -313,6 +365,19 @@ fn parse_settings(content: &str) -> Settings {
     if let Some(value) = text("log_level").and_then(LogLevel::parse) {
         settings.log_level = value;
     }
+    settings.git_executable = text("git_executable")
+        .map(str::trim)
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from);
+    if let Some(value) = flag("git_fetch_automatically") {
+        settings.git_fetch_automatically = value;
+    }
+    if let Some(value) = flag("git_confirm_discard") {
+        settings.git_confirm_discard = value;
+    }
+    if let Some(value) = text("git_commit_action").and_then(GitCommitAction::parse) {
+        settings.git_commit_action = value;
+    }
     settings
 }
 
@@ -393,6 +458,10 @@ mod tests {
             trim_trailing_whitespace: false,
             explorer_exclude: vec!["dist".to_string(), "*.log".to_string()],
             log_level: LogLevel::Debug,
+            git_executable: Some(PathBuf::from("/opt/git/bin/git")),
+            git_fetch_automatically: false,
+            git_confirm_discard: false,
+            git_commit_action: GitCommitAction::CommitAndPush,
             ..Settings::default()
         };
         write_settings(dir.path(), &settings);

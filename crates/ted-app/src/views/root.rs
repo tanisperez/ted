@@ -21,9 +21,10 @@ use telaio_ui::components::EmptyState;
 
 use crate::actions::{
     CloseTab, NewFile, NextTab, OpenFile, OpenFolder, OpenSettings, PreviousTab, Save,
-    ToggleExplorer,
+    ToggleExplorer, ToggleGit,
 };
 use crate::state::editor::{EditorState, estimate_lines};
+use crate::state::git::GitState;
 use crate::state::launch::{self, LaunchError, Target};
 use crate::state::recents::{self, Recents};
 use crate::state::settings::{Settings, SettingsCategory};
@@ -36,6 +37,7 @@ use crate::theme::metrics::{
 
 use super::editor::EditorView;
 use super::explorer::{ExplorerEvent, ExplorerView};
+use super::git::GitTasks;
 
 /// Files at least this big show their first [`HEAD_BYTES`] while the rest loads.
 const HEAD_THRESHOLD: u64 = 8 * 1024 * 1024;
@@ -53,6 +55,16 @@ enum Content {
     /// The open documents: the one file of file mode, or the tabs of folder mode (with none yet,
     /// a placeholder).
     Documents,
+}
+
+/// What the panel at the left of folder mode shows, switched from the status bar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum SidePanel {
+    /// The explorer.
+    #[default]
+    Files,
+    /// The Git panel.
+    Git,
 }
 
 /// What an open document shows.
@@ -111,8 +123,12 @@ pub struct AppView {
     focus_handle: FocusHandle,
     /// The explorer of folder mode, with the subscription to its events.
     pub(crate) explorer: Option<(Entity<ExplorerView>, Subscription)>,
-    /// Whether the explorer panel is shown (`Alt 1`).
+    /// Whether the side panel (the explorer or the Git panel) is shown.
     pub(crate) explorer_visible: bool,
+    /// Which panel the side panel shows.
+    pub(crate) side_panel: SidePanel,
+    /// The scroll of the Git panel's rows.
+    pub(crate) git_scroll: UniformListScrollHandle,
     /// The explorer panel's width, changed by dragging its edge.
     explorer_width: f32,
     /// While the explorer's edge is dragged.
@@ -125,8 +141,14 @@ pub struct AppView {
     pub(crate) settings_category: SettingsCategory,
     /// The exclude patterns field of the Settings modal, made when it opens.
     pub(crate) exclude_input: Option<Entity<InputState>>,
+    /// The git executable select of the Settings modal, made when it opens.
+    pub(crate) git_select: Option<(telaio_ui::components::SelectHandle, Subscription)>,
     /// The scroll of the empty state, for its scrollbar.
     pub(crate) welcome_scroll: ScrollHandle,
+    /// Git: availability, the folder's repository and its status, read by render.
+    pub(crate) git: GitState,
+    /// The git work in flight.
+    pub(crate) git_tasks: GitTasks,
     /// Checks the open file on disk when the window gets the focus back.
     _activation: Subscription,
 }
@@ -155,15 +177,21 @@ impl AppView {
             focus_handle,
             explorer: None,
             explorer_visible: true,
+            side_panel: SidePanel::default(),
+            git_scroll: UniformListScrollHandle::new(),
             explorer_width: EXPLORER_WIDTH,
             resizing_explorer: false,
             last_title: String::new(),
             closing: false,
             settings_category: SettingsCategory::default(),
             exclude_input: None,
+            git_select: None,
             welcome_scroll: ScrollHandle::new(),
+            git: GitState::default(),
+            git_tasks: GitTasks::default(),
             _activation: activation,
         };
+        view.detect_git(cx);
         view.update_title(window, cx);
         view.open_paths(&paths, window, cx);
         view.apply_debug_open(window, cx);
@@ -185,6 +213,24 @@ impl AppView {
         window.defer(cx, move |window, cx| {
             let _ = weak.update(cx, |view, cx| view.open_settings(window, cx));
         });
+    }
+
+    /// Shows `panel` at the left, or hides the side panel when it already shows it. Only in
+    /// folder mode.
+    pub(crate) fn toggle_side_panel(&mut self, panel: SidePanel, cx: &mut Context<Self>) {
+        if self.explorer.is_none() {
+            return;
+        }
+        if self.explorer_visible && self.side_panel == panel {
+            self.explorer_visible = false;
+        } else {
+            self.explorer_visible = true;
+            self.side_panel = panel;
+            if panel == SidePanel::Git {
+                self.refresh_git_status(cx);
+            }
+        }
+        cx.notify();
     }
 
     /// The editor shown, if any.
@@ -298,6 +344,7 @@ impl AppView {
                 log::info!("opening a file");
                 self.explorer = None;
                 self.target = Some(Target::File(file.clone()));
+                self.discover_git_repo(cx);
                 self.open_document(file, window, cx);
             }
             Target::Folder(root) => {
@@ -313,7 +360,9 @@ impl AppView {
                 );
                 self.explorer = Some((explorer, subscription));
                 self.explorer_visible = true;
+                self.side_panel = SidePanel::Files;
                 self.target = Some(Target::Folder(root));
+                self.discover_git_repo(cx);
                 self.update_title(window, cx);
                 cx.notify();
             }
@@ -702,11 +751,16 @@ impl Render for AppView {
                 }
             }
         };
-        let content = match &self.explorer {
-            Some((explorer, _)) => h_flex()
+        let explorer = self.explorer.as_ref().map(|(explorer, _)| explorer.clone());
+        let content = match explorer {
+            Some(explorer) => h_flex()
                 .flex_1()
                 .min_h_0()
                 .when(self.explorer_visible, |row| {
+                    let panel = match self.side_panel {
+                        SidePanel::Files => explorer.into_any_element(),
+                        SidePanel::Git => self.render_git_panel(cx),
+                    };
                     row.child(
                         div()
                             .flex_none()
@@ -714,7 +768,7 @@ impl Render for AppView {
                             .w(px(self.explorer_width))
                             .border_r_1()
                             .border_color(palette.border)
-                            .child(explorer.clone()),
+                            .child(panel),
                     )
                     .child(self.render_resize_handle(cx))
                 })
@@ -756,11 +810,13 @@ impl Render for AppView {
                 }
             }))
             .on_action(cx.listener(|this, _: &ToggleExplorer, _, cx| {
-                if this.explorer.is_some() {
-                    this.explorer_visible = !this.explorer_visible;
-                    cx.notify();
-                }
+                this.toggle_side_panel(SidePanel::Files, cx)
             }))
+            .on_action(
+                cx.listener(|this, _: &ToggleGit, _, cx| {
+                    this.toggle_side_panel(SidePanel::Git, cx)
+                }),
+            )
             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
                 if this.resizing_explorer {
                     let width = f32::from(event.position.x);

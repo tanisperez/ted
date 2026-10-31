@@ -42,12 +42,23 @@ description: Every setting of ted, its default, and the settings.toml file.
     </tbody>
 </table></div>
 
+<h2 id="git">Git</h2>
+<div class="table"><table>
+    <thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
+    <tbody>
+        <tr><td>Git</td><td>System</td><td>The git executable the <a href="git.html">Git panel</a> runs: the one on the <code>PATH</code>, or one picked with <strong>Browse…</strong>. The line under it says which version was found. <strong>Detect again</strong> looks for it again, after you install git for example.</td></tr>
+        <tr><td>Confirm before discarding changes</td><td>On</td><td>Whether discarding changes asks first.</td></tr>
+        <tr><td>Ctrl+Enter in the message</td><td>Commit</td><td>What <kbd>Ctrl</kbd> <kbd>Enter</kbd> does in the commit message: commit, or commit and push.</td></tr>
+    </tbody>
+</table></div>
+
 <h2>settings.toml</h2>
-<p>The settings live in a plain text file: <code>~/.config/ted/settings.toml</code> on Linux, <code>~/Library/Application Support/ted/settings.toml</code> on macOS and <code>%APPDATA%\ted\settings.toml</code> on Windows. You can edit it by hand while ted is closed; a value ted does not understand falls back to its default, and the rest of the file still applies. Two keys exist only in the file:</p>
+<p>The settings live in a plain text file: <code>~/.config/ted/settings.toml</code> on Linux, <code>~/Library/Application Support/ted/settings.toml</code> on macOS and <code>%APPDATA%\ted\settings.toml</code> on Windows. You can edit it by hand while ted is closed; a value ted does not understand falls back to its default, and the rest of the file still applies. These keys exist only in the file, or are written only when set:</p>
 <ul>
     <li><code>ui_font</code> and <code>mono_font</code>, the font families, <code>Geist</code> and <code>Geist Mono</code> by default.</li>
     <li><code>highlight_max_size_mb</code>, 4 by default: files bigger than this many megabytes are not parsed for <a href="highlighting.html#big-files">highlighting</a>.</li>
     <li><code>log_level</code>, <code>info</code> by default: how much ted writes to its <a href="files-and-folders.html#log-file">log file</a>.</li>
+    <li><code>git_executable</code>, absent by default: the path of the git executable, as picked in Settings.</li>
 </ul>
 ```toml title="settings.toml"
 language = "auto"
@@ -64,4 +75,6 @@ insert_final_newline = true
 highlight_max_size_mb = 4
 explorer_exclude = [".git", "target", "node_modules"]
 log_level = "info"
+git_confirm_discard = true
+git_commit_action = "commit"
 ```

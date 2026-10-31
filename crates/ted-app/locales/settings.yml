@@ -24,6 +24,9 @@ _version: 2
 "settings.category.files":
   en: "Files"
   es: "Archivos"
+"settings.category.git":
+  en: "Git"
+  es: "Git"
 "settings.category.about":
   en: "About"
   es: "Acerca de"
@@ -102,3 +105,63 @@ _version: 2
 "settings.about.release_notes":
   en: "Release notes"
   es: "Notas de la versión"
+"settings.git.title":
+  en: "Executable"
+  es: "Ejecutable"
+"settings.git.description":
+  en: "ted runs the git installed on this computer for the Git panel."
+  es: "ted usa el git instalado en este equipo para el panel Git."
+"settings.git.executable":
+  en: "Git"
+  es: "Git"
+"settings.git.auto":
+  en: "System"
+  es: "Del sistema"
+"settings.git.browse":
+  en: "Browse…"
+  es: "Examinar…"
+"settings.git.detect_again":
+  en: "Detect again"
+  es: "Detectar de nuevo"
+"settings.git.detecting":
+  en: "Looking for git…"
+  es: "Buscando git…"
+"settings.git.found":
+  en: "git %{version} found at %{path}."
+  es: "git %{version} encontrado en %{path}."
+"settings.git.not_found":
+  en: "Git was not found. Install it or pick the executable."
+  es: "No se encontró Git. Instálalo o elige el ejecutable."
+"settings.git.xcode_missing":
+  en: "Git needs the Xcode Command Line Tools, which are not installed."
+  es: "Git necesita las Xcode Command Line Tools, que no están instaladas."
+"settings.git.too_old":
+  en: "git %{version} is too old. ted needs %{min} or later."
+  es: "git %{version} es demasiado antiguo. ted necesita %{min} o posterior."
+"settings.git.failed":
+  en: "Git could not run: %{error}"
+  es: "No se pudo ejecutar Git: %{error}"
+"settings.git.install":
+  en: "How to install Git"
+  es: "Cómo instalar Git"
+"settings.git.changes_title":
+  en: "Changes"
+  es: "Cambios"
+"settings.git.confirm_discard":
+  en: "Confirm before discarding changes"
+  es: "Confirmar antes de descartar cambios"
+"settings.git.confirm_discard_description":
+  en: "Discarded changes cannot be recovered."
+  es: "Los cambios descartados no se pueden recuperar."
+"settings.git.commit_action":
+  en: "Ctrl+Enter in the message"
+  es: "Ctrl+Intro en el mensaje"
+"settings.git.commit_action_description":
+  en: "What Ctrl+Enter does in the commit message."
+  es: "Lo que hace Ctrl+Intro en el mensaje del commit."
+"settings.git.action_commit":
+  en: "Commit"
+  es: "Commit"
+"settings.git.action_commit_and_push":
+  en: "Commit and push"
+  es: "Commit y push"

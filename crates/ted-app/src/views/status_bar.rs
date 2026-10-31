@@ -1,8 +1,8 @@
 //! The status bar at the bottom of the main window. In folder mode it starts with the panel
-//! toggles (Files for now, Git joins it with its panel), a separator and the folder path (a click
+//! toggles (Files and Git, with its count of changed files), a separator and the folder path (a click
 //! opens it in the file manager); with a document open, the cursor position, the indentation, the
-//! encoding, the line ending and the language, right aligned as in the design. The branch joins
-//! them with the Git panel.
+//! encoding, the line ending and the language, right aligned as in the design. Inside a git
+//! repository the branch comes before the folder path.
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::tooltip::Tooltip;
@@ -11,7 +11,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
-use crate::actions::ToggleExplorer;
+use crate::actions::{ToggleExplorer, ToggleGit};
 use crate::state::launch::{Target, shorten_path};
 use crate::state::status::DocumentStatus;
 use crate::theme::metrics::{
@@ -19,7 +19,7 @@ use crate::theme::metrics::{
 };
 use crate::theme::{Palette, PaletteExt};
 
-use super::root::AppView;
+use super::root::{AppView, SidePanel};
 
 impl AppView {
     /// Renders the status bar.
@@ -32,6 +32,7 @@ impl AppView {
             Some(Target::Folder(root)) => Some(root.clone()),
             _ => None,
         };
+        let git_badge = Some(self.git.change_count()).filter(|count| *count > 0);
         h_flex()
             .flex_none()
             .h(px(STATUS_BAR_HEIGHT))
@@ -50,10 +51,20 @@ impl AppView {
                         .items_center()
                         .gap(px(2.0))
                         .mr(px(-4.0))
-                        .child(self.render_files_toggle(&palette, cx)),
+                        .child(self.render_panel_toggle(SidePanel::Files, None, &palette, cx))
+                        .child(self.render_panel_toggle(SidePanel::Git, git_badge, &palette, cx)),
                 )
                 .child(div().w(px(1.0)).h(px(14.0)).bg(palette.border))
             })
+            .children(self.git.branch_label().map(|branch| {
+                h_flex()
+                    .id("status-branch")
+                    .items_center()
+                    .gap(px(6.0))
+                    .text_color(palette.accent_text)
+                    .child(Icon::new(IconName::GitBranch).with_size(px(13.0)))
+                    .child(branch)
+            }))
             .children(folder.map(|root| {
                 let label = shorten_path(&root, std::env::home_dir().as_deref());
                 h_flex()
@@ -79,12 +90,23 @@ impl AppView {
             .into_any_element()
     }
 
-    /// The Files toggle: shows or hides the explorer, as `Alt 1`. While the explorer shows it has
-    /// an `accent_subtle` background and `accent_text` icon.
-    fn render_files_toggle(&self, palette: &Palette, cx: &mut Context<Self>) -> impl IntoElement {
-        let active = self.explorer_visible;
+    /// A panel toggle (Files, Git): shows `panel` at the left, or hides it when it already shows,
+    /// as its shortcut. While its panel shows it has an `accent_subtle` background and
+    /// `accent_text` icon. `badge` is a count after the icon (the Git panel's changes).
+    fn render_panel_toggle(
+        &self,
+        panel: SidePanel,
+        badge: Option<usize>,
+        palette: &Palette,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let active = self.explorer_visible && self.side_panel == panel;
         let hover = palette.hover;
         let hover_fg = palette.fg;
+        let (id, icon) = match panel {
+            SidePanel::Files => ("status-files", IconName::Files),
+            SidePanel::Git => ("status-git", IconName::GitBranch),
+        };
         // The background of the active state sits on an outer box so the hover tint can layer on
         // top of it, as the design's inset shadow does.
         div()
@@ -92,13 +114,14 @@ impl AppView {
             .when(active, |toggle| toggle.bg(palette.accent_subtle))
             .child(
                 div()
-                    .id("status-files")
+                    .id(id)
                     .h(px(STATUS_TOGGLE_HEIGHT))
                     .min_w(px(STATUS_TOGGLE_MIN_WIDTH))
                     .px(px(7.0))
                     .flex()
                     .items_center()
                     .justify_center()
+                    .gap(px(5.0))
                     .rounded(px(RADIUS_MD - 2.0))
                     .cursor_pointer()
                     .text_color(if active {
@@ -107,16 +130,23 @@ impl AppView {
                         palette.fg_muted
                     })
                     .hover(move |style| style.bg(hover).text_color(hover_fg))
-                    .tooltip(|window, cx| {
-                        Tooltip::new(SharedString::from(t!("explorer.title")))
+                    .tooltip(move |window, cx| match panel {
+                        SidePanel::Files => Tooltip::new(SharedString::from(t!("explorer.title")))
                             .action(&ToggleExplorer, None)
-                            .build(window, cx)
+                            .build(window, cx),
+                        SidePanel::Git => Tooltip::new(SharedString::from(t!("git.toggle")))
+                            .action(&ToggleGit, None)
+                            .build(window, cx),
                     })
-                    .child(Icon::new(IconName::Files).with_size(px(15.0)))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.explorer_visible = !this.explorer_visible;
-                        cx.notify();
-                    })),
+                    .child(Icon::new(icon).with_size(px(15.0)))
+                    .children(badge.map(|count| {
+                        div()
+                            .font_family(cx.theme().mono_font_family.clone())
+                            .text_size(px(11.0))
+                            .font_weight(FontWeight::MEDIUM)
+                            .child(telaio_app::number::format_integer(count as u64))
+                    }))
+                    .on_click(cx.listener(move |this, _, _, cx| this.toggle_side_panel(panel, cx))),
             )
     }
 }

@@ -1,0 +1,86 @@
+# The Git panel, its status bar toggle and the git commands.
+_version: 2
+"git.toggle":
+  en: "Git"
+  es: "Git"
+"git.panel.title":
+  en: "Commit"
+  es: "Commit"
+"git.panel.refresh":
+  en: "Refresh"
+  es: "Actualizar"
+"git.panel.discard_all":
+  en: "Discard all changes"
+  es: "Descartar todos los cambios"
+"git.panel.discard":
+  en: "Discard changes"
+  es: "Descartar cambios"
+"git.panel.all_changes":
+  en: "all the changes"
+  es: "todos los cambios"
+"git.panel.show_as_list":
+  en: "Show as list"
+  es: "Mostrar como lista"
+"git.panel.group_by_folder":
+  en: "Group by folder"
+  es: "Agrupar por carpeta"
+"git.panel.changes":
+  en: "Changes"
+  es: "Cambios"
+"git.panel.unversioned":
+  en: "Unversioned"
+  es: "Sin versionar"
+"git.panel.staged_outside.one":
+  en: "1 file outside this folder is staged and will be in the next commit."
+  es: "1 archivo fuera de esta carpeta está preparado y entrará en el próximo commit."
+"git.panel.staged_outside.other":
+  en: "%{count} files outside this folder are staged and will be in the next commit."
+  es: "%{count} archivos fuera de esta carpeta están preparados y entrarán en el próximo commit."
+"git.panel.unstage_them":
+  en: "Unstage them"
+  es: "Quitarlos"
+"git.discard.title":
+  en: "Discard changes?"
+  es: "¿Descartar los cambios?"
+"git.discard.text":
+  en: "The changes to %{name} will be lost. This cannot be undone."
+  es: "Se perderán los cambios de %{name}. No se puede deshacer."
+"git.discard.confirm":
+  en: "Discard"
+  es: "Descartar"
+"git.empty.missing":
+  en: "Git is not available"
+  es: "Git no está disponible"
+"git.empty.missing_text":
+  en: "Install git or choose its executable in Settings."
+  es: "Instala git o elige su ejecutable en Configuración."
+"git.empty.open_settings":
+  en: "Git settings"
+  es: "Configuración de Git"
+"git.empty.not_a_repo":
+  en: "Not a git repository"
+  es: "No es un repositorio git"
+"git.empty.not_a_repo_text":
+  en: "This folder is not under version control."
+  es: "Esta carpeta no está bajo control de versiones."
+"git.empty.init":
+  en: "Initialize repository"
+  es: "Inicializar repositorio"
+"git.empty.error":
+  en: "Git failed"
+  es: "Git ha fallado"
+"git.empty.no_changes":
+  en: "No changes"
+  es: "Sin cambios"
+"git.empty.clean":
+  en: "The working tree is clean."
+  es: "El árbol de trabajo está limpio."
+"git.empty.ahead.one":
+  en: "1 commit to push."
+  es: "1 commit pendiente de push."
+"git.empty.ahead.other":
+  en: "%{count} commits to push."
+  es: "%{count} commits pendientes de push."
+"git.error.title":
+  en: "Git failed"
+  es: "Git ha fallado"

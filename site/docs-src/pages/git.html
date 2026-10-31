@@ -1,0 +1,25 @@
+title: Git
+description: The Git panel of ted: see what changed in a folder, stage, discard and commit.
+---
+<h1>Git</h1>
+<p class="lead">When the open folder is inside a git repository, the Git panel lists what changed and lets you stage, discard and commit without leaving the editor.</p>
+
+<h2 id="requirements">What it needs</h2>
+<p>ted runs the <code>git</code> installed on your computer, version 2.30 or later; it does not bundle its own. It finds it on the <code>PATH</code>, or you can pick the executable in <a href="settings.html#git">Settings, Git</a>. Without git, or with a folder that is not a repository, ted works as before and the panel says why it is empty. A folder that is not a repository can be turned into one with <strong>Initialize repository</strong>.</p>
+
+<h2 id="panel">The Git panel</h2>
+<p>The <strong>Git</strong> toggle of the status bar, or <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>G</kbd>, shows the Git panel in place of the explorer; the <strong>Files</strong> toggle brings the explorer back. The toggle shows how many files changed. The panel lists them in two groups:</p>
+<ul>
+    <li><strong>Changes</strong>: tracked files that were modified (<code>M</code>), added (<code>A</code>), deleted (<code>D</code>, struck through), renamed (<code>R</code>) or that have a conflict (<code>!</code>).</li>
+    <li><strong>Unversioned</strong>: files git does not track yet (<code>U</code>).</li>
+</ul>
+<p>Files are grouped by folder; the list button in the header shows them as a flat list with their folder next to the name. Click a group or a folder to fold it, and a file to open it.</p>
+
+<h2 id="staging">Staging</h2>
+<p>The checkbox of a file, a folder or a group stages or unstages everything under it, as <code>git add</code> and <code>git restore --staged</code> would. It mirrors the git index, so it agrees with the terminal: a file with staged and unstaged changes shows a dash. When files outside the open folder are staged, a notice over the list says so, because they would go into the next commit, and offers to unstage them.</p>
+
+<h2 id="discarding">Discarding changes</h2>
+<p>The undo arrow that appears when you point at a row discards its changes: a modified file goes back to its last committed version, and an unversioned file is deleted. The arrow in the header discards every change. ted asks first, unless <strong>Confirm before discarding changes</strong> is off in Settings. Discarded changes cannot be recovered.</p>
+
+<h2 id="status">Refreshing</h2>
+<p>The status is read when the folder opens and when the panel is shown; the circular arrow in the header reads it again. A failed git command shows git's own message in a notification.</p>

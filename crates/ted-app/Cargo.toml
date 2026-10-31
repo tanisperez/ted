@@ -19,6 +19,7 @@ log = { workspace = true }
 rust-i18n = { workspace = true }
 telaio-ui = { workspace = true }
 telaio-app = { workspace = true }
+telaio-git = { workspace = true }
 ted-cli = { path = "../ted-cli" }
 ted-core = { path = "../ted-core" }
 ted-syntax = { path = "../ted-syntax" }

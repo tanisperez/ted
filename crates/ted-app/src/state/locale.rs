@@ -10,6 +10,14 @@ use serde::Serialize;
 
 pub use telaio_app::language::{Language, apply, match_language, system_locales};
 
+/// The translation of the plural keys `<key>.one` and `<key>.other` for `count`, with `count`
+/// available in the text as `%{count}`, formatted for the current language (`1,234`).
+pub fn plural(key: &str, count: usize) -> String {
+    let key = telaio_app::language::plural_key(key, count);
+    let count_text = telaio_app::number::format_integer(count as u64);
+    rust_i18n::t!(key.as_str(), count = count_text).to_string()
+}
+
 /// The languages ted is translated into, in the order the Settings dropdown lists them.
 pub const LANGUAGES: [Language; 2] = [Language::English, Language::Spanish];
 

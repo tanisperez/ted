@@ -253,7 +253,7 @@ pub fn list_dir(filter: &ExplorerFilter, dir: &Path) -> Result<Vec<DirEntry>, Li
 }
 
 /// Compares two strings with their digit runs as numbers: `file2` before `file10`.
-fn natural_cmp(a: &str, b: &str) -> Ordering {
+pub fn natural_cmp(a: &str, b: &str) -> Ordering {
     let (mut a, mut b) = (a.as_bytes(), b.as_bytes());
     while let (Some(&ca), Some(&cb)) = (a.first(), b.first()) {
         if ca.is_ascii_digit() && cb.is_ascii_digit() {

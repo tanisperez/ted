@@ -31,6 +31,7 @@ use crate::theme::{self, Palette, PaletteExt};
 use super::editor::EditorDisplay;
 use super::logo::logo;
 use super::root::AppView;
+use super::settings_git::git_sections;
 
 /// Side of the app icon in the About header.
 const ABOUT_ICON_SIZE: f32 = 48.0;
@@ -59,6 +60,7 @@ impl AppView {
         )
         .detach();
         self.exclude_input = Some(input);
+        self.create_git_select(window, cx);
         let weak = cx.weak_entity();
         window.open_dialog(cx, move |dialog, window, _cx| {
             let weak = weak.clone();
@@ -129,11 +131,29 @@ impl AppView {
         }
         // Not shown in the modal: kept as the file has them.
         let kept = (self.settings.log_level, self.settings.highlight_max_size_mb);
+        let git_executable = self.settings.git_executable.take();
         self.settings = Settings {
             log_level: kept.0,
             highlight_max_size_mb: kept.1,
             ..defaults
         };
+        // Back to the system's git: detect it again.
+        if git_executable.is_some() {
+            if let Some((select, _)) = &self.git_select {
+                telaio_ui::components::set_options(
+                    select,
+                    vec![telaio_ui::components::SelectOption::new(
+                        "",
+                        t!("settings.git.auto"),
+                    )],
+                    false,
+                    window,
+                    cx,
+                );
+                telaio_ui::components::pick(select, "", window, cx);
+            }
+            self.detect_git(cx);
+        }
         apply_language(self.settings.language);
         self.apply_settings(window, cx);
     }
@@ -182,6 +202,7 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
             SettingsCategory::Appearance => IconName::Palette,
             SettingsCategory::Editor => IconName::SquarePen,
             SettingsCategory::Files => IconName::Files,
+            SettingsCategory::Git => IconName::GitBranch,
             SettingsCategory::About => IconName::Info,
         };
         NavCategory::new(icon, category.label())
@@ -205,6 +226,13 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
             saving_section(weak.clone(), &palette, &settings),
             explorer_section(exclude_input.as_ref(), cx),
         ],
+        SettingsCategory::Git => git_sections(
+            weak.clone(),
+            &palette,
+            &settings,
+            &view.git.availability,
+            view.git_select.as_ref().map(|(select, _)| select),
+        ),
         SettingsCategory::About => vec![about_header(&palette, &mono_font)],
     };
 

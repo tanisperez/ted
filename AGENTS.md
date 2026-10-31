@@ -33,7 +33,7 @@ Expo/React Native conventions here.
   repository `tanisperez/ted`.
 - License: Apache-2.0, as Postino.
 - Stack: Rust (edition 2024, stable toolchain) + `gpui-kit` 0.8.0 + telaio (`telaio-ui`,
-  `telaio-app`) pinned to one tag in `[workspace.dependencies]`, as in Postino (`v0.9.1` today).
+  `telaio-app`) pinned to one tag in `[workspace.dependencies]`, as in Postino (`v0.10.0` today), plus `telaio-git`, the git client shared with Postino.
   `cargo tree -d --depth 0 | grep gpui` must stay empty.
 - **Text engine: our own.** No `gpui-kit` `InputState` for the document editor: it costs about
   460 MB of RSS for a 15 MB file in Postino and we do not control its render cost. ted has its
@@ -100,7 +100,9 @@ ted-app ──> ted-workspace ──> ted-core
   atomically (write a temporary file, then rename). No gpui.
 - `ted-cli`: `-h/--help`, `-V/--version` and the path argument, `IDENTITY` (the
   `telaio_app::AppIdentity` of ted), `build.rs` with the commit, as `postino-cli`.
-- `ted-app`: the gpui binary (`ted`). Views, the editor element and glue. UI state that can be
+- `ted-app`: the gpui binary (`ted`). Views, the editor element and glue. Git goes through
+  telaio's `telaio-git` (it runs the `git` executable, never a library), always on the background
+  executor; the Git views live in `views/git/` and their plain state in `state/git.rs`. UI state that can be
   tested without a window lives in plain Rust under `ted-app/src/state`, as in Postino.
 
 Everything except `ted-app` is testable with `cargo test`, with no window and no GPU.

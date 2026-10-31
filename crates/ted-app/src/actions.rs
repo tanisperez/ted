@@ -18,6 +18,9 @@ actions!(
         /// Shows or hides the explorer in folder mode, like its status bar toggle (`Alt 1`, `Ctrl 1`
         /// on macOS, as Postino's first panel).
         ToggleExplorer,
+        /// Shows or hides the Git panel in folder mode, like its status bar toggle
+        /// (`Ctrl+Shift+G`).
+        ToggleGit,
         /// Saves the open document (`Ctrl+S`).
         Save,
         /// Opens the Settings modal (`Ctrl+,`).
@@ -72,6 +75,7 @@ pub fn bind_keys(cx: &mut App) {
     // Ctrl+Tab switches tabs on every platform, macOS included, as in Postino. The editor binds
     // only plain `tab` and `shift-tab`, so this still fires while it has the focus.
     cx.bind_keys([
+        KeyBinding::new("ctrl-shift-g", ToggleGit, None),
         KeyBinding::new("ctrl-tab", NextTab, None),
         KeyBinding::new("ctrl-shift-tab", PreviousTab, None),
     ]);

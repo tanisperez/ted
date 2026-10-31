@@ -5,6 +5,7 @@ pub mod config;
 pub mod editor;
 pub mod explorer;
 pub mod find;
+pub mod git;
 pub mod launch;
 pub mod locale;
 pub mod minimap;
