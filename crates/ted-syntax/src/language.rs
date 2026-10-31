@@ -15,6 +15,8 @@ pub enum Language {
     Make,
     Shell,
     Python,
+    PowerShell,
+    Batch,
     Log,
     PlainText,
 }
@@ -49,6 +51,8 @@ impl Language {
             "mk" | "mak" => Language::Make,
             "sh" | "bash" | "zsh" | "ksh" => Language::Shell,
             "py" | "pyw" | "pyi" => Language::Python,
+            "ps1" | "psm1" | "psd1" => Language::PowerShell,
+            "bat" | "cmd" => Language::Batch,
             "log" => Language::Log,
             _ => Language::PlainText,
         }
@@ -71,9 +75,9 @@ impl Language {
         }
     }
 
-    /// Whether a tree-sitter grammar highlights it (not logs nor plain text).
+    /// Whether a tree-sitter grammar highlights it (not logs, batch files nor plain text).
     pub fn has_grammar(self) -> bool {
-        !matches!(self, Language::Log | Language::PlainText)
+        !matches!(self, Language::Log | Language::Batch | Language::PlainText)
     }
 
     /// The label of the status bar.
@@ -89,6 +93,8 @@ impl Language {
             Language::Make => "Makefile",
             Language::Shell => "Shell",
             Language::Python => "Python",
+            Language::PowerShell => "PowerShell",
+            Language::Batch => "Batch",
             Language::Log => "Log",
             Language::PlainText => "Plain text",
         }

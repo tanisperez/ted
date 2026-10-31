@@ -202,6 +202,7 @@ mod tests {
             Language::Make,
             Language::Shell,
             Language::Python,
+            Language::PowerShell,
         ] {
             assert!(grammar(l).is_some(), "{l:?}");
         }
@@ -228,6 +229,10 @@ mod tests {
         assert_eq!(d("home/.bashrc"), Language::Shell);
         assert_eq!(d("tool.PY"), Language::Python);
         assert_eq!(d("deploy"), Language::PlainText);
+        assert_eq!(d("setup.PS1"), Language::PowerShell);
+        assert_eq!(d("Tools.psm1"), Language::PowerShell);
+        assert_eq!(d("build.bat"), Language::Batch);
+        assert_eq!(d("run.CMD"), Language::Batch);
         assert_eq!(Language::Rust.name(), "Rust");
         let s = Language::from_shebang;
         assert_eq!(s("#!/bin/sh"), Some(Language::Shell));
@@ -343,6 +348,25 @@ mod tests {
         has(Language::Python, src, "False", Boolean);
         has(Language::Python, src, "3.14", Number);
         has(Language::Python, src, "Shape", Type);
+    }
+
+    #[test]
+    fn powershell_highlights() {
+        let src = "# hi\n<# block #>\nfunction Get-Area([int]$r) {\n    if ($r -eq $null) { return $False }\n    Write-Host \"area\" 3.14\n    $items | ForEach-Object { $_.Name }\n}\n";
+        has(Language::PowerShell, src, "# hi", Comment);
+        has(Language::PowerShell, src, "<# block #>", Comment);
+        has(Language::PowerShell, src, "function", Keyword);
+        has(Language::PowerShell, src, "Get-Area", Function);
+        has(Language::PowerShell, src, "int", Type);
+        has(Language::PowerShell, src, "$r", Property);
+        has(Language::PowerShell, src, "if", Keyword);
+        has(Language::PowerShell, src, "$null", Constant);
+        has(Language::PowerShell, src, "$False", Boolean);
+        has(Language::PowerShell, src, "Write-Host", Function);
+        has(Language::PowerShell, src, "\"area\"", String);
+        has(Language::PowerShell, src, "3.14", Number);
+        has(Language::PowerShell, src, "ForEach-Object", Function);
+        has(Language::PowerShell, src, "Name", Property);
     }
 
     #[test]

@@ -2,7 +2,7 @@ title: Syntax highlighting
 description: The languages ted highlights, how it detects them, and how it handles logs and big files.
 ---
 <h1>Syntax highlighting</h1>
-<p class="lead">ted colors code with tree-sitter, in the background, and keeps the colors in step as you type. Logs get a highlighter of their own, fast at any size.</p>
+<p class="lead">ted colors code with tree-sitter, in the background, and keeps the colors in step as you type. Logs and batch files get a highlighter of their own, fast at any size.</p>
 
 <h2>Languages</h2>
 <p>The language comes from the file name and its extension, and shows at the right of the status bar. A file whose name says nothing, such as a script without an extension, takes its language from its first line when it is a shebang (<code>#!/bin/sh</code>, <code>#!/usr/bin/env python3</code>).</p>
@@ -19,6 +19,8 @@ description: The languages ted highlights, how it detects them, and how it handl
         <tr><td>Makefile</td><td><code>Makefile</code>, <code>makefile</code>, <code>GNUmakefile</code>, <code>.mk</code>, <code>.mak</code></td></tr>
         <tr><td>Shell</td><td><code>.sh</code>, <code>.bash</code>, <code>.zsh</code>, <code>.ksh</code>, <code>.bashrc</code>, <code>.bash_profile</code>, <code>.bash_logout</code>, <code>.profile</code>, <code>.zshrc</code>, <code>.zshenv</code>, <code>.zprofile</code>, <code>PKGBUILD</code>, and a <code>sh</code>, <code>bash</code>, <code>zsh</code>, <code>ksh</code>, <code>dash</code> or <code>ash</code> shebang</td></tr>
         <tr><td>Python</td><td><code>.py</code>, <code>.pyw</code>, <code>.pyi</code>, and a <code>python</code> shebang</td></tr>
+        <tr><td>PowerShell</td><td><code>.ps1</code>, <code>.psm1</code>, <code>.psd1</code></td></tr>
+        <tr><td>Batch</td><td><code>.bat</code>, <code>.cmd</code></td></tr>
         <tr><td>Log</td><td><code>.log</code></td></tr>
     </tbody>
 </table></div>
@@ -28,4 +30,4 @@ description: The languages ted highlights, how it detects them, and how it handl
 <p>In a <code>.log</code> file, the date and time at the start of each line and the level word (<code>ERROR</code>, <code>WARN</code>, <code>INFO</code>, <code>DEBUG</code>, <code>TRACE</code>, and <code>FATAL</code>, <code>ERR</code>, <code>WARNING</code>) are colored. Only the lines on screen are looked at, so a log of any size scrolls as fast with colors as without.</p>
 
 <h2>Big files</h2>
-<p>A file bigger than 4 MB is not parsed and stays plain, so a huge generated JSON never costs a long parse or the memory of its tree. The limit is the <code>highlight_max_size_mb</code> key of <a href="settings.html#settings-toml">settings.toml</a>. Logs are highlighted at any size.</p>
+<p>A file bigger than 4 MB is not parsed and stays plain, so a huge generated JSON never costs a long parse or the memory of its tree. The limit is the <code>highlight_max_size_mb</code> key of <a href="settings.html#settings-toml">settings.toml</a>. Logs and batch files are highlighted at any size.</p>

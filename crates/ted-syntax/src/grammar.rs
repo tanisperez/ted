@@ -113,6 +113,14 @@ const PYTHON_EXTRA: &str = r#"
 (decorator (identifier) @attribute)
 "#;
 
+// The bundled powershell query captures variables as `@variable`, which has no class, and
+// paints `$true`, `$false` and `$null` as any other variable.
+const POWERSHELL_EXTRA: &str = r#"
+(variable) @property
+((variable) @boolean (#match? @boolean "^\\$(?i:true|false)$"))
+((variable) @constant (#match? @constant "^\\$(?i:null)$"))
+"#;
+
 /// The grammar of a language, `None` for those without one (or if its query failed to compile,
 /// which the tests rule out).
 pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
@@ -125,6 +133,7 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
     static MAKE: OnceLock<Option<Grammar>> = OnceLock::new();
     static BASH: OnceLock<Option<Grammar>> = OnceLock::new();
     static PYTHON: OnceLock<Option<Grammar>> = OnceLock::new();
+    static POWERSHELL: OnceLock<Option<Grammar>> = OnceLock::new();
 
     let (cell, ts_language, query) = match language {
         Language::Rust => (
@@ -171,7 +180,15 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
             tree_sitter_python::LANGUAGE,
             format!("{}\n{PYTHON_EXTRA}", tree_sitter_python::HIGHLIGHTS_QUERY),
         ),
-        Language::Log | Language::PlainText => return None,
+        Language::PowerShell => (
+            &POWERSHELL,
+            tree_sitter_powershell::LANGUAGE,
+            format!(
+                "{}\n{POWERSHELL_EXTRA}",
+                tree_sitter_powershell::HIGHLIGHTS_QUERY
+            ),
+        ),
+        Language::Log | Language::Batch | Language::PlainText => return None,
     };
 
     cell.get_or_init(|| {
@@ -199,7 +216,8 @@ mod tests {
     fn has_grammar_matches_the_grammars() {
         use Language::*;
         for language in [
-            Rust, JavaScript, Json, Toml, Markdown, Xml, Html, Make, Shell, Python, Log, PlainText,
+            Rust, JavaScript, Json, Toml, Markdown, Xml, Html, Make, Shell, Python, PowerShell,
+            Batch, Log, PlainText,
         ] {
             assert_eq!(
                 language.has_grammar(),
