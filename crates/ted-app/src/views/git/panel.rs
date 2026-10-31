@@ -14,8 +14,12 @@ use gpui_kit::*;
 use rust_i18n::t;
 use telaio_ui::components::{
     CheckState, ConfirmDialog, EmptyState, IconButton, PrimaryButton, SecondaryButton,
-    SectionLabel, TreeRow, TriCheckbox, open_confirm_dialog,
+    SectionLabel, TextArea, TreeRow, TriCheckbox, open_confirm_dialog,
 };
+
+use crate::actions::CommitFromMessage;
+use crate::state::git_sync::{can_commit, can_write_message};
+use crate::state::settings::GitCommitAction;
 
 use crate::state::git::{ChangeGroup, ChangeRow, ChangeRowKind, Check, GitAvailability, RepoState};
 use crate::state::locale::plural;
@@ -169,6 +173,7 @@ impl AppView {
             .bg(palette.surface)
             .child(header)
             .child(self.render_git_body(&palette, cx))
+            .children(self.render_commit_box(&palette, cx))
             .into_any_element()
     }
 
@@ -274,6 +279,93 @@ impl AppView {
                             })),
                     ),
                 ),
+        )
+    }
+}
+
+impl AppView {
+    /// The commit box under the rows: the message, Amend, the summary line and the two commit
+    /// buttons.
+    fn render_commit_box(&self, palette: &Palette, cx: &mut Context<Self>) -> Option<AnyElement> {
+        self.git.status()?;
+        let running = self.git.sync.running.is_some();
+        let stats = self.git.commit.stats;
+        let amend = self.git.commit.amend;
+        let message = self.commit_input.read(cx).value();
+        let enabled = can_commit(&message, stats, amend, running);
+
+        let message_box = div()
+            .key_context("CommitMessage")
+            .on_action(cx.listener(|view, _: &CommitFromMessage, window, cx| {
+                let push = view.settings.git_commit_action == GitCommitAction::CommitAndPush;
+                view.commit_from_box(push, window, cx);
+            }))
+            .child(TextArea::new(&self.commit_input).disabled(!can_write_message(stats, amend)));
+        let amend_box = TriCheckbox::new(
+            "git-amend",
+            if amend {
+                CheckState::Checked
+            } else {
+                CheckState::Unchecked
+            },
+        )
+        .label(t!("git.commit.amend"))
+        .disabled(running)
+        .on_click(cx.listener(|view, _, window, cx| view.toggle_amend(window, cx)));
+        let mono = cx.theme().mono_font_family.clone();
+        let summary = h_flex()
+            .gap(px(4.0))
+            .font_family(mono)
+            .text_size(px(11.5))
+            .text_color(palette.fg_subtle)
+            .child(format!(
+                "{} \u{b7}",
+                plural("git.commit.files", stats.files)
+            ))
+            .child(div().text_color(palette.success).child(format!(
+                "+{}",
+                telaio_app::number::format_integer(stats.additions)
+            )))
+            .child(div().text_color(palette.danger).child(format!(
+                "\u{2212}{}",
+                telaio_app::number::format_integer(stats.deletions)
+            )));
+        let commit = PrimaryButton::new("git-commit", t!("git.commit.commit"))
+            .full_width()
+            .disabled(!enabled)
+            .on_click(cx.listener(|view, _, window, cx| view.commit_from_box(false, window, cx)));
+        let commit_and_push =
+            SecondaryButton::new("git-commit-push", t!("git.commit.commit_and_push"))
+                .disabled(!enabled)
+                .on_click(
+                    cx.listener(|view, _, window, cx| view.commit_from_box(true, window, cx)),
+                );
+        Some(
+            v_flex()
+                .flex_none()
+                .gap(px(8.0))
+                .p(px(10.0))
+                .border_t_1()
+                .border_color(palette.border)
+                .child(message_box)
+                .child(
+                    h_flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap_x(px(14.0))
+                        .gap_y(px(4.0))
+                        .text_size(px(12.0))
+                        .text_color(palette.fg_muted)
+                        .child(div().flex_1().child(amend_box))
+                        .child(summary),
+                )
+                .child(
+                    h_flex()
+                        .gap(px(6.0))
+                        .child(div().flex_1().min_w_0().child(commit))
+                        .child(div().flex_none().child(commit_and_push)),
+                )
+                .into_any_element(),
         )
     }
 }

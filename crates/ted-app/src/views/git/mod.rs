@@ -6,14 +6,16 @@ use std::sync::Arc;
 
 use gpui_kit::prelude::*;
 use gpui_kit::*;
-use telaio_git::Executable;
+use telaio_git::{DiffSource, Executable};
 
 use crate::state::git::{GitAvailability, RepoState, change_rows, staged_outside};
+use crate::state::git_sync::CommitStats;
 use crate::state::launch::Target;
 
 use super::root::AppView;
 
 mod panel;
+mod sync;
 mod write;
 
 /// The git work in flight. Replacing a task drops the previous one, so only the latest result is
@@ -25,6 +27,8 @@ pub(crate) struct GitTasks {
     status: Option<Task<()>>,
     /// The write in flight (`write.rs`); the next one waits for it.
     write: Option<Task<()>>,
+    /// The commit box's summary line being read.
+    commit_stats: Option<Task<()>>,
 }
 
 impl AppView {
@@ -140,6 +144,7 @@ impl AppView {
                         {
                             *current = Some(Arc::new(status));
                             view.rebuild_git_rows();
+                            view.load_commit_stats(cx);
                             cx.notify();
                         }
                     }
@@ -150,6 +155,28 @@ impl AppView {
                         cx.notify();
                     }
                 }
+            });
+        }));
+    }
+
+    /// Reads what the next commit would include, for the commit box's summary line.
+    fn load_commit_stats(&mut self, cx: &mut Context<Self>) {
+        let Some(repo) = self.git.repo().cloned() else {
+            return;
+        };
+        self.git_tasks.commit_stats = Some(cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_spawn(async move { repo.numstat(&DiffSource::HeadToIndex) })
+                .await;
+            let _ = this.update(cx, |view, cx| match result {
+                Ok(numstat) => {
+                    let stats = CommitStats::from_numstat(&numstat);
+                    if view.git.commit.stats != stats {
+                        view.git.commit.stats = stats;
+                        cx.notify();
+                    }
+                }
+                Err(error) => log::warn!("reading the staged changes failed: {error}"),
             });
         }));
     }

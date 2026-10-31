@@ -8,7 +8,7 @@
 use std::path::{Path, PathBuf};
 
 use gpui_kit::assets::IconName;
-use gpui_kit::component::input::InputState;
+use gpui_kit::component::input::{InputEvent, InputState, TextareaState};
 use gpui_kit::component::notification::Notification;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -149,6 +149,8 @@ pub struct AppView {
     pub(crate) git: GitState,
     /// The git work in flight.
     pub(crate) git_tasks: GitTasks,
+    /// The Git panel's commit message.
+    pub(crate) commit_input: Entity<TextareaState>,
     /// Checks the open file on disk when the window gets the focus back.
     _activation: Subscription,
 }
@@ -167,6 +169,18 @@ impl AppView {
                 this.check_disk(window, cx);
             }
         });
+        let commit_input = cx.new(|cx| {
+            TextareaState::new(window, cx)
+                .placeholder(t!("git.commit.placeholder"))
+                .auto_grow(3, 10)
+        });
+        // The commit buttons are enabled by the message, so its edits repaint the panel.
+        cx.subscribe(&commit_input, |_, _, event: &InputEvent, cx| {
+            if matches!(event, InputEvent::Change) {
+                cx.notify();
+            }
+        })
+        .detach();
         let mut view = Self {
             settings,
             recents: recents::load(),
@@ -189,6 +203,7 @@ impl AppView {
             welcome_scroll: ScrollHandle::new(),
             git: GitState::default(),
             git_tasks: GitTasks::default(),
+            commit_input,
             _activation: activation,
         };
         view.detect_git(cx);

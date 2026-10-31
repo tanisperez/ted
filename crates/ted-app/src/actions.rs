@@ -21,6 +21,9 @@ actions!(
         /// Shows or hides the Git panel in folder mode, like its status bar toggle
         /// (`Ctrl+Shift+G`).
         ToggleGit,
+        /// Commits from the Git panel's message (`Ctrl+Enter`), or commits and pushes, as the
+        /// setting says.
+        CommitFromMessage,
         /// Saves the open document (`Ctrl+S`).
         Save,
         /// Opens the Settings modal (`Ctrl+,`).
@@ -74,6 +77,13 @@ pub fn bind_keys(cx: &mut App) {
     ]);
     // Ctrl+Tab switches tabs on every platform, macOS included, as in Postino. The editor binds
     // only plain `tab` and `shift-tab`, so this still fires while it has the focus.
+    // The commit message's Ctrl+Enter / Cmd+Enter, bound after the input's own `secondary-enter`
+    // (a new line) so it runs first, and only inside the Git panel's message.
+    cx.bind_keys([KeyBinding::new(
+        "secondary-enter",
+        CommitFromMessage,
+        Some("CommitMessage > Input"),
+    )]);
     cx.bind_keys([
         KeyBinding::new("ctrl-shift-g", ToggleGit, None),
         KeyBinding::new("ctrl-tab", NextTab, None),

@@ -21,5 +21,14 @@ description: The Git panel of ted: see what changed in a folder, stage, discard 
 <h2 id="discarding">Discarding changes</h2>
 <p>The undo arrow that appears when you point at a row discards its changes: a modified file goes back to its last committed version, and an unversioned file is deleted. The arrow in the header discards every change. ted asks first, unless <strong>Confirm before discarding changes</strong> is off in Settings. Discarded changes cannot be recovered.</p>
 
+<h2 id="committing">Committing</h2>
+<p>The box at the bottom of the panel commits what is staged. Write the message and press <strong>Commit</strong>, or <kbd>Ctrl</kbd> <kbd>Enter</kbd> in the message (<kbd>Cmd</kbd> <kbd>Enter</kbd> on macOS). The line over the buttons says what the commit will include: the number of files and the lines added and removed. The message stays disabled while nothing is staged.</p>
+<ul>
+    <li><strong>Amend</strong> replaces the last commit instead of adding one. Ticking it with an empty message brings back the last commit's message, so you can also only reword it.</li>
+    <li><strong>Commit and push…</strong> commits, then lists the commits about to leave and asks before pushing them. The first push of a new branch sets its upstream on the remote.</li>
+    <li>The <strong>Ctrl+Enter in the message</strong> setting makes <kbd>Ctrl</kbd> <kbd>Enter</kbd> commit and push instead.</li>
+</ul>
+<p>ted runs git with your own configuration: your name and email, your hooks, and your credential helper or SSH agent for the remote. While a commit or a push runs, the status bar says so. When one fails, a notification explains why in plain words, and <strong>Show git output</strong> shows what git printed.</p>
+
 <h2 id="status">Refreshing</h2>
 <p>The status is read when the folder opens and when the panel is shown; the circular arrow in the header reads it again. A failed git command shows git's own message in a notification.</p>

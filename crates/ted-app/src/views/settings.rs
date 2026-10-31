@@ -101,6 +101,10 @@ impl AppView {
     ) {
         self.settings.language = choice;
         apply_language(choice);
+        // The one placeholder kept in an input's state: set it again in the new language.
+        self.commit_input.update(cx, |input, cx| {
+            input.set_placeholder(t!("git.commit.placeholder"), window, cx)
+        });
         self.apply_settings(window, cx);
     }
 

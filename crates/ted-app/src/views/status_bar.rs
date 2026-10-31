@@ -77,6 +77,13 @@ impl AppView {
                     .child(label)
                     .on_click(move |_, _, cx| cx.open_with_system(&root))
             }))
+            .children(self.git.sync.running.map(|op| {
+                h_flex()
+                    .items_center()
+                    .gap(px(6.0))
+                    .child(Icon::new(IconName::LoaderCircle).with_size(px(13.0)))
+                    .child(op.progress_label())
+            }))
             .child(div().flex_1())
             .children(status.map(|status| {
                 h_flex()

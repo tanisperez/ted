@@ -67,6 +67,10 @@ pub struct GitState {
     pub rows: Arc<Vec<ChangeRow>>,
     /// [`staged_outside`] of the last status.
     pub staged_outside: Arc<Vec<String>>,
+    /// The commit box: Amend and what the next commit includes.
+    pub commit: crate::state::git_sync::CommitBox,
+    /// The command running against the history or the remote, and the last failure.
+    pub sync: crate::state::git_sync::SyncState,
 }
 
 impl GitState {
