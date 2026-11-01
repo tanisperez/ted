@@ -334,11 +334,12 @@ impl AppView {
     }
 
     /// Opens a file or a folder, from the command line, a dialog, the explorer or the recents. A
-    /// file opened in folder mode gets a tab; anything else replaces what is open, asking first
-    /// when that has unsaved changes.
+    /// file gets a tab in folder mode and next to the files already open in file mode; anything
+    /// else replaces what is open, asking first when that has unsaved changes.
     pub(crate) fn open_path(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
+        let adds_tab = self.explorer.is_some() || !self.documents.is_empty();
         match launch::resolve(path) {
-            Ok(Target::File(file)) if matches!(self.target, Some(Target::Folder(_))) => {
+            Ok(Target::File(file)) if adds_tab => {
                 log::info!("opening a file");
                 self.recents.add(&Target::File(file.clone()));
                 recents::save(&self.recents);
@@ -434,18 +435,10 @@ impl AppView {
         self.document_shown(window, cx);
     }
 
-    /// Creates a new untitled document (`Ctrl+N`): a new tab in folder mode, otherwise the editor
-    /// alone, replacing what is open (asking first when that has unsaved changes).
+    /// Creates a new untitled document (`Ctrl+N`) in a new tab, next to what is open. In file
+    /// mode the tab bar shows from the second document on.
     pub(crate) fn new_document(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.explorer.is_some() {
-            return self.open_untitled(window, cx);
-        }
-        let editors = self.editors();
-        self.confirm_discard(editors, window, cx, |this, window, cx| {
-            this.documents.clear();
-            this.target = None;
-            this.open_untitled(window, cx);
-        });
+        self.open_untitled(window, cx);
     }
 
     /// Opens an empty document with no file, named with the lowest number no other one uses.
@@ -584,6 +577,11 @@ impl AppView {
                 };
                 let was_active = this.documents.active_index() == Some(index);
                 this.documents.close(index);
+                // File mode with nothing left to show: back to the welcome screen.
+                if this.explorer.is_none() && this.documents.is_empty() {
+                    this.target = None;
+                    this.content = Content::Welcome;
+                }
                 if was_active {
                     this.document_shown(window, cx);
                 } else {
@@ -866,10 +864,10 @@ impl Render for AppView {
             .on_action(
                 cx.listener(|this, _: &OpenSettings, window, cx| this.open_settings(window, cx)),
             )
+            // Also without the tab bar: closing the last file of file mode goes back to the
+            // welcome screen.
             .on_action(cx.listener(|this, _: &CloseTab, window, cx| {
-                if this.shows_tabs()
-                    && let Some(document) = this.documents.active()
-                {
+                if let Some(document) = this.documents.active() {
                     this.close_document(document.id, window, cx);
                 }
             }))
