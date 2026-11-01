@@ -13,11 +13,11 @@ authors = ["Estanislao Pérez Nartallo <tanisperez@gmail.com>"]
 [workspace.dependencies]
 gpui-kit = "0.8.0"
 # The design system and standard components shared with Postino, Vano and Nastro. Same gpui-kit pin.
-telaio-ui = { git = "https://github.com/tanisperez/telaio", tag = "v0.10.0" }
+telaio-ui = { git = "https://github.com/tanisperez/telaio", tag = "v0.11.0" }
 # The application shell: logging, command line pieces, language, numbers, paths, window bootstrap.
-telaio-app = { git = "https://github.com/tanisperez/telaio", tag = "v0.10.0" }
+telaio-app = { git = "https://github.com/tanisperez/telaio", tag = "v0.11.0" }
 # The git client shared with Postino: drives the `git` executable, no gpui.
-telaio-git = { git = "https://github.com/tanisperez/telaio", tag = "v0.10.0" }
+telaio-git = { git = "https://github.com/tanisperez/telaio", tag = "v0.11.0" }
 serde = "1"
 serde_json = "1"
 thiserror = "2"
