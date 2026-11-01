@@ -211,7 +211,7 @@ Shared sizes come from telaio's `metrics.rs`. ted's own layout sizes go in ted's
 | Text left padding | 4 after the gutter |
 | Text right padding | 24 |
 | Wrap | off by default (`white-space: pre`), a setting turns it on |
-| Scrollbar | 10 px, thumb `border_strong`, radius 5, transparent track |
+| Scrollbar | 10 px, thumb `border_strong`, radius 5, transparent track; the editor adds a horizontal one over the bottom of the text while lines are wider than it |
 
 The gutter formula is the prototype's; in ted it is computed from the digit count of the line
 count and the measured advance of Geist Mono, not from the 0.62 constant.
