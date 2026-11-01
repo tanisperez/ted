@@ -61,6 +61,10 @@ actions!(
         MoveLeft,
         /// Moves the cursor one character right.
         MoveRight,
+        /// Moves the cursor to the start of the previous word.
+        MoveWordLeft,
+        /// Moves the cursor to the end of the next word.
+        MoveWordRight,
         /// Moves the cursor one line up.
         MoveUp,
         /// Moves the cursor one line down.
@@ -81,6 +85,10 @@ actions!(
         SelectLeft,
         /// Extends the selection one character right.
         SelectRight,
+        /// Extends the selection to the start of the previous word.
+        SelectWordLeft,
+        /// Extends the selection to the end of the next word.
+        SelectWordRight,
         /// Extends the selection one line up.
         SelectUp,
         /// Extends the selection one line down.
@@ -103,6 +111,12 @@ actions!(
         Backspace,
         /// Deletes the selection or the character after the cursor.
         Delete,
+        /// Deletes the selection or back to the start of the previous word.
+        DeleteWordLeft,
+        /// Deletes the selection or up to the end of the next word.
+        DeleteWordRight,
+        /// Deletes the selection or back to the start of the line.
+        DeleteToLineStart,
         /// Breaks the line, keeping its indentation.
         Newline,
         /// Indents the selected lines, or inserts indentation.
@@ -193,6 +207,13 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-shift-down", SelectToDocumentEnd, context),
         KeyBinding::new("cmd-shift-left", SelectToLineStart, context),
         KeyBinding::new("cmd-shift-right", SelectToLineEnd, context),
+        KeyBinding::new("alt-left", MoveWordLeft, context),
+        KeyBinding::new("alt-right", MoveWordRight, context),
+        KeyBinding::new("alt-shift-left", SelectWordLeft, context),
+        KeyBinding::new("alt-shift-right", SelectWordRight, context),
+        KeyBinding::new("alt-backspace", DeleteWordLeft, context),
+        KeyBinding::new("alt-delete", DeleteWordRight, context),
+        KeyBinding::new("cmd-backspace", DeleteToLineStart, context),
         KeyBinding::new("cmd-a", SelectAll, context),
         KeyBinding::new("cmd-c", Copy, context),
         KeyBinding::new("cmd-x", Cut, context),
@@ -213,6 +234,12 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-end", MoveToDocumentEnd, context),
         KeyBinding::new("ctrl-shift-home", SelectToDocumentStart, context),
         KeyBinding::new("ctrl-shift-end", SelectToDocumentEnd, context),
+        KeyBinding::new("ctrl-left", MoveWordLeft, context),
+        KeyBinding::new("ctrl-right", MoveWordRight, context),
+        KeyBinding::new("ctrl-shift-left", SelectWordLeft, context),
+        KeyBinding::new("ctrl-shift-right", SelectWordRight, context),
+        KeyBinding::new("ctrl-backspace", DeleteWordLeft, context),
+        KeyBinding::new("ctrl-delete", DeleteWordRight, context),
         KeyBinding::new("ctrl-a", SelectAll, context),
         // The context menu shows the last binding of each action: the usual ones go last.
         KeyBinding::new("ctrl-insert", Copy, context),
@@ -464,6 +491,12 @@ impl Render for EditorView {
             .on_action(cx.listener(|this, _: &MoveRight, _, cx| {
                 this.move_cursor(Movement::Right, false, cx)
             }))
+            .on_action(cx.listener(|this, _: &MoveWordLeft, _, cx| {
+                this.move_cursor(Movement::WordLeft, false, cx)
+            }))
+            .on_action(cx.listener(|this, _: &MoveWordRight, _, cx| {
+                this.move_cursor(Movement::WordRight, false, cx)
+            }))
             .on_action(
                 cx.listener(|this, _: &MoveUp, _, cx| this.move_cursor(Movement::Up, false, cx)),
             )
@@ -500,6 +533,12 @@ impl Render for EditorView {
             .on_action(cx.listener(|this, _: &SelectRight, _, cx| {
                 this.move_cursor(Movement::Right, true, cx)
             }))
+            .on_action(cx.listener(|this, _: &SelectWordLeft, _, cx| {
+                this.move_cursor(Movement::WordLeft, true, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SelectWordRight, _, cx| {
+                this.move_cursor(Movement::WordRight, true, cx)
+            }))
             .on_action(
                 cx.listener(|this, _: &SelectUp, _, cx| this.move_cursor(Movement::Up, true, cx)),
             )
@@ -533,6 +572,15 @@ impl Render for EditorView {
                 cx.listener(|this, _: &Backspace, _, cx| this.edit(cx, EditorState::backspace)),
             )
             .on_action(cx.listener(|this, _: &Delete, _, cx| this.edit(cx, EditorState::delete)))
+            .on_action(cx.listener(|this, _: &DeleteWordLeft, _, cx| {
+                this.edit(cx, EditorState::delete_word_backward)
+            }))
+            .on_action(cx.listener(|this, _: &DeleteWordRight, _, cx| {
+                this.edit(cx, EditorState::delete_word_forward)
+            }))
+            .on_action(cx.listener(|this, _: &DeleteToLineStart, _, cx| {
+                this.edit(cx, EditorState::delete_to_line_start)
+            }))
             .on_action(cx.listener(|this, _: &Newline, _, cx| this.edit(cx, EditorState::newline)))
             .on_action(cx.listener(|this, _: &Indent, _, cx| this.edit(cx, EditorState::indent)))
             .on_action(cx.listener(|this, _: &Outdent, _, cx| this.edit(cx, EditorState::outdent)))

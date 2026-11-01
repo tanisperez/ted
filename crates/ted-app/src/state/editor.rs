@@ -11,7 +11,10 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::SystemTime;
 
-use ted_core::{Buffer, Edit, EditKind, History, Indent, Position, Rope, SearchQuery, Selection};
+use ted_core::{
+    Buffer, Edit, EditKind, History, Indent, Position, Rope, SearchQuery, Selection, next_word_end,
+    previous_word_start,
+};
 
 use super::syntax::Syntax;
 
@@ -67,6 +70,10 @@ impl Viewport {
 pub enum Movement {
     Left,
     Right,
+    /// To the start of the word before the cursor, or the end of the previous line.
+    WordLeft,
+    /// To the end of the word after the cursor, or the start of the next line.
+    WordRight,
     Up,
     Down,
     LineStart,
@@ -303,6 +310,8 @@ impl EditorState {
                     (cursor, false)
                 }
             }
+            Movement::WordLeft => (word_left(buffer, cursor), false),
+            Movement::WordRight => (word_right(buffer, cursor), false),
             Movement::Up if cursor.line == 0 => (Position::new(0, 0), false),
             Movement::Up => (vertical(cursor.line - 1, self), true),
             Movement::Down if cursor.line == last_line => {
@@ -819,6 +828,36 @@ impl EditorState {
         });
     }
 
+    /// Ctrl+Backspace: deletes the selection, or back to the start of the word before the cursor
+    /// (the line break at a line start).
+    pub fn delete_word_backward(&mut self) {
+        self.delete_to(word_left);
+    }
+
+    /// Ctrl+Delete: deletes the selection, or up to the end of the word after the cursor (the
+    /// line break at a line end).
+    pub fn delete_word_forward(&mut self) {
+        self.delete_to(word_right);
+    }
+
+    /// Cmd+Backspace on macOS: deletes the selection, or back to the start of the line.
+    pub fn delete_to_line_start(&mut self) {
+        self.delete_to(|_, cursor| Position::new(cursor.line, 0));
+    }
+
+    /// Deletes every selection, or the text between each cursor and the position `target` gives
+    /// for it, as one undo step.
+    fn delete_to(&mut self, target: impl Fn(&Buffer, Position) -> Position) {
+        self.edit_each(EditKind::Deleting, |buffer, caret, selection| {
+            if !selection.is_empty() {
+                return Some((selection.range(), String::new()));
+            }
+            let other = buffer.position_to_offset(target(buffer, caret.cursor));
+            let range = other.min(selection.head)..other.max(selection.head);
+            (!range.is_empty()).then(|| (range, String::new()))
+        });
+    }
+
     /// The text of one indentation level: the document's own, spaces by default.
     fn indent_unit(&self) -> String {
         match self.buffer.indent() {
@@ -1319,6 +1358,32 @@ impl EditorState {
     }
 }
 
+/// Where Ctrl+Left goes from `cursor`: the start of the word before it, or the end of the
+/// previous line at a line start.
+fn word_left(buffer: &Buffer, cursor: Position) -> Position {
+    if cursor.column == 0 {
+        return match cursor.line {
+            0 => cursor,
+            line => Position::new(line - 1, buffer.line_len(line - 1)),
+        };
+    }
+    let line = buffer.line(cursor.line).to_string();
+    Position::new(cursor.line, previous_word_start(&line, cursor.column))
+}
+
+/// Where Ctrl+Right goes from `cursor`: the end of the word after it, or the start of the next
+/// line at a line end.
+fn word_right(buffer: &Buffer, cursor: Position) -> Position {
+    if cursor.column >= buffer.line_len(cursor.line) {
+        return match cursor.line + 1 < buffer.line_count() {
+            true => Position::new(cursor.line + 1, 0),
+            false => cursor,
+        };
+    }
+    let line = buffer.line(cursor.line).to_string();
+    Position::new(cursor.line, next_word_end(&line, cursor.column))
+}
+
 /// The first match of `query` from `from` to the end of `rope`, then from its start, that is not
 /// one of the `selected` ranges (sorted) nor overlaps them. `None` when every match is selected.
 /// It may read the whole text, so it runs on the background executor.
@@ -1715,6 +1780,46 @@ mod tests {
         assert_eq!(state.buffer.to_text(), "añb");
         state.backspace();
         assert_eq!(state.buffer.to_text(), "ab");
+    }
+
+    #[test]
+    fn word_movements_cross_line_breaks() {
+        let mut state = editor("foo.bar baz\nqux");
+        state.move_cursor(Movement::WordRight, false);
+        assert_eq!(state.cursor, Position::new(0, 3));
+        state.move_cursor(Movement::WordRight, true);
+        assert_eq!(state.selection(), Selection { anchor: 3, head: 4 });
+        at(&mut state, 0, 11);
+        state.move_cursor(Movement::WordRight, false);
+        assert_eq!(state.cursor, Position::new(1, 0));
+        state.move_cursor(Movement::WordLeft, false);
+        assert_eq!(state.cursor, Position::new(0, 11));
+        state.move_cursor(Movement::WordLeft, false);
+        assert_eq!(state.cursor, Position::new(0, 8));
+    }
+
+    #[test]
+    fn word_deletions_are_one_undo_step_per_cursor() {
+        let mut state = editor("let value = 1;\nlet other = 2;");
+        at(&mut state, 0, 9);
+        state.toggle_cursor(Position::new(1, 9));
+        state.delete_word_backward();
+        assert_eq!(state.buffer.to_text(), "let  = 1;\nlet  = 2;");
+        state.undo();
+        assert_eq!(state.buffer.to_text(), "let value = 1;\nlet other = 2;");
+        let mut state = editor("ab cd\nef");
+        at(&mut state, 0, 5);
+        state.delete_word_forward();
+        assert_eq!(state.buffer.to_text(), "ab cdef");
+        state.delete_word_backward();
+        assert_eq!(state.buffer.to_text(), "ab ef");
+        state.delete_to_line_start();
+        assert_eq!(state.buffer.to_text(), "ef");
+        // With a selection, only the selection goes.
+        let mut state = editor("one two");
+        state.set_selection(Selection { anchor: 1, head: 2 });
+        state.delete_word_backward();
+        assert_eq!(state.buffer.to_text(), "oe two");
     }
 
     #[test]

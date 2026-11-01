@@ -1,5 +1,5 @@
 //! The text buffer of ted: the rope, positions, edits and their undo history, line endings and
-//! indentation detection.
+//! indentation detection, word boundaries.
 //! No IO and no `gpui`, so everything here is unit tested.
 //!
 //! Every index is a byte offset into the UTF-8 text, as in `ropey` 2. Lines are split on LF; a
@@ -10,6 +10,7 @@ mod cleanup;
 mod detect;
 mod history;
 mod search;
+mod words;
 
 pub use buffer::{Buffer, Position, TextChange};
 pub use cleanup::cleanup_edits;
@@ -17,3 +18,4 @@ pub use detect::{Indent, LineEnding, SAMPLE_LEN, detect_indent, detect_line_endi
 pub use history::{Edit, EditKind, History, Selection};
 pub use ropey::{Rope, RopeSlice};
 pub use search::SearchQuery;
+pub use words::{next_word_end, previous_word_start};
