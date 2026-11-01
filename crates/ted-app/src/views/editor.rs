@@ -147,6 +147,22 @@ actions!(
         MoveLineUp,
         /// Moves the line one line down.
         MoveLineDown,
+        /// Selects the whole line, or adds the next line to a selection of whole lines.
+        SelectLine,
+        /// Inserts a line below the cursor's and moves there.
+        InsertLineBelow,
+        /// Inserts a line above the cursor's and moves there.
+        InsertLineAbove,
+        /// Indents the whole line, wherever the cursor is.
+        IndentLine,
+        /// Removes one indentation level from the line.
+        OutdentLine,
+        /// Comments out the lines, or uncomments them.
+        ToggleComment,
+        /// Scrolls one line up, the cursor stays.
+        ScrollLineUp,
+        /// Scrolls one line down, the cursor stays.
+        ScrollLineDown,
     ]
 );
 
@@ -214,6 +230,12 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("alt-backspace", DeleteWordLeft, context),
         KeyBinding::new("alt-delete", DeleteWordRight, context),
         KeyBinding::new("cmd-backspace", DeleteToLineStart, context),
+        KeyBinding::new("cmd-l", SelectLine, context),
+        KeyBinding::new("cmd-/", ToggleComment, context),
+        KeyBinding::new("cmd-enter", InsertLineBelow, context),
+        KeyBinding::new("cmd-shift-enter", InsertLineAbove, context),
+        KeyBinding::new("cmd-]", IndentLine, context),
+        KeyBinding::new("cmd-[", OutdentLine, context),
         KeyBinding::new("cmd-a", SelectAll, context),
         KeyBinding::new("cmd-c", Copy, context),
         KeyBinding::new("cmd-x", Cut, context),
@@ -240,6 +262,14 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-shift-right", SelectWordRight, context),
         KeyBinding::new("ctrl-backspace", DeleteWordLeft, context),
         KeyBinding::new("ctrl-delete", DeleteWordRight, context),
+        KeyBinding::new("ctrl-l", SelectLine, context),
+        KeyBinding::new("ctrl-/", ToggleComment, context),
+        KeyBinding::new("ctrl-enter", InsertLineBelow, context),
+        KeyBinding::new("ctrl-shift-enter", InsertLineAbove, context),
+        KeyBinding::new("ctrl-]", IndentLine, context),
+        KeyBinding::new("ctrl-[", OutdentLine, context),
+        KeyBinding::new("ctrl-up", ScrollLineUp, context),
+        KeyBinding::new("ctrl-down", ScrollLineDown, context),
         KeyBinding::new("ctrl-a", SelectAll, context),
         // The context menu shows the last binding of each action: the usual ones go last.
         KeyBinding::new("ctrl-insert", Copy, context),
@@ -314,6 +344,10 @@ pub struct EditorView {
     pub(crate) find_open: bool,
     /// The find bar's field, made the first time it opens.
     pub(crate) find_input: Option<Entity<InputState>>,
+    /// Whether the Go to line bar shows.
+    pub(crate) goto_open: bool,
+    /// The Go to line field, made the first time the bar opens.
+    pub(crate) goto_input: Option<Entity<InputState>>,
     /// Select the first match after the cursor as soon as the search finds one (the query just
     /// changed).
     pub(crate) find_jump: bool,
@@ -349,6 +383,8 @@ impl EditorView {
             find: Find::default(),
             find_open: false,
             find_input: None,
+            goto_open: false,
+            goto_input: None,
             find_jump: false,
         }
     }
@@ -607,6 +643,32 @@ impl Render for EditorView {
             .on_action(
                 cx.listener(|this, _: &DeleteLine, _, cx| this.edit(cx, EditorState::delete_lines)),
             )
+            .on_action(cx.listener(|this, _: &SelectLine, _, cx| {
+                this.edit(cx, EditorState::select_lines_extending)
+            }))
+            .on_action(cx.listener(|this, _: &InsertLineBelow, _, cx| {
+                this.edit(cx, |state| state.insert_line(false))
+            }))
+            .on_action(cx.listener(|this, _: &InsertLineAbove, _, cx| {
+                this.edit(cx, |state| state.insert_line(true))
+            }))
+            .on_action(
+                cx.listener(|this, _: &IndentLine, _, cx| this.edit(cx, EditorState::indent_lines)),
+            )
+            .on_action(
+                cx.listener(|this, _: &OutdentLine, _, cx| this.edit(cx, EditorState::outdent)),
+            )
+            .on_action(cx.listener(|this, _: &ToggleComment, _, cx| {
+                this.edit(cx, EditorState::toggle_comment)
+            }))
+            .on_action(cx.listener(|this, _: &ScrollLineUp, _, cx| {
+                this.state.scroll_lines(-1.0);
+                cx.notify();
+            }))
+            .on_action(cx.listener(|this, _: &ScrollLineDown, _, cx| {
+                this.state.scroll_lines(1.0);
+                cx.notify();
+            }))
             .on_action(cx.listener(|this, _: &MoveLineUp, _, cx| {
                 this.edit(cx, |state| state.move_lines(true))
             }))

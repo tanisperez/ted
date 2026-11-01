@@ -16,6 +16,8 @@ use ted_core::{
     previous_word_start,
 };
 
+use ted_syntax::Comment;
+
 use super::syntax::Syntax;
 
 /// Empty space above the first line, in pixels.
@@ -329,7 +331,13 @@ impl EditorState {
             Movement::Down => (vertical(cursor.line + 1, self), true),
             Movement::PageUp => (vertical(cursor.line.saturating_sub(page), self), true),
             Movement::PageDown => (vertical((cursor.line + page).min(last_line), self), true),
-            Movement::LineStart => (Position::new(cursor.line, 0), false),
+            // Smart Home: the first character that is not indentation, then the line start.
+            Movement::LineStart => {
+                let line = buffer.line(cursor.line).to_string();
+                let indent = line.len() - line.trim_start_matches([' ', '\t']).len();
+                let column = if cursor.column == indent { 0 } else { indent };
+                (Position::new(cursor.line, column), false)
+            }
             Movement::LineEnd => (
                 Position::new(cursor.line, buffer.line_len(cursor.line)),
                 false,
@@ -655,6 +663,29 @@ impl EditorState {
         });
     }
 
+    /// Ctrl+L: selects the whole lines of every cursor and selection, line breaks included. A
+    /// selection that already ends at a line start takes that line too, so pressing it again
+    /// adds the next line.
+    pub fn select_lines_extending(&mut self) {
+        let line_count = self.buffer.line_count();
+        let selections: Vec<Selection> = self
+            .selections()
+            .iter()
+            .map(|selection| {
+                let range = selection.range();
+                let first = self.buffer.byte_to_line(range.start);
+                let last = self.buffer.byte_to_line(range.end);
+                Selection {
+                    anchor: self.buffer.line_to_byte(first),
+                    head: self.buffer.line_to_byte((last + 1).min(line_count)),
+                }
+            })
+            .collect();
+        self.history.break_group();
+        self.set_selections(&selections);
+        self.scroll_to_cursor();
+    }
+
     /// Selects line `line` and its line break (a triple click).
     pub fn select_line(&mut self, line: usize) {
         let line = line.min(self.buffer.line_count() - 1);
@@ -797,6 +828,114 @@ impl EditorState {
             let column = caret.cursor.column.min(indent_len);
             Some((selection.range(), format!("{ending}{}", &line[..column])))
         });
+    }
+
+    /// Ctrl+Enter (`above` false) and Ctrl+Shift+Enter (`above` true): a new line below or above
+    /// the line of every cursor, with its indentation, wherever the cursor is in it. The cursor
+    /// moves to the new line.
+    pub fn insert_line(&mut self, above: bool) {
+        let ending = self.buffer.line_ending().as_str();
+        self.edit_each_to(EditKind::Other, |buffer, caret, _| {
+            let line = caret.cursor.line;
+            let text = buffer.line(line).to_string();
+            let indent = &text[..text.len() - text.trim_start_matches([' ', '\t']).len()];
+            let start = buffer.line_to_byte(line);
+            if above {
+                let new = format!("{indent}{ending}");
+                let at = indent.len() as isize;
+                Some((start..start, new, Some((at, at))))
+            } else {
+                let end = start + buffer.line_len(line);
+                let new = format!("{ending}{indent}");
+                let at = new.len() as isize;
+                Some((end..end, new, Some((at, at))))
+            }
+        });
+    }
+
+    /// Ctrl+/: comments out the lines of every cursor and selection with the language's comment,
+    /// or uncomments them when every line that is not blank is already commented. The comment
+    /// goes at the smallest indentation of those lines; blank lines are left alone. Does nothing
+    /// in a language without comments.
+    pub fn toggle_comment(&mut self) {
+        let Some(comment) = self.syntax.language.comment() else {
+            return;
+        };
+        // A selection that ends at the start of a line leaves that line alone.
+        let lines: Vec<(usize, usize)> = self
+            .selections()
+            .iter()
+            .map(|selection| {
+                let range = selection.range();
+                let first = self.buffer.byte_to_line(range.start);
+                let mut last = self.buffer.byte_to_line(range.end);
+                if last > first && range.end == self.buffer.line_to_byte(last) {
+                    last -= 1;
+                }
+                (first, last)
+            })
+            .collect();
+        let texts: Vec<String> = lines
+            .iter()
+            .flat_map(|&(first, last)| first..=last)
+            .map(|line| self.buffer.line(line).to_string())
+            .filter(|text| !text.trim().is_empty())
+            .collect();
+        if texts.is_empty() {
+            return;
+        }
+        let indent_of = |text: &str| text.len() - text.trim_start_matches([' ', '\t']).len();
+        let uncomment = texts.iter().all(|text| is_commented(text, comment));
+        let indent = texts.iter().map(|text| indent_of(text)).min().unwrap_or(0);
+        self.change_lines(&lines, |line| {
+            if line.trim().is_empty() {
+                line.to_string()
+            } else if uncomment {
+                uncomment_line(line, comment)
+            } else {
+                comment_line(line, indent, comment)
+            }
+        });
+    }
+
+    /// Ctrl+]: indents the whole lines of every cursor and selection, wherever the cursors are.
+    pub fn indent_lines(&mut self) {
+        let unit = self.indent_unit();
+        let lines = self.selected_lines();
+        self.change_lines(&lines, |line| {
+            if line.is_empty() {
+                line.to_string()
+            } else {
+                format!("{unit}{line}")
+            }
+        });
+    }
+
+    /// Go to line: puts the only cursor on `line` (0-based, clamped to the document) at character
+    /// `column` (0-based, clamped to the line), and scrolls so that line is in the middle when
+    /// it was off screen.
+    pub fn go_to(&mut self, line: usize, column: usize) {
+        let line = line.min(self.buffer.line_count() - 1);
+        let text = self.buffer.line(line).to_string();
+        let byte = text
+            .char_indices()
+            .nth(column)
+            .map_or(text.len(), |(byte, _)| byte);
+        self.set_cursor(Position::new(line, byte), false);
+        let (visible, _) = self.visible_lines();
+        if !visible.contains(&line) || line + 1 >= visible.end {
+            let line_height = f64::from(self.viewport.line_height);
+            let top = f64::from(PADDING_TOP) + line as f64 * line_height;
+            self.scroll_y = top - f64::from(self.viewport.height) / 2.0;
+            self.clamp_scroll();
+        }
+        self.scroll_to_cursor();
+    }
+
+    /// Ctrl+Up and Ctrl+Down: scrolls one line, the cursor stays where it is.
+    pub fn scroll_lines(&mut self, lines: f32) {
+        let dy = lines * self.viewport.line_height;
+        self.scroll_by(0.0, dy);
     }
 
     /// Backspace: deletes the selection, or the character (or line break) before the cursor.
@@ -1367,6 +1506,54 @@ impl EditorState {
     }
 }
 
+/// Whether `line` starts (after its indentation) with the comment, and ends with it for a block
+/// comment. A word token (`REM`) must be followed by a space or the line end.
+fn is_commented(line: &str, comment: Comment) -> bool {
+    let text = line.trim();
+    let starts = |token: &str| {
+        text.strip_prefix(token).is_some_and(|rest| {
+            !token.ends_with(|ch: char| ch.is_alphanumeric())
+                || rest.is_empty()
+                || rest.starts_with(' ')
+        })
+    };
+    match comment {
+        Comment::Line(token) => starts(token),
+        Comment::Block(open, close) => {
+            starts(open) && text.len() >= open.len() + close.len() && text.ends_with(close)
+        }
+    }
+}
+
+/// `line` commented out at byte `indent`, with a space after the opening token (and before the
+/// closing one).
+fn comment_line(line: &str, indent: usize, comment: Comment) -> String {
+    let (head, body) = line.split_at(indent.min(line.len()));
+    match comment {
+        Comment::Line(token) => format!("{head}{token} {body}"),
+        Comment::Block(open, close) => format!("{head}{open} {body} {close}"),
+    }
+}
+
+/// `line` without its comment and the one space next to each token.
+fn uncomment_line(line: &str, comment: Comment) -> String {
+    let indent = line.len() - line.trim_start_matches([' ', '\t']).len();
+    let (head, rest) = line.split_at(indent);
+    let strip_open = |rest: &str, open: &str| -> String {
+        let rest = rest.strip_prefix(open).unwrap_or(rest);
+        rest.strip_prefix(' ').unwrap_or(rest).to_string()
+    };
+    match comment {
+        Comment::Line(token) => format!("{head}{}", strip_open(rest, token)),
+        Comment::Block(open, close) => {
+            let rest = rest.trim_end();
+            let rest = rest.strip_suffix(close).unwrap_or(rest);
+            let rest = rest.strip_suffix(' ').unwrap_or(rest);
+            format!("{head}{}", strip_open(rest, open))
+        }
+    }
+}
+
 /// Where Ctrl+Left goes from `cursor`: the start of the word before it, or the end of the
 /// previous line at a line start.
 fn word_left(buffer: &Buffer, cursor: Position) -> Position {
@@ -1829,6 +2016,120 @@ mod tests {
         state.set_selection(Selection { anchor: 1, head: 2 });
         state.delete_word_backward();
         assert_eq!(state.buffer.to_text(), "oe two");
+    }
+
+    fn editor_in(text: &str, language: ted_syntax::Language) -> EditorState {
+        let mut state = editor(text);
+        state.syntax = Syntax::new(language, usize::MAX);
+        state
+    }
+
+    #[test]
+    fn ctrl_slash_comments_and_uncomments_lines() {
+        use ted_syntax::Language;
+        let mut state = editor_in("fn a() {\n    b();\n\n    c();\n}", Language::Rust);
+        state.set_selection(Selection {
+            anchor: state.buffer.line_to_byte(1),
+            head: state.buffer.line_to_byte(4),
+        });
+        state.toggle_comment();
+        assert_eq!(
+            state.buffer.to_text(),
+            "fn a() {\n    // b();\n\n    // c();\n}"
+        );
+        state.toggle_comment();
+        assert_eq!(state.buffer.to_text(), "fn a() {\n    b();\n\n    c();\n}");
+        // A mix of commented and plain lines comments them all.
+        let mut state = editor_in("# a\nb", Language::Shell);
+        state.select_all();
+        state.toggle_comment();
+        assert_eq!(state.buffer.to_text(), "# # a\n# b");
+    }
+
+    #[test]
+    fn block_comments_wrap_each_line() {
+        use ted_syntax::Language;
+        let mut state = editor_in("<p>hi</p>", Language::Html);
+        state.toggle_comment();
+        assert_eq!(state.buffer.to_text(), "<!-- <p>hi</p> -->");
+        state.toggle_comment();
+        assert_eq!(state.buffer.to_text(), "<p>hi</p>");
+        let mut state = editor_in("plain", Language::PlainText);
+        state.toggle_comment();
+        assert_eq!(state.buffer.to_text(), "plain");
+        assert!(is_commented("REM x", Comment::Line("REM")));
+        assert!(!is_commented("REMOVE x", Comment::Line("REM")));
+    }
+
+    #[test]
+    fn go_to_clamps_the_line_and_the_column() {
+        let mut state = editor("añb\nsecond\nthird");
+        state.go_to(0, 2);
+        assert_eq!(state.cursor, Position::new(0, 3));
+        state.go_to(99, 99);
+        assert_eq!(state.cursor, Position::new(2, 5));
+    }
+
+    #[test]
+    fn home_goes_to_the_indentation_then_the_line_start() {
+        let mut state = editor("    let x = 1;");
+        at(&mut state, 0, 10);
+        state.move_cursor(Movement::LineStart, false);
+        assert_eq!(state.cursor, Position::new(0, 4));
+        state.move_cursor(Movement::LineStart, false);
+        assert_eq!(state.cursor, Position::new(0, 0));
+        state.move_cursor(Movement::LineStart, false);
+        assert_eq!(state.cursor, Position::new(0, 4));
+    }
+
+    #[test]
+    fn ctrl_l_selects_lines_and_extends() {
+        let mut state = editor("one\ntwo\nthree");
+        at(&mut state, 0, 1);
+        state.select_lines_extending();
+        assert_eq!(state.selection(), Selection { anchor: 0, head: 4 });
+        state.select_lines_extending();
+        assert_eq!(state.selection(), Selection { anchor: 0, head: 8 });
+        state.select_lines_extending();
+        assert_eq!(
+            state.selection(),
+            Selection {
+                anchor: 0,
+                head: 13
+            }
+        );
+        state.select_lines_extending();
+        assert_eq!(
+            state.selection(),
+            Selection {
+                anchor: 0,
+                head: 13
+            }
+        );
+    }
+
+    #[test]
+    fn ctrl_enter_inserts_a_line_below_or_above_with_the_indentation() {
+        let mut state = editor("  foo(bar)\nend");
+        at(&mut state, 0, 5);
+        state.insert_line(false);
+        assert_eq!(state.buffer.to_text(), "  foo(bar)\n  \nend");
+        assert_eq!(state.cursor, Position::new(1, 2));
+        state.insert_line(true);
+        assert_eq!(state.buffer.to_text(), "  foo(bar)\n  \n  \nend");
+        assert_eq!(state.cursor, Position::new(1, 2));
+        state.undo();
+        state.undo();
+        assert_eq!(state.buffer.to_text(), "  foo(bar)\nend");
+    }
+
+    #[test]
+    fn indent_lines_ignores_where_the_cursor_is() {
+        let mut state = editor("ab\ncd");
+        at(&mut state, 0, 1);
+        state.indent_lines();
+        assert_eq!(state.buffer.to_text(), "    ab\ncd");
+        assert_eq!(state.cursor, Position::new(0, 5));
     }
 
     #[test]

@@ -71,6 +71,25 @@ impl AppView {
     }
 
     /// Applies `self.settings` everywhere it is read and saves it. Every control ends here.
+    /// `Ctrl+=`, `Ctrl+-` (`delta` of one point up or down) and `Ctrl+0` (`None`): the editor
+    /// font size, saved as when it is changed in Settings.
+    pub(crate) fn zoom_editor(
+        &mut self,
+        delta: Option<f32>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let size = match delta {
+            Some(delta) => (self.settings.mono_font_size + delta)
+                .clamp(*MONO_FONT_SIZE_RANGE.start(), *MONO_FONT_SIZE_RANGE.end()),
+            None => Settings::default().mono_font_size,
+        };
+        if size != self.settings.mono_font_size {
+            self.settings.mono_font_size = size;
+            self.apply_settings(window, cx);
+        }
+    }
+
     pub(crate) fn apply_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let settings = &self.settings;
         theme::apply_settings(cx, settings);

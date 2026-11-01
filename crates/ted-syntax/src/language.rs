@@ -4,6 +4,15 @@ use std::path::Path;
 
 use crate::HighlightSpan;
 
+/// The comment syntax of a language, for Ctrl+/.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Comment {
+    /// A token that comments the rest of the line (`//`, `#`).
+    Line(&'static str),
+    /// A start and an end token around the commented text (`<!--` and `-->`).
+    Block(&'static str, &'static str),
+}
+
 /// A language of the editor. `Log` and `PlainText` have no tree-sitter grammar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Language {
@@ -97,6 +106,27 @@ impl Language {
             Language::EditorConfig => Some(crate::highlight_editorconfig_line),
             Language::GitIgnore => Some(crate::highlight_gitignore_line),
             _ => None,
+        }
+    }
+
+    /// How Ctrl+/ comments a line out, `None` for the languages without comments (JSON, logs,
+    /// plain text).
+    pub fn comment(self) -> Option<Comment> {
+        match self {
+            Language::Rust | Language::JavaScript => Some(Comment::Line("//")),
+            Language::Toml
+            | Language::Make
+            | Language::Shell
+            | Language::Python
+            | Language::PowerShell
+            | Language::EditorConfig
+            | Language::GitIgnore => Some(Comment::Line("#")),
+            Language::Batch => Some(Comment::Line("REM")),
+            Language::Markdown | Language::Xml | Language::Html => {
+                Some(Comment::Block("<!--", "-->"))
+            }
+            Language::Css => Some(Comment::Block("/*", "*/")),
+            Language::Json | Language::Log | Language::PlainText => None,
         }
     }
 

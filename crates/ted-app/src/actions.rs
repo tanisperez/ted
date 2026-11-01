@@ -34,6 +34,12 @@ actions!(
         CopyPath,
         /// Shows the file shown, or the open folder, in the system file manager (`Ctrl+Alt+R`).
         RevealInFileManager,
+        /// Makes the editor font one point bigger (`Ctrl+=`).
+        ZoomIn,
+        /// Makes the editor font one point smaller (`Ctrl+-`).
+        ZoomOut,
+        /// Puts the editor font back to its default size (`Ctrl+0`).
+        ZoomReset,
         /// Shows the next tab, wrapping around (`Ctrl+Tab`).
         NextTab,
         /// Shows the previous tab, wrapping around (`Ctrl+Shift+Tab`).
@@ -74,6 +80,10 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-,", OpenSettings, None),
         KeyBinding::new("cmd-alt-c", CopyPath, None),
         KeyBinding::new("cmd-alt-r", RevealInFileManager, None),
+        KeyBinding::new("cmd-=", ZoomIn, None),
+        KeyBinding::new("cmd-+", ZoomIn, None),
+        KeyBinding::new("cmd--", ZoomOut, None),
+        KeyBinding::new("cmd-0", ZoomReset, None),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
@@ -86,6 +96,10 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-,", OpenSettings, None),
         KeyBinding::new("ctrl-alt-c", CopyPath, None),
         KeyBinding::new("ctrl-alt-r", RevealInFileManager, None),
+        KeyBinding::new("ctrl-=", ZoomIn, None),
+        KeyBinding::new("ctrl-+", ZoomIn, None),
+        KeyBinding::new("ctrl--", ZoomOut, None),
+        KeyBinding::new("ctrl-0", ZoomReset, None),
     ]);
     // Ctrl+Tab switches tabs on every platform, macOS included, as in Postino. The editor binds
     // only plain `tab` and `shift-tab`, so this still fires while it has the focus.

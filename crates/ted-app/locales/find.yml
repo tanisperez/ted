@@ -21,3 +21,6 @@ _version: 2
 "find.close":
   en: "Close"
   es: "Cerrar"
+"goto.placeholder":
+  en: "Go to line (1 to %{count}), or line:column"
+  es: "Ir a la línea (de 1 a %{count}), o línea:columna"

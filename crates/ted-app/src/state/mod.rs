@@ -9,6 +9,7 @@ pub mod git;
 pub mod git_branches;
 pub mod git_gutter;
 pub mod git_sync;
+pub mod goto;
 pub mod launch;
 pub mod locale;
 pub mod minimap;

@@ -28,6 +28,6 @@ pub use batch::highlight_batch_line;
 pub use editorconfig::highlight_editorconfig_line;
 pub use gitignore::highlight_gitignore_line;
 pub use highlight::{Highlight, HighlightSpan};
-pub use language::Language;
+pub use language::{Comment, Language};
 pub use log::highlight_log_line;
 pub use tree::SyntaxTree;

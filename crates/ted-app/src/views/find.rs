@@ -75,12 +75,19 @@ impl EditorView {
             .on_action(cx.listener(|this, _: &FindNext, _, cx| this.find_step(true, cx)))
             .on_action(cx.listener(|this, _: &FindPrevious, _, cx| this.find_step(false, cx)))
             .on_action(cx.listener(|this, _: &CloseFind, window, cx| this.close_find(window, cx)))
+            .on_action(
+                cx.listener(|this, _: &super::goto::OpenGoto, window, cx| {
+                    this.open_goto(window, cx)
+                }),
+            )
             .child(editor)
             .when(self.find_open, |this| this.child(self.render_find_bar(cx)))
+            .when(self.goto_open, |this| this.child(self.render_goto_bar(cx)))
     }
 
     /// Opens the bar with the selected text (when it is on one line) and focuses its field.
     fn open_find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.goto_open = false;
         let selected = self
             .state
             .selected_text()

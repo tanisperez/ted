@@ -23,7 +23,7 @@ use telaio_ui::components::EmptyState;
 
 use crate::actions::{
     CloseTab, NewFile, NextTab, OpenFile, OpenFolder, OpenSettings, PreviousTab, Save,
-    ToggleExplorer, ToggleGit,
+    ToggleExplorer, ToggleGit, ZoomIn, ZoomOut, ZoomReset,
 };
 use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::git::GitState;
@@ -871,6 +871,17 @@ impl Render for AppView {
                     this.close_document(document.id, window, cx);
                 }
             }))
+            .on_action(
+                cx.listener(|this, _: &ZoomIn, window, cx| this.zoom_editor(Some(1.0), window, cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &ZoomOut, window, cx| {
+                    this.zoom_editor(Some(-1.0), window, cx)
+                }),
+            )
+            .on_action(
+                cx.listener(|this, _: &ZoomReset, window, cx| this.zoom_editor(None, window, cx)),
+            )
             .on_action(cx.listener(Self::copy_current_path))
             .on_action(cx.listener(Self::reveal_current))
             .on_action(cx.listener(|this, _: &NextTab, window, cx| {
