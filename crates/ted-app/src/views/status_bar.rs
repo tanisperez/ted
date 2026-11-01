@@ -106,12 +106,56 @@ impl AppView {
                 h_flex()
                     .gap(px(16.0))
                     .child(status.position)
+                    .child(self.render_wrap_toggle(status.wrap, &palette, cx))
                     .children(status.indent)
                     .child(status.encoding)
                     .child(status.line_ending)
                     .child(status.language)
             }))
             .into_any_element()
+    }
+
+    /// The Wrap toggle: the wrap-text icon and "Wrap", `accent_subtle` and `accent_text` while
+    /// the document wraps. A click does what Alt+Z does.
+    fn render_wrap_toggle(
+        &self,
+        wrap: bool,
+        palette: &Palette,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let hover = palette.hover;
+        h_flex()
+            .id("status-wrap")
+            .h(px(22.0))
+            .px(px(6.0))
+            .mx(px(-6.0))
+            .gap(px(5.0))
+            .items_center()
+            .rounded(px(RADIUS_MD - 2.0))
+            .cursor_pointer()
+            .when(wrap, |toggle| {
+                toggle
+                    .bg(palette.accent_subtle)
+                    .text_color(palette.accent_text)
+            })
+            .hover(move |style| style.bg(hover))
+            .tooltip(move |window, cx| {
+                let label = match wrap {
+                    true => t!("status.wrap_on"),
+                    false => t!("status.wrap_off"),
+                };
+                Tooltip::new(SharedString::from(label)).build(window, cx)
+            })
+            .child(Icon::new(IconName::TextWrap).with_size(px(14.0)))
+            .child(t!("status.wrap"))
+            .on_click(cx.listener(|this, _, _, cx| {
+                if let Some(editor) = this.editor().cloned() {
+                    editor.update(cx, |editor, cx| {
+                        editor.state.toggle_wrap();
+                        cx.notify();
+                    });
+                }
+            }))
     }
 
     /// A panel toggle (Files, Git): shows `panel` at the left, or hides it when it already shows,

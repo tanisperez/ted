@@ -20,6 +20,8 @@ pub struct DocumentStatus {
     pub line_ending: &'static str,
     /// `Rust`, `JSON`, `Log`, `Plain text`, ...
     pub language: String,
+    /// Whether long lines wrap, for the Wrap toggle.
+    pub wrap: bool,
 }
 
 impl DocumentStatus {
@@ -48,6 +50,7 @@ impl DocumentStatus {
                 Language::PlainText => t!("status.plain_text").into_owned(),
                 language => language.name().to_string(),
             },
+            wrap: state.wrap,
         }
     }
 }

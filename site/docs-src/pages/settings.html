@@ -23,10 +23,11 @@ description: Every setting of ted, its default, and the settings.toml file.
 <div class="table"><table>
     <thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
     <tbody>
-        <tr><td>Font size (Text)</td><td>12.5 px</td><td>The size of the editor text, 10 to 18 in half steps.</td></tr>
+        <tr><td>Font size (Text)</td><td>12.5 px</td><td>The size of the editor text, 10 to 18 in half steps. <kbd>Ctrl</kbd> <kbd>=</kbd>, <kbd>Ctrl</kbd> <kbd>-</kbd> and <kbd>Ctrl</kbd> <kbd>0</kbd> change it too.</td></tr>
         <tr><td>Line numbers</td><td>On</td><td>Shows the line numbers at the left of the text.</td></tr>
         <tr><td>Highlight current line</td><td>On</td><td>Tints the line of the cursor.</td></tr>
         <tr><td>Minimap</td><td>On</td><td>Shows the <a href="interface.html#minimap">minimap</a> at the right of the text.</td></tr>
+        <tr><td>Word wrap</td><td>Off</td><td>Whether code wraps long lines; see <a href="editing.html#word-wrap">Word wrap</a>. Markdown and plain text always wrap.</td></tr>
         <tr><td>Tab size</td><td>4</td><td>The columns a tab takes, 2, 4 or 8, and the width of an indentation level in spaces.</td></tr>
         <tr><td>Insert spaces</td><td>On</td><td>Whether <kbd>Tab</kbd> inserts spaces in a new or flat file. A file indented with tabs or spaces keeps its own style.</td></tr>
     </tbody>
@@ -70,6 +71,7 @@ mono_font_size = 12.5
 line_numbers = true
 highlight_current_line = true
 minimap = true
+word_wrap = false
 tab_size = 4
 insert_spaces = true
 startup = "welcome"

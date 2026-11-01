@@ -19,3 +19,4 @@ pub mod settings;
 pub mod status;
 pub mod syntax;
 pub mod tabs;
+pub mod wrap;

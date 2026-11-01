@@ -258,7 +258,7 @@ count and the measured advance of Geist Mono, not from the 0.62 constant.
 3. **Tab bar** (folder mode only).
 4. **Editor** (and, for markdown, the preview beside it or instead of it).
 5. **Status bar** (`surface`, top border): left, the Files and Git panel toggles (folder mode;
-   Git shows its change count), a separator and the branch with the ahead count; right, word count (markdown), `Ln n, Col n`, indentation, `UTF-8`, line ending,
+   Git shows its change count), a separator and the branch with the ahead count; right, word count (markdown), `Ln n, Col n`, the Wrap toggle (wrap-text icon 14 and "Wrap", 22 high, radius 6, `accent_subtle` background and `accent_text` while lines wrap, Alt+Z), indentation, `UTF-8`, line ending,
    language, shortcuts button.
 
 ## Screens

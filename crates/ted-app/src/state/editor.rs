@@ -6,6 +6,7 @@
 //! million pixels, and an `f32` loses whole pixels well before that. Everything handed to gpui is
 //! relative to the first visible line, so it stays small.
 
+use std::collections::HashMap;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -19,6 +20,7 @@ use ted_core::{
 use ted_syntax::Comment;
 
 use super::syntax::Syntax;
+use super::wrap::{LineRows, line_rows};
 
 /// Empty space above the first line, in pixels.
 pub const PADDING_TOP: f32 = 10.0;
@@ -147,6 +149,37 @@ pub struct EditorState {
     pub syntax: Syntax,
     /// The git change marks of the gutter, for the file as saved (`state::git_gutter`).
     pub git_marks: Option<super::git_gutter::GitMarks>,
+    /// Whether long lines wrap into rows (soft wrap), as the editor last decided from the
+    /// settings and [`Self::wrap_override`]. While it does, `scroll_y` still counts one line
+    /// height per line, whatever its rows: the scrollbar and the minimap stay cheap.
+    pub wrap: bool,
+    /// Alt+Z on this document: wrap on or off whatever the settings say.
+    pub wrap_override: Option<bool>,
+    /// The rows of the lines wrapped so far, for the current text and width.
+    wrap_cache: WrapCache,
+}
+
+/// The rows of the wrapped lines, valid for one buffer version and one width in columns.
+#[derive(Debug, Clone, Default)]
+struct WrapCache {
+    version: u64,
+    columns: usize,
+    lines: HashMap<usize, LineRows>,
+}
+
+/// The most lines the wrap cache keeps before it starts again.
+const WRAP_CACHE_LINES: usize = 20_000;
+
+/// One row of the screen while lines wrap: a part of a line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VisualRow {
+    pub line: usize,
+    /// Its bytes in the line.
+    pub range: Range<usize>,
+    /// Whether it is the line's last row, the one that holds its end.
+    pub last: bool,
+    /// Whether it is the line's first row, the one with the line number.
+    pub first: bool,
 }
 
 impl EditorState {
@@ -174,6 +207,12 @@ impl EditorState {
 
     /// The largest vertical scroll offset.
     pub fn max_scroll_y(&self) -> f64 {
+        if self.wrap {
+            // Into the rows of the last line: they may fill the screen. `wrap_top` stops at its
+            // last row.
+            let lines = self.buffer.line_count() as f64 - 0.001;
+            return f64::from(PADDING_TOP) + lines * f64::from(self.viewport.line_height);
+        }
         (self.content_height() - f64::from(self.viewport.height)).max(0.0)
     }
 
@@ -184,6 +223,9 @@ impl EditorState {
 
     /// The largest horizontal scroll offset, from the widest line seen so far.
     pub fn max_scroll_x(&self) -> f32 {
+        if self.wrap {
+            return 0.0;
+        }
         (self.content_width() - self.viewport.width).max(0.0)
     }
 
@@ -195,6 +237,10 @@ impl EditorState {
 
     /// Scrolls by a delta in pixels, positive down and right.
     pub fn scroll_by(&mut self, dx: f32, dy: f32) {
+        if self.wrap {
+            self.wrap_scroll_by(dy);
+            return;
+        }
         self.scroll_x += dx;
         self.scroll_y += f64::from(dy);
         self.clamp_scroll();
@@ -215,6 +261,257 @@ impl EditorState {
     fn clamp_scroll(&mut self) {
         self.scroll_y = self.scroll_y.clamp(0.0, self.max_scroll_y());
         self.scroll_x = self.scroll_x.clamp(0.0, self.max_scroll_x());
+    }
+
+    /// Turns soft wrap on or off. The top line stays where it is.
+    pub fn set_wrap(&mut self, wrap: bool) {
+        if self.wrap != wrap {
+            self.wrap = wrap;
+            self.scroll_x = 0.0;
+            self.preferred_column = None;
+            self.clamp_scroll();
+        }
+    }
+
+    /// Alt+Z: wraps this document or stops wrapping it, whatever the settings say.
+    pub fn toggle_wrap(&mut self) {
+        let wrap = !self.wrap;
+        self.wrap_override = Some(wrap);
+        self.set_wrap(wrap);
+        self.scroll_to_cursor();
+    }
+
+    /// The columns a row holds: the text area less the space kept after the text.
+    fn wrap_columns(&self) -> usize {
+        let char_width = self.viewport.char_width.max(1.0);
+        ((self.viewport.width - PADDING_RIGHT) / char_width)
+            .floor()
+            .max(8.0) as usize
+    }
+
+    /// How line `line` breaks into rows, from the cache when it is there.
+    pub fn line_rows(&mut self, line: usize) -> LineRows {
+        let (version, columns) = (self.buffer.version(), self.wrap_columns());
+        let cache = &mut self.wrap_cache;
+        if cache.version != version
+            || cache.columns != columns
+            || cache.lines.len() > WRAP_CACHE_LINES
+        {
+            cache.version = version;
+            cache.columns = columns;
+            cache.lines.clear();
+        }
+        if let Some(rows) = cache.lines.get(&line) {
+            return rows.clone();
+        }
+        let slice = self.buffer.line(line);
+        let rows = line_rows(slice.len(), slice.len_chars(), columns, || {
+            slice.to_string()
+        });
+        self.wrap_cache.lines.insert(line, rows.clone());
+        rows
+    }
+
+    /// The bytes of row `row` of line `line`, which breaks as `rows`.
+    pub fn row_range(&self, line: usize, rows: &LineRows, row: usize) -> Range<usize> {
+        let len = self.buffer.line_len(line);
+        match rows {
+            LineRows::Words(starts) => super::wrap::row_range(starts, row, len),
+            LineRows::Chars { columns, chars } => {
+                let slice = self.buffer.line(line);
+                let byte = |char_index: usize| slice.char_to_byte_idx(char_index.min(*chars));
+                byte(row * columns)..byte((row + 1) * columns).min(len)
+            }
+        }
+    }
+
+    /// The row of `line` that holds byte `column`: the last one that starts at or before it.
+    fn row_at(&self, line: usize, rows: &LineRows, column: usize) -> usize {
+        match rows {
+            LineRows::Words(starts) => starts.partition_point(|start| *start <= column).max(1) - 1,
+            LineRows::Chars { columns, .. } => {
+                let chars = self.buffer.line(line).byte_to_char_idx(column);
+                (chars / columns).min(rows.count() - 1)
+            }
+        }
+    }
+
+    /// While lines wrap: the line at the top of the viewport and how far into its rows the top
+    /// is, in pixels (negative above the first line, in the top padding).
+    fn wrap_top(&mut self) -> (usize, f32) {
+        let line_height = f64::from(self.viewport.line_height).max(1.0);
+        let top = self.scroll_y - f64::from(PADDING_TOP);
+        if top < 0.0 {
+            return (0, top as f32);
+        }
+        let last = self.buffer.line_count() - 1;
+        let line = ((top / line_height).floor() as usize).min(last);
+        let fraction = (top / line_height - line as f64).clamp(0.0, 1.0);
+        let rows = self.line_rows(line).count() as f64;
+        let into = (fraction * rows * line_height).min((rows - 1.0) * line_height);
+        (line, into as f32)
+    }
+
+    /// Sets the top of the viewport to `into` pixels into the rows of `line`.
+    fn set_wrap_top(&mut self, line: usize, into: f32) {
+        let line_height = f64::from(self.viewport.line_height).max(1.0);
+        self.scroll_y = if into < 0.0 {
+            f64::from(PADDING_TOP) + f64::from(into) + line as f64 * line_height
+        } else {
+            let rows = self.line_rows(line).count() as f64;
+            f64::from(PADDING_TOP) + line as f64 * line_height + f64::from(into) / rows
+        };
+        self.scroll_y = self.scroll_y.clamp(0.0, self.max_scroll_y().max(0.0));
+    }
+
+    /// Scrolls `dy` pixels of rows while lines wrap, walking only the lines it passes.
+    fn wrap_scroll_by(&mut self, dy: f32) {
+        let line_height = self.viewport.line_height.max(1.0);
+        let last = self.buffer.line_count() - 1;
+        let (mut line, mut into) = self.wrap_top();
+        into += dy;
+        loop {
+            if into < 0.0 && line > 0 {
+                line -= 1;
+                into += self.line_rows(line).count() as f32 * line_height;
+                continue;
+            }
+            let height = self.line_rows(line).count() as f32 * line_height;
+            if into >= height && line < last {
+                into -= height;
+                line += 1;
+                continue;
+            }
+            break;
+        }
+        if line == 0 {
+            into = into.max(-PADDING_TOP);
+        }
+        if line == last {
+            let rows = self.line_rows(line).count() as f32;
+            into = into.min((rows - 1.0) * line_height);
+        }
+        self.set_wrap_top(line, into);
+    }
+
+    /// While lines wrap: the rows to paint and the y of the first one relative to the top of the
+    /// viewport (zero or negative, or the top padding).
+    pub fn visible_rows(&mut self) -> (Vec<VisualRow>, f32) {
+        let line_height = self.viewport.line_height;
+        if line_height <= 0.0 {
+            return (Vec::new(), 0.0);
+        }
+        let (mut line, into) = self.wrap_top();
+        let mut row = if into < 0.0 {
+            0
+        } else {
+            (into / line_height).floor() as usize
+        };
+        let first_y = if into < 0.0 {
+            -into
+        } else {
+            row as f32 * line_height - into
+        };
+        let mut y = first_y;
+        let mut visible = Vec::new();
+        while y < self.viewport.height && line < self.buffer.line_count() {
+            let rows = self.line_rows(line);
+            let count = rows.count();
+            while row < count && y < self.viewport.height {
+                visible.push(VisualRow {
+                    line,
+                    range: self.row_range(line, &rows, row),
+                    last: row + 1 == count,
+                    first: row == 0,
+                });
+                y += line_height;
+                row += 1;
+            }
+            line += 1;
+            row = 0;
+        }
+        (visible, first_y)
+    }
+
+    /// While lines wrap: scrolls the least needed to show the cursor's row.
+    fn wrap_scroll_to_cursor(&mut self) {
+        let line_height = self.viewport.line_height.max(1.0);
+        let height = self.viewport.height;
+        let cursor = self.cursor;
+        let rows = self.line_rows(cursor.line);
+        let cursor_row = self.row_at(cursor.line, &rows, cursor.column) as f32;
+        let (top_line, into) = self.wrap_top();
+        let cursor_into = cursor_row * line_height;
+        if cursor.line < top_line || (cursor.line == top_line && cursor_into < into) {
+            self.set_wrap_top(cursor.line, cursor_into);
+            return;
+        }
+        // How far below the top the cursor's row is, walking at most two screens of lines.
+        let mut y = -into;
+        let mut line = top_line;
+        while line < cursor.line && y < height * 2.0 {
+            y += self.line_rows(line).count() as f32 * line_height;
+            line += 1;
+        }
+        if line < cursor.line {
+            // Far below: put its row at the bottom.
+            self.set_wrap_top(cursor.line, cursor_into);
+            self.wrap_scroll_by(line_height - height);
+            return;
+        }
+        y += cursor_into;
+        if y + line_height > height {
+            self.wrap_scroll_by(y + line_height - height);
+        }
+    }
+
+    /// While lines wrap: the position `delta` rows below `from` (above when negative), at display
+    /// column `x` of that row, and whether it is past the start (or the end) of the document.
+    fn move_rows(&mut self, from: Position, delta: isize, x: usize) -> Position {
+        let last = self.buffer.line_count() - 1;
+        let mut line = from.line;
+        let rows = self.line_rows(line);
+        let mut row = self.row_at(line, &rows, from.column) as isize + delta;
+        while row < 0 {
+            if line == 0 {
+                return Position::new(0, 0);
+            }
+            line -= 1;
+            row += self.line_rows(line).count() as isize;
+        }
+        loop {
+            let count = self.line_rows(line).count() as isize;
+            if row < count {
+                break;
+            }
+            if line == last {
+                return Position::new(last, self.buffer.line_len(last));
+            }
+            row -= count;
+            line += 1;
+        }
+        let rows = self.line_rows(line);
+        let range = self.row_range(line, &rows, row as usize);
+        let text = self.buffer.line(line).to_string();
+        let segment = &text[range.clone()];
+        let mut column = range.start + byte_for_display_column(segment, x);
+        // The end of a row that is not the line's last is the start of the next one.
+        if (row as usize) + 1 < rows.count() && column >= range.end && range.end > range.start {
+            column = text.floor_char_boundary(range.end - 1);
+        }
+        Position::new(line, column)
+    }
+
+    /// The display column of `position` inside its row, for the vertical movements.
+    fn column_in_row(&mut self, position: Position) -> usize {
+        let rows = self.line_rows(position.line);
+        let row = self.row_at(position.line, &rows, position.column);
+        let range = self.row_range(position.line, &rows, row);
+        let text = self.buffer.line(position.line).to_string();
+        display_column(
+            &text[range.start..position.column.max(range.start)],
+            usize::MAX,
+        )
     }
 
     /// The lines to paint (partly visible ones included) and the y of the first one relative to
@@ -282,6 +579,14 @@ impl EditorState {
                 self.scroll_to_cursor();
             }
             return;
+        }
+        if self.wrap
+            && matches!(
+                movement,
+                Movement::Up | Movement::Down | Movement::PageUp | Movement::PageDown
+            )
+        {
+            return self.move_wrapped(movement, primary);
         }
         let buffer = &self.buffer;
         let cursor = self.cursor;
@@ -369,6 +674,34 @@ impl EditorState {
         self.scroll_y += scroll_lines * f64::from(self.viewport.line_height);
         self.clamp_scroll();
         self.scroll_to_cursor();
+    }
+
+    /// The vertical movements while lines wrap: by rows, keeping the column inside the row.
+    fn move_wrapped(&mut self, movement: Movement, primary: bool) {
+        let page = self.viewport.lines_per_page() as isize;
+        let delta = match movement {
+            Movement::Up => -1,
+            Movement::Down => 1,
+            Movement::PageUp => -page,
+            _ => page,
+        };
+        let x = match self.preferred_column {
+            Some(x) => x,
+            None => self.column_in_row(self.cursor),
+        };
+        self.preferred_column = Some(x);
+        let position = self.move_rows(self.cursor, delta, x);
+        self.cursor = position;
+        if self.anchor == Some(position) {
+            self.anchor = None;
+        }
+        if primary {
+            // A page movement also scrolls by a page, so the cursor keeps its place on screen.
+            if matches!(movement, Movement::PageUp | Movement::PageDown) {
+                self.wrap_scroll_by(delta as f32 * self.viewport.line_height);
+            }
+            self.scroll_to_cursor();
+        }
     }
 
     /// Puts the cursor at `position` (a click), clamped to the text, and drops the other cursors.
@@ -922,6 +1255,13 @@ impl EditorState {
             .nth(column)
             .map_or(text.len(), |(byte, _)| byte);
         self.set_cursor(Position::new(line, byte), false);
+        if self.wrap {
+            let rows = self.line_rows(line);
+            let row = self.row_at(line, &rows, byte) as f32;
+            self.set_wrap_top(line, row * self.viewport.line_height);
+            self.wrap_scroll_by(-self.viewport.height / 2.0);
+            return;
+        }
         let (visible, _) = self.visible_lines();
         if !visible.contains(&line) || line + 1 >= visible.end {
             let line_height = f64::from(self.viewport.line_height);
@@ -1483,6 +1823,9 @@ impl EditorState {
 
     /// Scrolls the least needed to show the cursor's line and column.
     pub fn scroll_to_cursor(&mut self) {
+        if self.wrap {
+            return self.wrap_scroll_to_cursor();
+        }
         let viewport = self.viewport;
         let line_height = f64::from(viewport.line_height);
         let top = f64::from(PADDING_TOP) + self.cursor.line as f64 * line_height;
@@ -2059,6 +2402,83 @@ mod tests {
         assert_eq!(state.buffer.to_text(), "plain");
         assert!(is_commented("REM x", Comment::Line("REM")));
         assert!(!is_commented("REMOVE x", Comment::Line("REM")));
+    }
+
+    /// An editor 8 columns wide (88 px at 8 px a character, less the 24 px kept after the text)
+    /// with lines wrapping, three rows high.
+    fn wrapped(text: &str) -> EditorState {
+        let mut state = EditorState::new(Buffer::from_text(text));
+        state.set_viewport(Viewport {
+            width: 88.0,
+            height: 60.0,
+            line_height: 20.0,
+            char_width: 8.0,
+        });
+        state.set_wrap(true);
+        state
+    }
+
+    #[test]
+    fn wrapped_lines_show_as_rows() {
+        let mut state = wrapped("aaaa bbbb cccc\nshort\nx");
+        let (rows, first_y) = state.visible_rows();
+        assert_eq!(first_y, PADDING_TOP);
+        let parts: Vec<(usize, Range<usize>)> = rows
+            .iter()
+            .map(|row| (row.line, row.range.clone()))
+            .collect();
+        assert_eq!(parts, [(0, 0..5), (0, 5..10), (0, 10..14)]);
+        assert!(rows[0].first && !rows[0].last && rows[2].last);
+    }
+
+    #[test]
+    fn up_and_down_move_by_rows() {
+        let mut state = wrapped("aaaa bbbb cccc\nshort");
+        at(&mut state, 0, 1);
+        state.move_cursor(Movement::Down, false);
+        assert_eq!(state.cursor, Position::new(0, 6));
+        state.move_cursor(Movement::Down, false);
+        assert_eq!(state.cursor, Position::new(0, 11));
+        state.move_cursor(Movement::Down, false);
+        assert_eq!(state.cursor, Position::new(1, 1));
+        state.move_cursor(Movement::Up, false);
+        assert_eq!(state.cursor, Position::new(0, 11));
+    }
+
+    #[test]
+    fn wrapped_scrolling_walks_rows_and_follows_the_cursor() {
+        let text = (0..50)
+            .map(|_| "aaaa bbbb cccc")
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mut state = wrapped(&text);
+        // Three rows a line, 20 px a row: 60 px of rows down is the next line.
+        state.scroll_by(0.0, PADDING_TOP + 60.0);
+        let (rows, _) = state.visible_rows();
+        assert_eq!((rows[0].line, rows[0].range.start), (1, 0));
+        state.scroll_by(0.0, 20.0);
+        let (rows, _) = state.visible_rows();
+        assert_eq!((rows[0].line, rows[0].range.start), (1, 5));
+        at(&mut state, 40, 12);
+        state.scroll_to_cursor();
+        let (rows, _) = state.visible_rows();
+        let last = rows.iter().rfind(|row| row.line == 40).map(|row| row.range.clone());
+        assert_eq!(last, Some(10..14));
+        assert_eq!(state.max_scroll_x(), 0.0);
+    }
+
+    #[test]
+    fn one_long_wrapped_line_scrolls_to_its_end() {
+        let text = "word ".repeat(200);
+        let mut state = wrapped(&text);
+        at(&mut state, 0, text.len());
+        state.scroll_to_cursor();
+        state.set_viewport(state.viewport);
+        let (rows, _) = state.visible_rows();
+        assert!(rows.last().is_some_and(|row| row.last), "the last row shows");
+        state.scroll_to_fraction(1.0);
+        let (rows, _) = state.visible_rows();
+        assert!(!rows.is_empty() && rows[0].last, "the last row at the top");
     }
 
     #[test]

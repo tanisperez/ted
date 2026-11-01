@@ -26,6 +26,10 @@ description: Moving, selecting, the clipboard, undo, indentation and line ending
 <p><kbd>Ctrl</kbd> <kbd>/</kbd> comments out the lines of the cursor or the selection with the comment of the language (<code>//</code> in Rust and JavaScript, <code>#</code> in shell, Python, TOML and Makefiles, <code>&lt;!-- --&gt;</code> around each line in HTML, XML and Markdown, <code>/* */</code> in CSS), and uncomments them when they are all commented already. JSON, logs and plain text have no comments.</p>
 <p>Some Linux desktops use <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>D</kbd> to show the desktop. There, the desktop takes the shortcut before ted sees it, and the shortcut has to be freed in the desktop's settings.</p>
 
+<h2 id="word-wrap">Word wrap</h2>
+<p>Long lines can wrap into several rows that fit the window, breaking after a space when they can. Markdown and plain text files wrap by default; code wraps when the <a href="settings.html#editor">Word wrap</a> setting is on. <kbd>Alt</kbd> <kbd>Z</kbd>, or the <strong>Wrap</strong> toggle of the status bar, turns it on or off for the open file. While lines wrap, the arrows up and down move by rows, there is no horizontal scrolling, and the line number shows on the first row of each line.</p>
+<p>Wrapping costs nothing on big files: ted only wraps the lines on screen. A line of more than 256 KB, such as a minified file, wraps every so many characters instead of at spaces.</p>
+
 <h2>Indentation</h2>
 <p><kbd>Tab</kbd> indents and <kbd>Shift</kbd> <kbd>Tab</kbd> outdents: the cursor to the next stop, or every selected line by one level. <kbd>Ctrl</kbd> <kbd>]</kbd> and <kbd>Ctrl</kbd> <kbd>[</kbd> indent and outdent the whole line wherever the cursor is. The level follows the file: a file indented with tabs gets tabs, a file indented with two spaces gets two spaces. In a new or flat file, the <a href="settings.html#editor">Tab size</a> and <a href="settings.html#editor">Insert spaces</a> settings decide. The status bar shows what the file uses.</p>
 

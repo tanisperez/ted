@@ -195,6 +195,7 @@ pub fn apply_editor_settings(settings: &Settings, cx: &mut App) {
         line_numbers: settings.line_numbers,
         current_line: settings.highlight_current_line,
         minimap: settings.minimap,
+        word_wrap: settings.word_wrap,
     });
 }
 
@@ -503,12 +504,25 @@ fn text_section(weak: WeakEntity<AppView>, palette: &Palette, settings: &Setting
             t!("settings.text.minimap"),
             toggle(
                 "settings-minimap",
-                weak,
+                weak.clone(),
                 palette,
                 settings.minimap,
                 |settings, on| settings.minimap = on,
             ),
         ))
+        .child(
+            LabeledRow::new(
+                t!("settings.text.word_wrap"),
+                toggle(
+                    "settings-word-wrap",
+                    weak,
+                    palette,
+                    settings.word_wrap,
+                    |settings, on| settings.word_wrap = on,
+                ),
+            )
+            .description(t!("settings.text.word_wrap_description")),
+        )
         .into_any_element()
 }
 

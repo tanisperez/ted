@@ -70,8 +70,9 @@ Expo/React Native conventions here.
 - Package repositories (APT, DNF, AUR), other channels and the in-app updater (not before the
   user asks).
 - Language of the user docs (English for now, as everything in the repository).
-- Split views: not planned; ask before designing them. Soft wrap was decided on 2026-11-01: it
-  is in 0.3.0 (#43), as in design v3 (Alt+Z, a status bar toggle, per-language defaults). The minimap was decided on
+- Split views: not planned; ask before designing them. Soft wrap was decided on 2026-11-01 and
+  is in 0.3.0 (#43): Alt+Z, the status bar toggle, the `word_wrap` setting for code, Markdown
+  and plain text always wrapping. The per-language table of Settings in design v3 is not built. The minimap was decided on
   2026-10-30: it is in 0.1.0 (#16), built directly in the style of VS Code and Zed from the design
   tokens. Multiple cursors were decided on 2026-10-30: they are in 0.2.0 (#20), as in IntelliJ
   (Alt+click, column selection with the middle button, which never pastes the primary selection).
