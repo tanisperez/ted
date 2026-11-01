@@ -289,6 +289,9 @@ pub struct EditorView {
     painted: Vec<PaintedLine>,
     /// While the scrollbar thumb is dragged: the distance from the thumb's top to the pointer.
     thumb_grab: Option<f32>,
+    /// While the horizontal scrollbar thumb is dragged: the distance from its left to the
+    /// pointer.
+    hthumb_grab: Option<f32>,
     /// While the minimap's slider is dragged.
     minimap_grab: Option<MinimapGrab>,
     /// While the mouse button that started a selection is down.
@@ -335,6 +338,7 @@ impl EditorView {
             focus_handle: cx.focus_handle(),
             painted: Vec::new(),
             thumb_grab: None,
+            hthumb_grab: None,
             minimap_grab: None,
             selecting: false,
             column_start: None,
@@ -824,6 +828,8 @@ pub struct EditorLayout {
     gutter: Bounds<Pixels>,
     text: Bounds<Pixels>,
     scrollbar: Option<Scrollbar>,
+    /// The horizontal scrollbar, over the bottom of the text, while lines are wider than it.
+    hscrollbar: Option<Scrollbar>,
     minimap: Option<Minimap>,
     minimap_hitbox: Option<Hitbox>,
     line_height: Pixels,
@@ -872,7 +878,7 @@ struct MinimapGrab {
     top: Pixels,
 }
 
-/// The vertical scrollbar.
+/// A scrollbar, vertical or horizontal.
 #[derive(Clone, Copy)]
 struct Scrollbar {
     track: Bounds<Pixels>,
@@ -1263,6 +1269,29 @@ impl Element for EditorElement {
                 );
                 Scrollbar { track, thumb }
             });
+            // The horizontal one overlays the bottom of the text, as wide as the text area.
+            let content_width = state.content_width();
+            let hscrollbar = (content_width > viewport.width).then(|| {
+                let track = Bounds::from_corners(
+                    point(text.left(), bounds.bottom() - px(EDITOR_SCROLLBAR_WIDTH)),
+                    point(text.right(), bounds.bottom()),
+                );
+                let track_width = f32::from(track.size.width);
+                let thumb_width =
+                    (track_width * viewport.width / content_width).clamp(MIN_THUMB, track_width);
+                let fraction = match state.max_scroll_x() {
+                    max if max > 0.0 => state.scroll_x / max,
+                    _ => 0.0,
+                };
+                let thumb = Bounds::new(
+                    point(
+                        track.left() + px((track_width - thumb_width) * fraction),
+                        track.top(),
+                    ),
+                    size(px(thumb_width), track.size.height),
+                );
+                Scrollbar { track, thumb }
+            });
 
             log::trace!(
                 "editor prepaint: {} lines in {:?}",
@@ -1273,6 +1302,7 @@ impl Element for EditorElement {
                 gutter,
                 text,
                 scrollbar,
+                hscrollbar,
                 minimap_hitbox: minimap.as_ref().map(|minimap| {
                     window.insert_hitbox(minimap.geometry.area, HitboxBehavior::Normal)
                 }),
@@ -1389,8 +1419,8 @@ impl Element for EditorElement {
             );
         }
 
-        if let Some(scrollbar) = layout.scrollbar {
-            // The thumb is inset 2 px in its 10 px track, as the design's scrollbar.
+        // The thumbs are inset 2 px in their 10 px tracks, as the design's scrollbar.
+        for scrollbar in layout.scrollbar.iter().chain(&layout.hscrollbar) {
             let thumb = Bounds::from_corners(
                 scrollbar.thumb.origin + point(px(2.0), px(2.0)),
                 scrollbar.thumb.bottom_right() - point(px(2.0), px(2.0)),
@@ -1420,6 +1450,7 @@ impl EditorElement {
         let line_height = layout.line_height;
         let text = layout.text;
         let scrollbar = layout.scrollbar;
+        let hscrollbar = layout.hscrollbar;
         let minimap = layout.minimap.as_ref().map(|minimap| minimap.geometry);
         let hitbox = layout.hitbox.clone();
 
@@ -1541,6 +1572,22 @@ impl EditorElement {
                 cx.stop_propagation();
                 return;
             }
+            if let Some(hscrollbar) = hscrollbar
+                && hscrollbar.track.contains(&event.position)
+            {
+                editor.update(cx, |editor, cx| {
+                    let grab = if hscrollbar.thumb.contains(&event.position) {
+                        event.position.x - hscrollbar.thumb.left()
+                    } else {
+                        hscrollbar.thumb.size.width / 2.0
+                    };
+                    editor.hthumb_grab = Some(f32::from(grab));
+                    drag_hthumb(editor, hscrollbar, event.position.x);
+                    cx.notify();
+                });
+                cx.stop_propagation();
+                return;
+            }
             editor.update(cx, |editor, cx| {
                 window.focus(&editor.focus_handle, cx);
                 editor.marked = None;
@@ -1609,6 +1656,17 @@ impl EditorElement {
                     cx.notify();
                     return;
                 }
+                if let Some(hscrollbar) = hscrollbar
+                    && editor.hthumb_grab.is_some()
+                {
+                    if event.pressed_button == Some(MouseButton::Left) {
+                        drag_hthumb(editor, hscrollbar, event.position.x);
+                    } else {
+                        editor.hthumb_grab = None;
+                    }
+                    cx.notify();
+                    return;
+                }
                 let Some(scrollbar) = scrollbar else { return };
                 if editor.thumb_grab.is_some() {
                     if event.pressed_button == Some(MouseButton::Left) {
@@ -1626,6 +1684,7 @@ impl EditorElement {
             if phase.bubble() {
                 editor.update(cx, |editor, cx| {
                     editor.thumb_grab = None;
+                    editor.hthumb_grab = None;
                     editor.selecting = false;
                     editor.column_start = None;
                     if editor.minimap_grab.take().is_some() {
@@ -1646,6 +1705,17 @@ fn drag_thumb(editor: &mut EditorView, scrollbar: Scrollbar, pointer_y: Pixels) 
     }
     let top = f32::from(pointer_y - scrollbar.track.top()) - grab;
     editor.state.scroll_to_fraction(f64::from(top / range));
+}
+
+/// Scrolls so the horizontal thumb's left sits at the pointer minus where it was grabbed.
+fn drag_hthumb(editor: &mut EditorView, scrollbar: Scrollbar, pointer_x: Pixels) {
+    let grab = editor.hthumb_grab.unwrap_or(0.0);
+    let range = f32::from(scrollbar.track.size.width - scrollbar.thumb.size.width);
+    if range <= 0.0 {
+        return;
+    }
+    let left = f32::from(pointer_x - scrollbar.track.left()) - grab;
+    editor.state.scroll_to_fraction_x(left / range);
 }
 
 /// The rectangles that cover the text from `start` to `end` on the painted lines, one per line,

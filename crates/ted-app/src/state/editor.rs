@@ -175,11 +175,14 @@ impl EditorState {
         (self.content_height() - f64::from(self.viewport.height)).max(0.0)
     }
 
+    /// Width of the text, from the widest line seen so far, with the empty space after it.
+    pub fn content_width(&self) -> f32 {
+        self.widest_seen as f32 * self.viewport.char_width + PADDING_RIGHT
+    }
+
     /// The largest horizontal scroll offset, from the widest line seen so far.
     pub fn max_scroll_x(&self) -> f32 {
-        let viewport = &self.viewport;
-        let content = self.widest_seen as f32 * viewport.char_width + PADDING_RIGHT;
-        (content - viewport.width).max(0.0)
+        (self.content_width() - self.viewport.width).max(0.0)
     }
 
     /// Sets the viewport and keeps the scroll offsets in range.
@@ -199,6 +202,12 @@ impl EditorState {
     /// scrollbar.
     pub fn scroll_to_fraction(&mut self, fraction: f64) {
         self.scroll_y = fraction.clamp(0.0, 1.0) * self.max_scroll_y();
+    }
+
+    /// Scrolls so that `fraction` (0 to 1) of the horizontal range is left of the viewport, for
+    /// the horizontal scrollbar.
+    pub fn scroll_to_fraction_x(&mut self, fraction: f32) {
+        self.scroll_x = fraction.clamp(0.0, 1.0) * self.max_scroll_x();
     }
 
     fn clamp_scroll(&mut self) {
