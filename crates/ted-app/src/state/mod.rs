@@ -14,6 +14,7 @@ pub mod launch;
 pub mod locale;
 pub mod minimap;
 pub mod open_queue;
+pub mod palette;
 pub mod recents;
 pub mod settings;
 pub mod shortcuts;

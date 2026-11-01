@@ -1,0 +1,77 @@
+# The global search (Ctrl+K): the title bar's box and the palette (views/search.rs).
+_version: 2
+"search.hint":
+  en: "Search files and actions"
+  es: "Buscar archivos y acciones"
+"search.files":
+  en: "Files"
+  es: "Archivos"
+"search.recent":
+  en: "Recent files"
+  es: "Archivos recientes"
+"search.actions":
+  en: "Actions"
+  es: "Acciones"
+"search.indexing":
+  en: "Listing the folder's files…"
+  es: "Listando los archivos de la carpeta…"
+"search.truncated":
+  en: "Only the first %{count} files of the folder are searched"
+  es: "Solo se buscan los %{count} primeros archivos de la carpeta"
+"search.empty":
+  en: "Nothing matches"
+  es: "No hay coincidencias"
+"search.action.new_file":
+  en: "New file"
+  es: "Nuevo archivo"
+"search.action.open_file":
+  en: "Open file…"
+  es: "Abrir archivo…"
+"search.action.open_folder":
+  en: "Open folder…"
+  es: "Abrir carpeta…"
+"search.action.save":
+  en: "Save"
+  es: "Guardar"
+"search.action.close_tab":
+  en: "Close the tab"
+  es: "Cerrar la pestaña"
+"search.action.settings":
+  en: "Settings"
+  es: "Configuración"
+"search.action.shortcuts":
+  en: "Keyboard shortcuts"
+  es: "Atajos de teclado"
+"search.action.toggle_explorer":
+  en: "Show or hide the explorer"
+  es: "Mostrar u ocultar el explorador"
+"search.action.toggle_git":
+  en: "Show or hide the Git panel"
+  es: "Mostrar u ocultar el panel de Git"
+"search.action.find":
+  en: "Find in the file"
+  es: "Buscar en el archivo"
+"search.action.replace":
+  en: "Find and replace"
+  es: "Buscar y reemplazar"
+"search.action.goto":
+  en: "Go to line"
+  es: "Ir a la línea"
+"search.action.toggle_wrap":
+  en: "Wrap long lines on or off"
+  es: "Ajustar las líneas largas o no"
+"search.action.zoom_in":
+  en: "Bigger editor font"
+  es: "Letra del editor más grande"
+"search.action.zoom_out":
+  en: "Smaller editor font"
+  es: "Letra del editor más pequeña"
+"search.action.zoom_reset":
+  en: "Default editor font size"
+  es: "Tamaño de letra por defecto"
+"search.action.copy_path":
+  en: "Copy path"
+  es: "Copiar ruta"
+"search.action.reveal":
+  en: "Show in file manager"
+  es: "Mostrar en el gestor de archivos"

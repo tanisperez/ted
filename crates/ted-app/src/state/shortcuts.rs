@@ -51,6 +51,7 @@ pub fn groups() -> Vec<ShortcutGroup> {
         ShortcutGroup {
             title: t!("shortcuts.group.window").to_string(),
             shortcuts: vec![
+                row("shortcuts.action.search", &[modifier, "K"]),
                 Shortcut::open_sheet(),
                 row("shortcuts.action.settings", &[modifier, ","]),
                 row("shortcuts.action.toggle_explorer", &[ALT_OR_CTRL, "1"]),

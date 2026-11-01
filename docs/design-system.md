@@ -371,6 +371,26 @@ Not in the prototype; ted builds it from the design's floating toolbar (`views/f
 - The whole text is counted in the background in 8 MB steps. Only the first 100 000 matches are
   kept; past them next and previous search the text near the cursor.
 
+### Global search
+
+The design shows only its trigger in the title bar; the palette follows Postino's command palette
+(`views/search.rs`).
+
+- `Ctrl+K` (`Cmd+K` on macOS), or a click on the title bar's search box (folder mode), opens a
+  560 px card a seventh of the window down (telaio's `framed_dialog`, `ModalPlacement::Top`): a
+  36 px search row with the search icon and a borderless field, then the list, up to 440 px.
+- Two groups, each with its heading. **Files**: every file of the folder (the
+  `.gitignore` files and the exclude patterns apply, `.git` never shows), as the file icon, the
+  name and the folder in 12 px `fg_subtle`. With an empty query the group is **Recent files**.
+  **Actions**: the app actions that do something right now, an icon (14, `fg_muted`), the label
+  and the shortcut in Geist Mono 11 `fg_subtle`, read from the key bindings.
+- Matched characters are `accent_text`. The group with the best match goes first, so `go line`
+  lists Go to line before `command-line.html`. Up and Down move, Enter opens the file in a tab or
+  runs the action, Escape closes.
+- The folder is listed again in the background each time the search opens (the previous listing
+  shows meanwhile), up to 200 000 files; a 12 px note under the list says when it is cut. Each
+  query is ranked in the background and only the best 50 files are shown.
+
 ### Saving and unsaved changes
 
 - `Ctrl+S` saves. A document with unsaved changes shows `●` before its name in the window title

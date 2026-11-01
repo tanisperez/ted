@@ -8,6 +8,7 @@
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::Arc;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::input::{InputEvent, InputState, TextareaState};
@@ -22,8 +23,8 @@ use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
 use telaio_ui::components::{EmptyState, open_shortcuts_dialog};
 
 use crate::actions::{
-    CloseTab, NewFile, NextTab, OpenFile, OpenFolder, OpenSettings, OpenShortcuts, PreviousTab,
-    Save, ToggleExplorer, ToggleGit, ZoomIn, ZoomOut, ZoomReset,
+    CloseTab, NewFile, NextTab, OpenFile, OpenFolder, OpenSearch, OpenSettings, OpenShortcuts,
+    PreviousTab, Save, ToggleExplorer, ToggleGit, ZoomIn, ZoomOut, ZoomReset,
 };
 use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::git::GitState;
@@ -171,6 +172,12 @@ pub struct AppView {
     pub(crate) checkout_choice: CheckoutChoice,
     /// ted's icon on the files it opens by default (Linux).
     pub(crate) document_icons: DocumentIcons,
+    /// The files of the open folder, for the global search: the last listing.
+    pub(crate) file_index: Option<Arc<ted_workspace::FileIndex>>,
+    /// The folder whose files are being listed.
+    pub(crate) indexing: Option<PathBuf>,
+    /// The results of the open global search.
+    pub(crate) search: Option<WeakEntity<super::search::SearchResults>>,
     /// Checks the open file on disk when the window gets the focus back.
     _activation: Subscription,
 }
@@ -231,6 +238,9 @@ impl AppView {
             branch_menu_context,
             checkout_choice: CheckoutChoice::default(),
             document_icons: DocumentIcons::default(),
+            file_index: None,
+            indexing: None,
+            search: None,
             _activation: activation,
         };
         view.detect_git(cx);
@@ -901,6 +911,7 @@ impl Render for AppView {
             .on_action(
                 cx.listener(|this, _: &OpenShortcuts, window, cx| this.open_shortcuts(window, cx)),
             )
+            .on_action(cx.listener(|this, _: &OpenSearch, window, cx| this.open_search(window, cx)))
             // Also without the tab bar: closing the last file of file mode goes back to the
             // welcome screen.
             .on_action(cx.listener(|this, _: &CloseTab, window, cx| {

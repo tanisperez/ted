@@ -119,7 +119,7 @@ impl ExplorerFilter {
     }
 
     /// The matchers of `dir` and its ancestors up to the root, deepest first.
-    fn levels(&self, dir: &Path) -> Vec<Arc<Gitignore>> {
+    pub(crate) fn levels(&self, dir: &Path) -> Vec<Arc<Gitignore>> {
         let mut dirs: Vec<&Path> = if dir.starts_with(&self.root) {
             dir.ancestors()
                 .take_while(|d| d.starts_with(&self.root))
@@ -156,7 +156,7 @@ impl ExplorerFilter {
         out
     }
 
-    fn is_hidden(&self, levels: &[Arc<Gitignore>], path: &Path, is_dir: bool) -> bool {
+    pub(crate) fn is_hidden(&self, levels: &[Arc<Gitignore>], path: &Path, is_dir: bool) -> bool {
         if matches!(self.user.matched(path, is_dir), Match::Ignore(_)) {
             return true;
         }

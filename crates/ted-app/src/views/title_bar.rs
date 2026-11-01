@@ -1,7 +1,8 @@
 //! The title bar: the app icon, "ted" and the switcher with what is open (the folder or the file),
 //! whose menu starts with its path (Copy path, Show in file manager), then lists the recent
-//! folders and files and the two Open actions. At the right, the
-//! settings gear, then the window controls drawn by gpui-kit's `TitleBar`.
+//! folders and files and the two Open actions. In folder mode the search box of the global search
+//! sits in the middle of the window. At the right, the settings gear, then the window controls
+//! drawn by gpui-kit's `TitleBar`.
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
@@ -16,8 +17,8 @@ use telaio_ui::components::{menu_shortcut_item, rich_menu_width};
 use crate::actions::{OpenSettings, hints};
 use crate::state::launch::{Target, display_name, shorten_path};
 use crate::theme::metrics::{
-    LOGO_SIZE, RADIUS_MD, RICH_MENU_ROW_HEIGHT, RICH_MENU_TEXT_SIZE, SETTINGS_GEAR_SIZE,
-    TITLE_BAR_HEIGHT,
+    LOGO_SIZE, RADIUS_MD, RICH_MENU_ROW_HEIGHT, RICH_MENU_TEXT_SIZE, SEARCH_TRIGGER_HEIGHT,
+    SEARCH_TRIGGER_WIDTH, SETTINGS_GEAR_SIZE, TITLE_BAR_HEIGHT,
 };
 use crate::theme::{Palette, PaletteExt};
 
@@ -40,19 +41,40 @@ impl AppView {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let palette = cx.palette();
-        TitleBar::new()
-            .h(px(TITLE_BAR_HEIGHT))
+        let bar = TitleBar::new().h(px(TITLE_BAR_HEIGHT)).child(
+            h_flex()
+                .size_full()
+                .items_center()
+                .gap_2()
+                .child(logo(LOGO_SIZE))
+                .child(div().font_weight(FontWeight::SEMIBOLD).child("ted"))
+                .child(div().w(px(1.0)).h(px(16.0)).mx(px(4.0)).bg(palette.border))
+                .child(no_drag(self.render_switcher(&palette, cx)))
+                .child(div().flex_1())
+                .child(no_drag(render_settings_gear(&palette, cx))),
+        );
+        if !matches!(self.target, Some(Target::Folder(_))) {
+            return bar.into_any_element();
+        }
+        // Centered on the whole window, as in Postino: the bar lays the window controls out
+        // beside its content, so centering inside it would be off by half their width. The
+        // overlay has no handlers, so it takes no mouse input from the bar around the box.
+        let mono_font = cx.theme().mono_font_family.clone();
+        div()
+            .relative()
+            .w_full()
+            .flex_none()
+            .child(bar)
             .child(
-                h_flex()
+                div()
+                    .absolute()
+                    .top_0()
+                    .left_0()
                     .size_full()
+                    .flex()
                     .items_center()
-                    .gap_2()
-                    .child(logo(LOGO_SIZE))
-                    .child(div().font_weight(FontWeight::SEMIBOLD).child("ted"))
-                    .child(div().w(px(1.0)).h(px(16.0)).mx(px(4.0)).bg(palette.border))
-                    .child(no_drag(self.render_switcher(&palette, cx)))
-                    .child(div().flex_1())
-                    .child(no_drag(render_settings_gear(&palette, cx))),
+                    .justify_center()
+                    .child(no_drag(render_search_trigger(&palette, mono_font, cx))),
             )
             .into_any_element()
     }
@@ -255,6 +277,50 @@ fn render_settings_gear(palette: &Palette, cx: &mut Context<AppView>) -> impl In
 /// Wraps an interactive title bar control so the mouse reaches it: `TitleBar` marks the whole bar
 /// as a window drag area, and on Windows the system would eat the control's clicks (see Postino's
 /// `views/title_bar.rs`).
+/// The `group` of the search box, so its key hint follows the box's hover.
+const SEARCH_TRIGGER_GROUP: &str = "title-bar-search";
+
+/// The search box: opens the global search (`views/search.rs`), as `Ctrl+K` does.
+fn render_search_trigger(
+    palette: &Palette,
+    mono_font: SharedString,
+    cx: &mut Context<AppView>,
+) -> impl IntoElement {
+    let border_strong = palette.border_strong;
+    let fg_muted = palette.fg_muted;
+    h_flex()
+        .id("title-bar-search")
+        .group(SEARCH_TRIGGER_GROUP)
+        .w(px(SEARCH_TRIGGER_WIDTH))
+        .h(px(SEARCH_TRIGGER_HEIGHT))
+        .items_center()
+        .gap_2()
+        .px(px(10.0))
+        .cursor_pointer()
+        .rounded(px(RADIUS_MD - 1.0))
+        .bg(palette.raised)
+        .border_1()
+        .border_color(palette.border)
+        .text_color(palette.fg_subtle)
+        .hover(move |style| style.border_color(border_strong).text_color(fg_muted))
+        .child(Icon::new(IconName::Search).small())
+        .child(div().flex_1().truncate().child(t!("search.hint")))
+        .child(
+            div()
+                .font_family(mono_font)
+                .text_size(px(11.0))
+                .border_1()
+                .border_color(palette.border)
+                .group_hover(SEARCH_TRIGGER_GROUP, move |style| {
+                    style.border_color(border_strong)
+                })
+                .rounded(px(4.0))
+                .px(px(4.0))
+                .child(hints::SEARCH),
+        )
+        .on_click(cx.listener(|view, _, window, cx| view.open_search(window, cx)))
+}
+
 fn no_drag(control: impl IntoElement) -> impl IntoElement {
     div().occlude().child(control)
 }

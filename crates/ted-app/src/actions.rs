@@ -28,6 +28,8 @@ actions!(
         Save,
         /// Opens the Settings modal (`Ctrl+,`).
         OpenSettings,
+        /// Opens the global search, files and actions (`Ctrl+K`).
+        OpenSearch,
         /// Opens the keyboard shortcuts cheat sheet (`F1`, `Cmd+Shift+/` on macOS).
         OpenShortcuts,
         /// Closes the active tab (`Ctrl+W`).
@@ -58,6 +60,7 @@ pub mod hints {
     pub const COPY_PATH: &str = "\u{2325}\u{2318}C";
     pub const REVEAL: &str = "\u{2325}\u{2318}R";
     pub const CLOSE_TAB: &str = "\u{2318}W";
+    pub const SEARCH: &str = "\u{2318}K";
 }
 
 /// The shortcut labels shown next to the actions, as typed on this platform.
@@ -69,6 +72,7 @@ pub mod hints {
     pub const COPY_PATH: &str = "Ctrl+Alt+C";
     pub const REVEAL: &str = "Ctrl+Alt+R";
     pub const CLOSE_TAB: &str = "Ctrl+W";
+    pub const SEARCH: &str = "Ctrl+K";
 }
 
 /// Registers the app wide key bindings. `None` as the context: anywhere in the window.
@@ -83,10 +87,12 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-s", Save, None),
         KeyBinding::new("cmd-w", CloseTab, None),
         KeyBinding::new("cmd-,", OpenSettings, None),
+        KeyBinding::new("cmd-k", OpenSearch, None),
         KeyBinding::new("cmd-alt-c", CopyPath, None),
         KeyBinding::new("cmd-alt-r", RevealInFileManager, None),
-        KeyBinding::new("cmd-=", ZoomIn, None),
+        // The last binding of an action is the one shown as its shortcut.
         KeyBinding::new("cmd-+", ZoomIn, None),
+        KeyBinding::new("cmd-=", ZoomIn, None),
         KeyBinding::new("cmd--", ZoomOut, None),
         KeyBinding::new("cmd-0", ZoomReset, None),
     ]);
@@ -100,10 +106,12 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-s", Save, None),
         KeyBinding::new("ctrl-w", CloseTab, None),
         KeyBinding::new("ctrl-,", OpenSettings, None),
+        KeyBinding::new("ctrl-k", OpenSearch, None),
         KeyBinding::new("ctrl-alt-c", CopyPath, None),
         KeyBinding::new("ctrl-alt-r", RevealInFileManager, None),
-        KeyBinding::new("ctrl-=", ZoomIn, None),
+        // The last binding of an action is the one shown as its shortcut.
         KeyBinding::new("ctrl-+", ZoomIn, None),
+        KeyBinding::new("ctrl-=", ZoomIn, None),
         KeyBinding::new("ctrl--", ZoomOut, None),
         KeyBinding::new("ctrl-0", ZoomReset, None),
     ]);

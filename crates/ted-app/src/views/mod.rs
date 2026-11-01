@@ -11,6 +11,7 @@ mod goto;
 mod location;
 mod logo;
 mod root;
+mod search;
 mod settings;
 mod settings_git;
 mod status_bar;

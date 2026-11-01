@@ -10,6 +10,11 @@ description: Working on a folder in ted: the explorer, tabs, switching and closi
 <h2>The explorer</h2>
 <p>See <a href="interface.html#explorer">The interface</a> for what it shows and its keys. The file in the editor is revealed and selected in the explorer. <kbd>Alt</kbd> <kbd>1</kbd>, or the <strong>Files</strong> toggle of the status bar, shows or hides it. Right click a file or folder to copy its path, its path relative to the open folder, or to show it in your file manager; right click below the rows for the open folder itself.</p>
 
+<h2 id="search">Search files and actions</h2>
+<p><kbd>Ctrl</kbd> <kbd>K</kbd>, or the search box of the title bar, opens a list at the top of the window. Type part of a file's name or path to find it in the open folder: the letters do not have to be together, so <code>srb</code> finds <code>src/status_bar.rs</code>, and a match in the file name comes before one in its folders. Type a <code>/</code> to match the folders too (<code>state/root</code>). With nothing typed it lists the recent files.</p>
+<p>The same list holds the actions, with their keys: open a file or a folder, save, the panels, find, go to line, wrap, zoom, settings and the keyboard shortcuts. <kbd>↑</kbd> and <kbd>↓</kbd> move, <kbd>Enter</kbd> opens the file in a tab or runs the action, <kbd>Esc</kbd> closes the list.</p>
+<p>The files searched are the ones the explorer would show: <code>.gitignore</code> and the <a href="settings.html#files">Exclude</a> setting apply. The folder is read again each time the list opens, in the background, so new files show up. In a folder with more than 200 000 files only the first ones are searched, and the list says so. Without a folder, <kbd>Ctrl</kbd> <kbd>K</kbd> lists the recent files and the actions.</p>
+
 <h2>Tabs</h2>
 <ul>
     <li>Opening a file that is already open shows its tab. A new tab goes right after the current one.</li>

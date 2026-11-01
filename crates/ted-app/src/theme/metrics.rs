@@ -21,6 +21,9 @@ pub const STATUS_TOGGLE_MIN_WIDTH: f32 = 28.0;
 pub const FIND_BAR_FIELD_WIDTH: f32 = 240.0;
 /// Width of the match counter of the find bar (`120 of 4,500`).
 pub const FIND_COUNT_WIDTH: f32 = 84.0;
+/// Size of the search box in the title bar (folder mode).
+pub const SEARCH_TRIGGER_WIDTH: f32 = 360.0;
+pub const SEARCH_TRIGGER_HEIGHT: f32 = 26.0;
 /// Side of the settings gear button in the title bar.
 pub const SETTINGS_GEAR_SIZE: f32 = 26.0;
 /// Side of the app icon in the title bar.
