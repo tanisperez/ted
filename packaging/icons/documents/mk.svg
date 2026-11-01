@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <path d="M15 5h25l15 15v35a4 4 0 0 1-4 4H15a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4z" fill="#ffffff" stroke="#c3c7e8" stroke-width="1.2"/>
+  <path d="M40 5v11a4 4 0 0 0 4 4h11z" fill="#a3a9ff"/>
+  <g transform="translate(21 21) scale(.375)">
+    <path d="M15 5h25l15 15v35a4 4 0 0 1-4 4H15a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4z" fill="#5b63e6"/>
+    <path d="M40 5v11a4 4 0 0 0 4 4h11z" fill="#a3a9ff"/>
+    <rect x="19" y="28" width="22" height="4" rx="2" fill="#fff" fill-opacity=".92"/>
+    <rect x="19" y="37" width="26" height="4" rx="2" fill="#fff" fill-opacity=".92"/>
+    <rect x="19" y="46" width="12" height="4" rx="2" fill="#fff" fill-opacity=".92"/>
+    <rect x="34" y="44" width="3" height="8" rx="1.5" fill="#fff"/>
+  </g>
+  <text x="33" y="55" text-anchor="middle" font-family="Geist" font-weight="600" font-size="9" letter-spacing=".3" fill="#5b63e6">MK</text>
+</svg>

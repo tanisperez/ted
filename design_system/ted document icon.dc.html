@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>
+@font-face { font-family: 'Geist'; src: url('site/fonts/Geist-Regular.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'Geist'; src: url('site/fonts/Geist-Medium.woff2') format('woff2'); font-weight: 500; }
+@font-face { font-family: 'Geist'; src: url('site/fonts/Geist-SemiBold.woff2') format('woff2'); font-weight: 600 700; }
+@font-face { font-family: 'Geist Mono'; src: url('site/fonts/GeistMono-Medium.woff2') format('woff2'); font-weight: 500 600; }
+html, body { margin: 0; background: #ececf1; }
+a { color: #5b63e6; } a:hover { color: #3f47c9; }
+</style>
+</helmet>
+<section id="2a" style="padding: 56px 56px 0; font-family: 'Geist', system-ui, sans-serif; color: #17181d; display: flex; flex-direction: column; gap: 28px;">
+  <div style="display: flex; flex-direction: column; gap: 6px; max-width: 720px;">
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #6b6e7a;"><span style="font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; color: #ffffff; background: #5b63e6; border-radius: 5px; padding: 2px 7px;">2a</span>Elegido: <a href="#1b">1b</a> · packaging/icons/doc/</div>
+    <div style="font-size: 28px; font-weight: 600;">Un icono por extensión</div>
+    <div style="font-size: 15px; line-height: 1.5; color: #4a4d58; text-wrap: pretty;">Todas las extensiones que resalta ted-syntax, más txt. La etiqueta crece con la extensión y la letra se reduce a partir de seis caracteres. De 16 a 32 px se usa ted-doc.svg, sin texto.</div>
+  </div>
+  <div style="display: flex; align-items: flex-end; gap: 20px; background: #ffffff; border: 1px solid #dcdde4; border-radius: 14px; padding: 20px 24px; width: fit-content;">
+    <sc-for list="{{ smallSizes }}" as="s" hint-placeholder-count="3">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;"><img src="packaging/icons/doc/ted-doc.svg" style="width: {{ s.px }}px; height: {{ s.px }}px; display: block;"><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #8a8d98;">{{ s.px }}</span></div>
+    </sc-for>
+    <span style="font-size: 12px; color: #8a8d98; padding-bottom: 2px;">ted-doc.svg</span>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; max-width: 2000px;">
+    <sc-for list="{{ langs }}" as="l" hint-placeholder-count="15">
+      <div style="background: #ffffff; border: 1px solid #dcdde4; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="font-size: 14px; font-weight: 600;">{{ l.name }}</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 14px 18px;">
+          <sc-for list="{{ l.exts }}" as="e" hint-placeholder-count="3">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;"><img src="{{ e.src }}" style="width: 72px; height: 72px; display: block;"><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6b6e7a;">.{{ e.ext }}</span></div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+<section style="padding: 56px; font-family: 'Geist', system-ui, sans-serif; color: #17181d; display: flex; flex-direction: column; gap: 28px;">
+  <div style="display: flex; flex-direction: column; gap: 6px; max-width: 720px;">
+    <div style="font-size: 13px; color: #6b6e7a;">Issue #52 · icono de documento</div>
+    <div style="font-size: 28px; font-weight: 600;">Documentos abiertos con ted</div>
+    <div style="font-size: 15px; line-height: 1.5; color: #4a4d58; text-wrap: pretty;">Tres direcciones derivadas de packaging/icons/ted.svg. La silueta es la misma página; el documento es blanco para que no se confunda con el icono de la app, que es índigo. Por debajo de 40 px se omite la extensión.</div>
+  </div>
+  <div style="display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start;">
+    <sc-for list="{{ options }}" as="o" hint-placeholder-count="3">
+      <div id="{{ o.id }}" style="width: 640px; background: #ffffff; border-radius: 14px; border: 1px solid #dcdde4; padding: 28px; display: flex; flex-direction: column; gap: 24px; box-sizing: border-box;">
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+          <span style="font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; color: #ffffff; background: #5b63e6; border-radius: 5px; padding: 2px 7px;">{{ o.id }}</span>
+          <span style="font-size: 18px; font-weight: 600;">{{ o.name }}</span>
+        </div>
+        <div style="font-size: 14px; line-height: 1.5; color: #4a4d58; margin-top: -12px; text-wrap: pretty;">{{ o.desc }}</div>
+        <div style="display: flex; gap: 28px; align-items: flex-end;">
+          <div style="flex: none; background: #f6f6f9; border-radius: 10px; padding: 12px;">
+            <dc-import name="DocIcon" variant="{{ o.v }}" ext="MD" size="{{ 232 }}" hint-size="232px,232px"></dc-import>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 22px; padding-bottom: 6px;">
+            <div style="display: flex; gap: 20px; align-items: flex-end;">
+              <sc-for list="{{ o.sizes }}" as="s" hint-placeholder-count="4">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                  <dc-import name="DocIcon" variant="{{ s.v }}" ext="MD" size="{{ s.px }}" hint-size="48px,48px"></dc-import>
+                  <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #8a8d98;">{{ s.px }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display: flex; gap: 16px; align-items: flex-end;">
+              <sc-for list="{{ o.types }}" as="t" hint-placeholder-count="4">
+                <dc-import name="DocIcon" variant="{{ t.v }}" ext="{{ t.ext }}" size="{{ 64 }}" hint-size="64px,64px"></dc-import>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; border-radius: 10px; overflow: hidden; border: 1px solid #dcdde4;">
+          <sc-for list="{{ o.grounds }}" as="g" hint-placeholder-count="2">
+            <div style="background: {{ g.bg }}; padding: 18px 10px 14px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                <img src="ted-icon.svg" style="width: 52px; height: 52px; display: block;">
+                <span style="font-size: 11px; color: {{ g.fg }};">ted</span>
+              </div>
+              <sc-for list="{{ g.files }}" as="f" hint-placeholder-count="3">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                  <dc-import name="DocIcon" variant="{{ f.v }}" ext="{{ f.ext }}" size="{{ 52 }}" hint-size="52px,52px"></dc-import>
+                  <span style="font-size: 11px; color: {{ g.fg }};">{{ f.name }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const defs = [
+      { id: '1a', v: 'a', name: 'Sello', desc: 'Página blanca con el icono de ted en el centro y la extensión debajo. Es la convención de macOS: el documento muestra la app que lo abre.' },
+      { id: '1b', v: 'b', name: 'Etiqueta', desc: 'Página blanca con líneas de texto y una etiqueta índigo con la extensión que sobresale por la izquierda. La etiqueta sigue visible como bloque de color a 16 px.' },
+      { id: '1c', v: 'c', name: 'Pliegue', desc: 'El icono de la app en negativo: página blanca, pliegue índigo, líneas suaves y el cursor. La extensión va pequeña arriba a la izquierda.' },
+    ];
+    const files = [{ ext: 'MD', name: 'README.md' }, { ext: 'TXT', name: 'notas.txt' }, { ext: 'LOG', name: 'app.log' }];
+    const L = [['Rust','rs'],['JavaScript','js mjs cjs jsx'],['JSON','json jsonc geojson webmanifest'],['TOML','toml'],['Markdown','md markdown mdown'],['XML','xml svg xsd xsl xslt plist csproj xaml rss atom'],['HTML','html htm xhtml'],['Makefile','mk mak'],['Shell','sh bash zsh ksh'],['Python','py pyw pyi'],['PowerShell','ps1 psm1 psd1'],['Batch','bat cmd'],['CSS','css'],['Log','log'],['Texto plano','txt']];
+    return {
+      smallSizes: [16, 24, 32].map(px => ({ px })),
+      langs: L.map(([name, e]) => ({ name, exts: e.split(' ').map(ext => ({ ext, src: `packaging/icons/doc/ted-doc-${ext}.svg` })) })),
+      options: defs.map(d => ({
+        ...d,
+        sizes: [128, 48, 32, 16].map(px => ({ px, v: d.v })),
+        types: ['MD', 'TXT', 'LOG', 'JSON'].map(ext => ({ ext, v: d.v })),
+        grounds: [{ bg: '#f7f7f9', fg: '#2a2c33' }, { bg: '#1e1f24', fg: '#d8d9de' }].map(g => ({ ...g, files: files.map(f => ({ ...f, v: d.v })) })),
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>

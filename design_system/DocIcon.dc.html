@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<svg width="{{ px }}" height="{{ px }}" viewBox="0 0 64 64" style="display: block; overflow: visible;">
+  <path d="M15 5h25l15 15v35a4 4 0 0 1-4 4H15a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4z" fill="#ffffff" stroke="#c3c7e8" stroke-width="1.2"></path>
+  <path d="M40 5v11a4 4 0 0 0 4 4h11z" fill="{{ fold }}"></path>
+  <g display="{{ dA }}">
+    <g transform="translate(21 21) scale(.375)">
+      <path d="M15 5h25l15 15v35a4 4 0 0 1-4 4H15a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4z" fill="#5b63e6"></path>
+      <path d="M40 5v11a4 4 0 0 0 4 4h11z" fill="#a3a9ff"></path>
+      <rect x="19" y="28" width="22" height="4" rx="2" fill="#fff" fill-opacity=".92"></rect>
+      <rect x="19" y="37" width="26" height="4" rx="2" fill="#fff" fill-opacity=".92"></rect>
+      <rect x="19" y="46" width="12" height="4" rx="2" fill="#fff" fill-opacity=".92"></rect>
+      <rect x="34" y="44" width="3" height="8" rx="1.5" fill="#fff"></rect>
+    </g>
+    {{ labelA }}
+  </g>
+  <g display="{{ dB }}">
+    <rect x="19" y="24" width="22" height="4" rx="2" fill="#cfd2ee"></rect>
+    <rect x="19" y="31" width="26" height="4" rx="2" fill="#cfd2ee"></rect>
+    <rect x="7" y="40" width="32" height="14" rx="3" fill="#5b63e6"></rect>
+    {{ labelB }}
+  </g>
+  <g display="{{ dC }}">
+    <rect x="19" y="28" width="22" height="4" rx="2" fill="#c9ccf5"></rect>
+    <rect x="19" y="37" width="26" height="4" rx="2" fill="#c9ccf5"></rect>
+    <rect x="19" y="46" width="12" height="4" rx="2" fill="#c9ccf5"></rect>
+    <rect x="34" y="44" width="3" height="8" rx="1.5" fill="#5b63e6"></rect>
+    {{ labelC }}
+  </g>
+</svg>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:256,&quot;height&quot;:256},&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;],&quot;default&quot;:&quot;a&quot;,&quot;tsType&quot;:&quot;'a'|'b'|'c'&quot;},&quot;ext&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;MD&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:256,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const v = this.props.variant ?? 'a';
+    const px = this.props.size ?? 64;
+    const on = b => (b ? 'inline' : 'none');
+    const ext = this.props.ext ?? 'MD';
+    const lbl = a => (px >= 40 ? React.createElement('text', a, ext) : null);
+    return {
+      px, ext: this.props.ext ?? 'MD',
+      fold: { a: '#a3a9ff', b: '#dfe1fa', c: '#5b63e6' }[v],
+      dA: on(v === 'a'), dB: on(v === 'b'), dC: on(v === 'c'),
+      labelA: lbl({ x: 33, y: 55, textAnchor: 'middle', fontFamily: 'Geist, system-ui, sans-serif', fontWeight: 600, fontSize: 9, letterSpacing: .3, fill: '#5b63e6' }),
+      labelB: lbl({ x: 23, y: 50.4, textAnchor: 'middle', fontFamily: 'Geist, system-ui, sans-serif', fontWeight: 600, fontSize: 9, letterSpacing: .3, fill: '#ffffff' }),
+      labelC: lbl({ x: 18, y: 17, fontFamily: "'Geist Mono', ui-monospace, monospace", fontWeight: 500, fontSize: 7.5, fill: '#5b63e6' }),
+    };
+  }
+}
+</script>
+</body>
+</html>

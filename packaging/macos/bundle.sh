@@ -52,6 +52,8 @@ cp "$icons_dir/ted-512.png" "$iconset/icon_256x256@2x.png"
 cp "$icons_dir/ted-512.png" "$iconset/icon_512x512.png"
 cp "$icons_dir/ted-1024.png" "$iconset/icon_512x512@2x.png"
 iconutil --convert icns --output "$app/Contents/Resources/ted.icns" "$iconset"
+# The document icons named by CFBundleTypeIconFile in Info.plist.
+cp "$repo_root/packaging/icons/documents/"*.icns "$app/Contents/Resources/"
 
 # Ad-hoc signature, so Apple Silicon accepts the binary. Not a Developer ID signature.
 codesign --force --deep --sign - "$app"

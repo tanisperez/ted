@@ -31,9 +31,165 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright Estanislao Pérez Nartallo. Apache-2.0 license.</string>
 	<!-- ted opens any text file and any folder, as an alternative to the default app: it shows
-	     in Finder's Open With menu without taking over the file types. -->
+	     in Finder's Open With menu without taking over the file types (LSHandlerRank Alternate).
+	     Types without a system UTI (Rust, TOML, ...) fall under Text. Each type carries a ted document icon (packaging/icons/documents), which Finder shows
+	     once the user makes ted the default with Open With, Change All. -->
 	<key>CFBundleDocumentTypes</key>
 	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Markdown document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>md</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>net.daringfireball.markdown</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Log file</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>log</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.log</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>JSON file</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>json</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.json</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>XML file</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>xml</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.xml</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>HTML file</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>html</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.html</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>CSS file</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>css</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.css</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>JavaScript file</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>js</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.netscape.javascript-source</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Python file</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>py</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.python-script</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Shell script</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>sh</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.shell-script</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>CSV file</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>csv</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.comma-separated-values-text</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>YAML file</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>yaml</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.yaml</string>
+			</array>
+		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Text</string>
@@ -41,16 +197,14 @@
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Alternate</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>txt</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>public.text</string>
 				<string>public.plain-text</string>
+				<string>public.text</string>
 				<string>public.source-code</string>
 				<string>public.script</string>
-				<string>public.json</string>
-				<string>public.xml</string>
-				<string>public.log</string>
-				<string>net.daringfireball.markdown</string>
 			</array>
 		</dict>
 		<dict>
