@@ -34,14 +34,21 @@ pub const EDITOR_GUTTER_RIGHT: f32 = 16.0;
 pub const EDITOR_TEXT_PADDING: f32 = 4.0;
 /// Width of the editor's vertical scrollbar.
 pub const EDITOR_SCROLLBAR_WIDTH: f32 = 10.0;
-/// Width of the empty state's column.
-pub const WELCOME_WIDTH: f32 = 440.0;
+/// Largest width of the empty state's column.
+pub const WELCOME_WIDTH: f32 = 760.0;
 /// Side of the app icon in the empty state.
-pub const WELCOME_LOGO_SIZE: f32 = 40.0;
+pub const WELCOME_LOGO_SIZE: f32 = 44.0;
+/// Height of the empty state's action buttons.
+pub const WELCOME_BUTTON_HEIGHT: f32 = 34.0;
+/// Narrowest column of recents: below two of them (and their gap) they stack.
+pub const WELCOME_COLUMN_MIN_WIDTH: f32 = 280.0;
+/// Space between the two columns of recents, and between them when stacked.
+pub const WELCOME_COLUMN_GAP: f32 = 32.0;
+pub const WELCOME_COLUMN_ROW_GAP: f32 = 28.0;
 /// Height of a row of the empty state (actions and recents), as the design's menu rows.
 pub const WELCOME_ROW_HEIGHT: f32 = 30.0;
 /// Space between the sections of the empty state.
-pub const WELCOME_SECTION_GAP: f32 = 24.0;
+pub const WELCOME_SECTION_GAP: f32 = 32.0;
 /// Default width of the explorer panel.
 pub const EXPLORER_WIDTH: f32 = 260.0;
 /// Narrowest the explorer panel can be dragged to.

@@ -266,16 +266,21 @@ count and the measured advance of Geist Mono, not from the 0.62 constant.
 ### Empty state, with recents
 
 No argument on the command line, or nothing opened yet (`views/welcome.rs`). No tabs, no editor,
-no explorer. A column of 440 px (`WELCOME_WIDTH`), centered horizontally, 64 px from the top, that
-scrolls when the recents do not fit. Its sections are 24 px apart:
+no explorer. A column up to 760 px wide (`WELCOME_WIDTH`), centered horizontally, 56 px from the
+top with 32 px at the sides, that scrolls when the recents do not fit. Its sections are 32 px
+apart:
 
-1. **Header**: the app icon at 40 px, "ted" 20/600
-   and the tagline in `fg_muted`.
-2. **Start**: Open file and Open folder rows, the shortcut at the right in Geist Mono 11
-   `fg_subtle` (`Ctrl+O`, `Ctrl+Shift+O`; the macOS glyphs on macOS).
-3. **Recent folders** and **Recent files** (10 each at most, hidden when empty): rows with the
-   icon (folder or file-text, 14, `fg_subtle`), the name (truncated at 180 px) and the path with
-   the home folder as `~` in 12 px `fg_subtle`, truncated.
+1. **Header**: the app icon at 44 px, 14 px gap, "ted" 20/600 and the tagline in `fg_muted`.
+2. **Actions**: three buttons in a wrapping row, 8 px apart: Open folder, Open file and New file.
+   Each is 34 px high, 12 px side padding, radius 8, `raised` with a `border` (`border_strong`
+   and `overlay` on hover), the icon (folder-open, file-input, file-plus) in `accent_text`, the
+   label 500, and the shortcut in Geist Mono 11 `fg_subtle`.
+3. **Recent folders** and **Recent files** (10 each at most, hidden when empty), side by side in
+   two columns at least 280 px wide (`WELCOME_COLUMN_MIN_WIDTH`), 32 px apart; they stack, 28 px
+   apart, when the window is too narrow. The columns reach 8 px past the column's sides, so the
+   rows' text lines up with the buttons. Rows have the icon (folder or file-text, 14,
+   `fg_subtle`), the name (truncated at 180 px) and, in 12 px `fg_subtle` and truncated, the
+   folder's path or the file's parent folder, with the home folder as `~`.
 
 Sections start with a `SectionLabel` (11/600 uppercase `fg_subtle`). Rows are 30 px high, 8 px
 side padding, gap 10, radius 6, `hover` background on hover, pointer cursor; a click opens. The
