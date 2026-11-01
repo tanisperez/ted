@@ -23,8 +23,8 @@ use crate::state::editor::set_indentation;
 use crate::state::launch::shorten_path;
 use crate::state::locale::{self, LANGUAGES, LanguageChoice};
 use crate::state::settings::{
-    self, MONO_FONT_SIZE_RANGE, MONO_FONT_SIZE_STEP, Settings, SettingsCategory, TAB_SIZES,
-    ThemeChoice, UI_FONT_SIZE_RANGE, UI_FONT_SIZE_STEP, parse_excludes,
+    self, MONO_FONT_SIZE_RANGE, MONO_FONT_SIZE_STEP, Settings, SettingsCategory, Startup,
+    TAB_SIZES, ThemeChoice, UI_FONT_SIZE_RANGE, UI_FONT_SIZE_STEP, parse_excludes,
 };
 use crate::theme::{self, Palette, PaletteExt};
 
@@ -227,6 +227,7 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
             indentation_section(weak.clone(), &palette, &settings),
         ],
         SettingsCategory::Files => vec![
+            startup_section(weak.clone(), settings.startup),
             saving_section(weak.clone(), &palette, &settings),
             explorer_section(exclude_input.as_ref(), cx),
         ],
@@ -556,6 +557,32 @@ fn saving_section(weak: WeakEntity<AppView>, palette: &Palette, settings: &Setti
                 |settings, on| settings.insert_final_newline = on,
             ),
         ))
+        .into_any_element()
+}
+
+/// "Startup": what ted shows when it starts without a path.
+fn startup_section(weak: WeakEntity<AppView>, startup: Startup) -> AnyElement {
+    let mut control = SegmentedControl::new("settings-startup");
+    for choice in Startup::ALL {
+        let weak = weak.clone();
+        control = control.item(
+            SegmentedItem::new(choice.label())
+                .selected(choice == startup)
+                .on_click(move |window, cx| {
+                    let _ = weak.update(cx, |view, cx| {
+                        view.settings.startup = choice;
+                        view.apply_settings(window, cx);
+                    });
+                }),
+        );
+    }
+    v_flex()
+        .gap(px(14.0))
+        .child(SectionHeading::new(t!("settings.startup.title")))
+        .child(
+            LabeledRow::new(t!("settings.startup.label"), control)
+                .description(t!("settings.startup.description")),
+        )
         .into_any_element()
 }
 

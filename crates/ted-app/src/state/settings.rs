@@ -149,6 +149,40 @@ impl GitCommitAction {
     }
 }
 
+/// What ted shows when it starts with no path, chosen in Settings, "Files". Stored in
+/// `settings.toml` as `startup = "welcome" | "new_file"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Startup {
+    /// The welcome screen with the recent folders and files.
+    #[default]
+    Welcome,
+    /// An empty untitled document, ready to type.
+    NewFile,
+}
+
+impl Startup {
+    /// Every choice, in the order the Settings view lists them.
+    pub const ALL: [Startup; 2] = [Startup::Welcome, Startup::NewFile];
+
+    fn parse(text: &str) -> Option<Self> {
+        match text.to_ascii_lowercase().as_str() {
+            "welcome" => Some(Startup::Welcome),
+            "new_file" => Some(Startup::NewFile),
+            _ => None,
+        }
+    }
+
+    /// The label shown in the Settings view.
+    pub fn label(self) -> String {
+        match self {
+            Startup::Welcome => t!("settings.startup.welcome"),
+            Startup::NewFile => t!("settings.startup.new_file"),
+        }
+        .into_owned()
+    }
+}
+
 /// User-configurable settings.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Settings {
@@ -175,6 +209,8 @@ pub struct Settings {
     /// Whether Tab inserts spaces in a file whose indentation is not detected (a new or flat
     /// file); a file indented with tabs or spaces keeps its own style.
     pub insert_spaces: bool,
+    /// What ted shows when it starts without a path.
+    pub startup: Startup,
     /// Whether saving removes the spaces and tabs at the end of every line.
     pub trim_trailing_whitespace: bool,
     /// Whether saving ends the file with a line break.
@@ -222,6 +258,7 @@ impl Default for Settings {
             minimap: true,
             tab_size: 4,
             insert_spaces: true,
+            startup: Startup::default(),
             trim_trailing_whitespace: true,
             insert_final_newline: true,
             highlight_max_size_mb: 4,
@@ -332,6 +369,9 @@ fn parse_settings(content: &str) -> Settings {
     if let Some(value) = flag("insert_spaces") {
         settings.insert_spaces = value;
     }
+    if let Some(value) = text("startup").and_then(Startup::parse) {
+        settings.startup = value;
+    }
     if let Some(patterns) = table
         .get("explorer_exclude")
         .and_then(toml::Value::as_array)
@@ -400,6 +440,26 @@ mod tests {
     fn a_missing_file_gives_the_defaults() {
         let dir = tempfile::tempdir().expect("temp dir");
         assert_eq!(read_settings(dir.path()), Settings::default());
+    }
+
+    #[test]
+    fn startup_round_trips_and_defaults_to_welcome() {
+        assert_eq!(parse_settings("").startup, Startup::Welcome);
+        assert_eq!(
+            parse_settings("startup = \"bogus\"").startup,
+            Startup::Welcome
+        );
+        assert_eq!(
+            parse_settings("startup = \"new_file\"").startup,
+            Startup::NewFile
+        );
+        let dir = tempfile::tempdir().expect("temp dir");
+        let settings = Settings {
+            startup: Startup::NewFile,
+            ..Settings::default()
+        };
+        write_settings(dir.path(), &settings);
+        assert_eq!(read_settings(dir.path()), settings);
     }
 
     #[test]

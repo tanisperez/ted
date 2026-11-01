@@ -29,7 +29,7 @@ use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::git::GitState;
 use crate::state::launch::{self, LaunchError, Target};
 use crate::state::recents::{self, Recents};
-use crate::state::settings::{Settings, SettingsCategory};
+use crate::state::settings::{Settings, SettingsCategory, Startup};
 use crate::state::syntax::Syntax;
 use crate::state::tabs::Tabs;
 use crate::theme::PaletteExt;
@@ -232,6 +232,9 @@ impl AppView {
         view.detect_git(cx);
         view.update_title(window, cx);
         view.open_paths(&paths, window, cx);
+        if paths.is_empty() && view.settings.startup == Startup::NewFile {
+            view.open_untitled(window, cx);
+        }
         view.apply_debug_open(window, cx);
         view
     }

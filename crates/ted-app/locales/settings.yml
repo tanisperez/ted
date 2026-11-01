@@ -75,6 +75,21 @@ _version: 2
 "settings.indent.insert_spaces_description":
   en: "Tab inserts spaces in new files. A file indented with tabs or spaces keeps its own style."
   es: "Tab inserta espacios en los archivos nuevos. Un archivo sangrado con tabuladores o espacios conserva su estilo."
+"settings.startup.title":
+  en: "Startup"
+  es: "Al abrir ted"
+"settings.startup.label":
+  en: "Show"
+  es: "Mostrar"
+"settings.startup.description":
+  en: "When ted starts without a file or folder."
+  es: "Cuando ted se abre sin un archivo ni una carpeta."
+"settings.startup.welcome":
+  en: "Welcome screen"
+  es: "Pantalla de bienvenida"
+"settings.startup.new_file":
+  en: "New file"
+  es: "Archivo nuevo"
 "settings.saving.title":
   en: "Saving"
   es: "Al guardar"

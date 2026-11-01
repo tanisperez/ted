@@ -36,6 +36,7 @@ description: Every setting of ted, its default, and the settings.toml file.
 <div class="table"><table>
     <thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
     <tbody>
+        <tr><td>Startup, Show</td><td>Welcome screen</td><td>What ted shows when it starts without a file or folder: the welcome screen with the recent ones, or a new empty file ready to type.</td></tr>
         <tr><td>Trim trailing whitespace</td><td>On</td><td>Saving removes the spaces and tabs at the end of every line.</td></tr>
         <tr><td>Insert final newline</td><td>On</td><td>Saving ends the file with a line break.</td></tr>
         <tr><td>Exclude</td><td><code>.git, target, node_modules</code></td><td>What the explorer hides, comma separated, in the <code>.gitignore</code> syntax (<code>*.log</code>, <code>/build</code>). Applied when you press <kbd>Enter</kbd> or leave the field. <code>.gitignore</code> files are honored too.</td></tr>
@@ -71,6 +72,7 @@ highlight_current_line = true
 minimap = true
 tab_size = 4
 insert_spaces = true
+startup = "welcome"
 trim_trailing_whitespace = true
 insert_final_newline = true
 highlight_max_size_mb = 4
