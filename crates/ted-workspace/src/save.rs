@@ -45,7 +45,7 @@ pub fn save_file(path: &Path, rope: &Rope, bom: bool) -> Result<Option<SystemTim
             file.set_permissions(permissions)?;
         }
         drop(file);
-        fs::rename(&temp, &target)
+        replace(&temp, &target, |from, to| fs::rename(from, to))
     });
     if let Err(source) = written {
         let _ = fs::remove_file(&temp);
@@ -58,6 +58,29 @@ pub fn save_file(path: &Path, rope: &Rope, bom: bool) -> Result<Option<SystemTim
         started.elapsed()
     );
     Ok(modified)
+}
+
+/// Puts `temp` in the place of `target` with `rename`. Where renaming over a file fails (some
+/// SMB shares, the WSL 2 file system seen from Windows), the text is copied into `target` instead,
+/// which is not atomic but saves, and the temporary file goes.
+fn replace(
+    temp: &Path,
+    target: &Path,
+    rename: impl Fn(&Path, &Path) -> io::Result<()>,
+) -> io::Result<()> {
+    let Err(error) = rename(temp, target) else {
+        return Ok(());
+    };
+    if !target.is_file() {
+        return Err(error);
+    }
+    log::warn!(
+        "cannot rename over {}: {error}; writing in place",
+        target.display()
+    );
+    fs::copy(temp, target)?;
+    let _ = fs::remove_file(temp);
+    Ok(())
 }
 
 /// Writes the temporary file and flushes it to the disk.
@@ -86,6 +109,22 @@ mod tests {
     use super::*;
     use crate::{FileContent, load_file};
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn a_failed_rename_writes_in_place() {
+        let dir = tempfile::tempdir().unwrap();
+        let (temp, target) = (dir.path().join(".t.tmp"), dir.path().join("t.txt"));
+        fs::write(&temp, "new").unwrap();
+        fs::write(&target, "old").unwrap();
+        let refuse = |_: &Path, _: &Path| Err(io::Error::other("no rename over files here"));
+        replace(&temp, &target, refuse).unwrap();
+        assert_eq!(fs::read_to_string(&target).unwrap(), "new");
+        assert!(!temp.exists());
+        // With no file to write into, the error stays.
+        fs::write(&temp, "new").unwrap();
+        let missing = dir.path().join("missing.txt");
+        assert!(replace(&temp, &missing, refuse).is_err());
+    }
 
     fn round_trip(bytes: &[u8]) -> Vec<u8> {
         let dir = tempfile::tempdir().unwrap();

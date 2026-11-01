@@ -2462,7 +2462,10 @@ mod tests {
         at(&mut state, 40, 12);
         state.scroll_to_cursor();
         let (rows, _) = state.visible_rows();
-        let last = rows.iter().rfind(|row| row.line == 40).map(|row| row.range.clone());
+        let last = rows
+            .iter()
+            .rfind(|row| row.line == 40)
+            .map(|row| row.range.clone());
         assert_eq!(last, Some(10..14));
         assert_eq!(state.max_scroll_x(), 0.0);
     }
@@ -2475,7 +2478,10 @@ mod tests {
         state.scroll_to_cursor();
         state.set_viewport(state.viewport);
         let (rows, _) = state.visible_rows();
-        assert!(rows.last().is_some_and(|row| row.last), "the last row shows");
+        assert!(
+            rows.last().is_some_and(|row| row.last),
+            "the last row shows"
+        );
         state.scroll_to_fraction(1.0);
         let (rows, _) = state.visible_rows();
         assert!(!rows.is_empty() && rows[0].last, "the last row at the top");

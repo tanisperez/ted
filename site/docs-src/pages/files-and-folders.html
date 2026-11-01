@@ -17,5 +17,14 @@ description: Where ted keeps its settings, its recent files list and its log fil
 <h2>Recent files</h2>
 <p>ted remembers the last ten folders and the last ten files you opened, most recent first. A recent entry that no longer exists leaves the list when you try to open it.</p>
 
+<h2 id="network">Network shares and WSL on Windows</h2>
+<p>On Windows, ted opens files and folders on network shares (<code>\\server\share\notes.md</code>, or a mapped drive such as <code>Z:\</code>) and inside WSL 2 distributions (<code>\\wsl.localhost\Ubuntu\home\me\app.log</code> or <code>\\wsl$\Ubuntu\...</code>), from the command line, <strong>Open file…</strong>, <strong>Open folder…</strong> and the recents.</p>
+<ul>
+    <li>Saving writes a temporary file next to the original and renames it over it. Where a share does not allow that, ted writes into the file directly instead.</li>
+    <li>Some shares, and WSL, do not report changes made by other programs. ted then checks the open file when its window gets the focus back.</li>
+    <li>Git may refuse a repository on a share or in WSL as unsafe (<code>safe.directory</code>); the Git panel shows git's own message.</li>
+    <li>A Linux path such as <code>/home/me/app.log</code>, typed in a WSL terminal for the Windows <code>ted.exe</code>, is not translated: use <code>ted.exe "$(wslpath -w app.log)"</code>.</li>
+</ul>
+
 <h2>Log file</h2>
 <p>ted writes what it does to its log file: what was opened, how long it took, warnings and errors. It never writes the contents of your files or what you type. When the file reaches 5 MB it is renamed to <code>ted.1.log</code>, and at most ten files are kept. The <code>log_level</code> setting and the <code>TED_LOG</code> variable choose how much is written; see <a href="command-line.html#environment-variables">Command line</a>.</p>

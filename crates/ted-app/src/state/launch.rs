@@ -34,6 +34,8 @@ pub enum LaunchError {
 /// path's metadata, nothing more.
 pub fn resolve(path: &Path) -> Result<Target, LaunchError> {
     let absolute = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+    // A verbatim path (`\\?\UNC\server\share`) shows and is remembered in its plain form.
+    let absolute = ted_workspace::plain_path(&absolute);
     match std::fs::metadata(&absolute) {
         Ok(meta) if meta.is_dir() => Ok(Target::Folder(absolute)),
         Ok(_) => Ok(Target::File(absolute)),
