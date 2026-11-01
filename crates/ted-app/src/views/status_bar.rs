@@ -1,8 +1,9 @@
 //! The status bar at the bottom of the main window. In folder mode it starts with the panel
 //! toggles (Files and Git, with its count of changed files), a separator and, inside a git
 //! repository, the branch; with a document open, the cursor position, the indentation, the
-//! encoding, the line ending and the language, right aligned as in the design. The folder's path
-//! lives in the title bar's switcher menu.
+//! encoding, the line ending and the language, right aligned as in the design, and the keyboard
+//! button of the shortcuts cheat sheet. The folder's path lives in the title bar's switcher
+//! menu.
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::Button;
@@ -13,7 +14,7 @@ use gpui_kit::*;
 use rust_i18n::t;
 use telaio_ui::components::{NeutralButtonExt, SearchableMenu};
 
-use crate::actions::{ToggleExplorer, ToggleGit};
+use crate::actions::{OpenShortcuts, ToggleExplorer, ToggleGit};
 use crate::state::launch::Target;
 use crate::state::status::DocumentStatus;
 use crate::theme::metrics::{
@@ -112,7 +113,36 @@ impl AppView {
                     .child(status.line_ending)
                     .child(status.language)
             }))
+            .child(self.render_shortcuts_button(&palette, cx))
             .into_any_element()
+    }
+
+    /// The keyboard button at the right end: opens the shortcuts cheat sheet, as `F1` does.
+    fn render_shortcuts_button(
+        &self,
+        palette: &Palette,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let hover = palette.hover;
+        let hover_fg = palette.fg;
+        div()
+            .id("status-shortcuts")
+            .size(px(20.0))
+            .mr(px(-6.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded(px(RADIUS_MD - 2.0))
+            .cursor_pointer()
+            .text_color(palette.fg_muted)
+            .hover(move |style| style.bg(hover).text_color(hover_fg))
+            .tooltip(|window, cx| {
+                Tooltip::new(SharedString::from(t!("shortcuts.button")))
+                    .action(&OpenShortcuts, None)
+                    .build(window, cx)
+            })
+            .child(Icon::new(IconName::Keyboard).with_size(px(14.0)))
+            .on_click(cx.listener(|this, _, window, cx| this.open_shortcuts(window, cx)))
     }
 
     /// The Wrap toggle: the wrap-text icon and "Wrap", `accent_subtle` and `accent_text` while

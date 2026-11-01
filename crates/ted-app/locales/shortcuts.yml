@@ -1,0 +1,146 @@
+# The keyboard shortcuts cheat sheet (state/shortcuts.rs) and its status bar button.
+_version: 2
+"shortcuts.button":
+  en: "Keyboard shortcuts"
+  es: "Atajos de teclado"
+"shortcuts.group.files":
+  en: "Files and tabs"
+  es: "Archivos y pestañas"
+"shortcuts.group.window":
+  en: "Window"
+  es: "Ventana"
+"shortcuts.group.editor":
+  en: "Editor"
+  es: "Editor"
+"shortcuts.group.cursors":
+  en: "Cursors and selection"
+  es: "Cursores y selección"
+"shortcuts.group.find":
+  en: "Find"
+  es: "Buscar"
+"shortcuts.group.git":
+  en: "Git"
+  es: "Git"
+"shortcuts.action.new_file":
+  en: "New file"
+  es: "Nuevo archivo"
+"shortcuts.action.open_file":
+  en: "Open file"
+  es: "Abrir archivo"
+"shortcuts.action.open_folder":
+  en: "Open folder"
+  es: "Abrir carpeta"
+"shortcuts.action.save":
+  en: "Save"
+  es: "Guardar"
+"shortcuts.action.close_tab":
+  en: "Close the tab"
+  es: "Cerrar la pestaña"
+"shortcuts.action.next_tab":
+  en: "Next tab"
+  es: "Pestaña siguiente"
+"shortcuts.action.previous_tab":
+  en: "Previous tab"
+  es: "Pestaña anterior"
+"shortcuts.action.copy_path":
+  en: "Copy the path"
+  es: "Copiar la ruta"
+"shortcuts.action.reveal":
+  en: "Show in file manager"
+  es: "Mostrar en el gestor de archivos"
+"shortcuts.action.settings":
+  en: "Settings"
+  es: "Configuración"
+"shortcuts.action.toggle_explorer":
+  en: "Show or hide the explorer"
+  es: "Mostrar u ocultar el explorador"
+"shortcuts.action.toggle_git":
+  en: "Show or hide the Git panel"
+  es: "Mostrar u ocultar el panel de Git"
+"shortcuts.action.zoom_in":
+  en: "Bigger editor font"
+  es: "Letra del editor más grande"
+"shortcuts.action.zoom_out":
+  en: "Smaller editor font"
+  es: "Letra del editor más pequeña"
+"shortcuts.action.zoom_reset":
+  en: "Default editor font size"
+  es: "Tamaño de letra por defecto"
+"shortcuts.action.goto":
+  en: "Go to line"
+  es: "Ir a la línea"
+"shortcuts.action.undo":
+  en: "Undo"
+  es: "Deshacer"
+"shortcuts.action.redo":
+  en: "Redo"
+  es: "Rehacer"
+"shortcuts.action.select_line":
+  en: "Select the line"
+  es: "Seleccionar la línea"
+"shortcuts.action.duplicate_line":
+  en: "Duplicate the line or the selection"
+  es: "Duplicar la línea o la selección"
+"shortcuts.action.delete_line":
+  en: "Delete the line"
+  es: "Borrar la línea"
+"shortcuts.action.move_line_up":
+  en: "Move the line up"
+  es: "Subir la línea"
+"shortcuts.action.move_line_down":
+  en: "Move the line down"
+  es: "Bajar la línea"
+"shortcuts.action.toggle_comment":
+  en: "Comment or uncomment"
+  es: "Comentar o descomentar"
+"shortcuts.action.line_below":
+  en: "New line below"
+  es: "Nueva línea debajo"
+"shortcuts.action.line_above":
+  en: "New line above"
+  es: "Nueva línea encima"
+"shortcuts.action.indent_line":
+  en: "Indent the line"
+  es: "Sangrar la línea"
+"shortcuts.action.outdent_line":
+  en: "Outdent the line"
+  es: "Quitar sangría a la línea"
+"shortcuts.action.toggle_wrap":
+  en: "Wrap long lines on or off"
+  es: "Ajustar las líneas largas o no"
+"shortcuts.action.add_cursor":
+  en: "Add or remove a cursor"
+  es: "Añadir o quitar un cursor"
+"shortcuts.action.column_selection":
+  en: "Column selection"
+  es: "Selección en columna"
+"shortcuts.action.next_occurrence":
+  en: "Select the next occurrence"
+  es: "Seleccionar la siguiente aparición"
+"shortcuts.action.unselect_occurrence":
+  en: "Remove the last occurrence"
+  es: "Quitar la última aparición"
+"shortcuts.action.one_cursor":
+  en: "Back to one cursor"
+  es: "Volver a un cursor"
+"shortcuts.action.find":
+  en: "Find"
+  es: "Buscar"
+"shortcuts.action.replace":
+  en: "Find and replace"
+  es: "Buscar y reemplazar"
+"shortcuts.action.find_next":
+  en: "Next match"
+  es: "Siguiente coincidencia"
+"shortcuts.action.find_previous":
+  en: "Previous match"
+  es: "Coincidencia anterior"
+"shortcuts.action.commit":
+  en: "Commit, in the message"
+  es: "Hacer commit, en el mensaje"
+"shortcuts.key.click":
+  en: "Click"
+  es: "Clic"
+"shortcuts.key.middle_drag":
+  en: "Middle button drag"
+  es: "Arrastrar con el botón central"

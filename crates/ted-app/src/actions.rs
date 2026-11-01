@@ -28,6 +28,8 @@ actions!(
         Save,
         /// Opens the Settings modal (`Ctrl+,`).
         OpenSettings,
+        /// Opens the keyboard shortcuts cheat sheet (`F1`, `Cmd+Shift+/` on macOS).
+        OpenShortcuts,
         /// Closes the active tab (`Ctrl+W`).
         CloseTab,
         /// Copies the path of the file shown, or of the open folder (`Ctrl+Alt+C`).
@@ -115,6 +117,11 @@ pub fn bind_keys(cx: &mut App) {
         Some("CommitMessage > Input"),
     )]);
     cx.bind_keys([
+        KeyBinding::new(
+            telaio_ui::components::OPEN_SHORTCUTS_KEYSTROKE,
+            OpenShortcuts,
+            None,
+        ),
         KeyBinding::new("ctrl-tab", NextTab, None),
         KeyBinding::new("ctrl-shift-tab", PreviousTab, None),
     ]);

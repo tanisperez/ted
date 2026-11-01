@@ -16,6 +16,7 @@ pub mod minimap;
 pub mod open_queue;
 pub mod recents;
 pub mod settings;
+pub mod shortcuts;
 pub mod status;
 pub mod syntax;
 pub mod tabs;

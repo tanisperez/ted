@@ -19,11 +19,11 @@ use rust_i18n::t;
 use ted_core::Buffer;
 use ted_syntax::Language;
 use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
-use telaio_ui::components::EmptyState;
+use telaio_ui::components::{EmptyState, open_shortcuts_dialog};
 
 use crate::actions::{
-    CloseTab, NewFile, NextTab, OpenFile, OpenFolder, OpenSettings, PreviousTab, Save,
-    ToggleExplorer, ToggleGit, ZoomIn, ZoomOut, ZoomReset,
+    CloseTab, NewFile, NextTab, OpenFile, OpenFolder, OpenSettings, OpenShortcuts, PreviousTab,
+    Save, ToggleExplorer, ToggleGit, ZoomIn, ZoomOut, ZoomReset,
 };
 use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::git::GitState;
@@ -259,6 +259,12 @@ impl AppView {
         window.defer(cx, move |window, cx| {
             let _ = weak.update(cx, |view, cx| view.open_settings(window, cx));
         });
+    }
+
+    /// Opens the keyboard shortcuts cheat sheet (telaio's), listing `state::shortcuts`. A no-op
+    /// while another dialog shows.
+    pub(crate) fn open_shortcuts(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        open_shortcuts_dialog(crate::state::shortcuts::groups(), window, cx);
     }
 
     /// Shows `panel` at the left, or hides the side panel when it already shows it. Only in
@@ -891,6 +897,9 @@ impl Render for AppView {
             }))
             .on_action(
                 cx.listener(|this, _: &OpenSettings, window, cx| this.open_settings(window, cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &OpenShortcuts, window, cx| this.open_shortcuts(window, cx)),
             )
             // Also without the tab bar: closing the last file of file mode goes back to the
             // welcome screen.
