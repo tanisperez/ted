@@ -61,7 +61,7 @@ Expo/React Native conventions here.
   `PATH` where the platform allows it. See `docs/releasing.md`.
 - Settings: `settings.toml` under the config dir (`~/.config/ted/settings.toml` on Linux), plain
   text, applied at once, as in the design.
-- Design: the Claude Design prototype is in `design_system/` (`ted.dc.html`, open it in a
+- Design: the Claude Design prototype is in `design_system/` (`ted v3.dc.html`, open it in a
   browser; `github.md` maps each screen to the Postino and telaio files it came from). It is the
   source of truth until `docs/design-system.md` is written from it (rule 1.3).
 
@@ -70,7 +70,8 @@ Expo/React Native conventions here.
 - Package repositories (APT, DNF, AUR), other channels and the in-app updater (not before the
   user asks).
 - Language of the user docs (English for now, as everything in the repository).
-- Word wrap, split views: not in 0.1.0; ask before designing them. The minimap was decided on
+- Split views: not planned; ask before designing them. Soft wrap was decided on 2026-11-01: it
+  is in 0.3.0 (#43), as in design v3 (Alt+Z, a status bar toggle, per-language defaults). The minimap was decided on
   2026-10-30: it is in 0.1.0 (#16), built directly in the style of VS Code and Zed from the design
   tokens. Multiple cursors were decided on 2026-10-30: they are in 0.2.0 (#20), as in IntelliJ
   (Alt+click, column selection with the middle button, which never pastes the primary selection).

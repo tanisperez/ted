@@ -30,20 +30,26 @@ a:hover { color: var(--fg); }
 <div style="position: relative; flex: none; height: 40px; display: flex; align-items: center; gap: 8px; padding-left: 12px; background: var(--surface); border-bottom: 1px solid var(--border);">
 <sc-if value="{{ showLogo }}" hint-placeholder-val="{{ true }}">
   <div style="display: flex; align-items: center; gap: 8px;">
-  <div style="width: 18px; height: 18px; border-radius: 5px; background: var(--accent); color: var(--accent-fg); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;">t</div>
+  <img src="ted-icon.svg" alt="" style="width: 18px; height: 18px; display: block;">
   <div style="font-weight: 600;">ted</div>
   <div style="width: 1px; height: 16px; margin: 0 4px; background: var(--border);"></div>
   </div>
   </sc-if>
   <div style="position: relative;">
-    <div onClick="{{ toggleMenu }}" title="Recientes y abrir" style="height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 6px; cursor: pointer; background: {{ menuBtnBg }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover);">
-      <i class="icon-folder" style="font-size: 14px; color: var(--fg-subtle);"></i>
-      <span style="font-weight: 500;">{{ rootName }}</span>
+    <div onClick="{{ toggleMenu }}" title="{{ selTitle }}" style="height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 6px; cursor: pointer; background: {{ menuBtnBg }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover);">
+      <i class="{{ selIcon }}" style="font-size: 14px; color: var(--fg-subtle);"></i>
+      <span style="font-weight: 500;">{{ selLabel }}</span>
       <i class="icon-chevron-down" style="font-size: 12px; color: var(--fg-subtle);"></i>
     </div>
     <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
       <div onClick="{{ closeMenu }}" style="position: fixed; inset: 0; z-index: 30;"></div>
-      <div style="position: absolute; top: 32px; left: 0; z-index: 31; width: 360px; box-sizing: border-box; padding: 6px; display: flex; flex-direction: column; gap: 1px; background: var(--overlay); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow);">
+      <div style="position: absolute; top: 32px; left: 0; z-index: 31; width: 360px; max-height: calc(100vh - 56px); overflow-y: auto; box-sizing: border-box; padding: 6px; display: flex; flex-direction: column; gap: 1px; background: var(--overlay); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow);">
+        <sc-if value="{{ hasLoc }}" hint-placeholder-val="{{ true }}">
+          <div style="padding: 6px 8px 6px; display: flex; flex-direction: column; gap: 3px;"><div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--fg-subtle);">{{ locHeading }}</div><div style="font-family: 'Geist Mono', monospace; font-size: 11.5px; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ locPath }}</div></div>
+          <div onClick="{{ revealLoc }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-folder-search" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Mostrar en el explorador</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle);">Ctrl+Alt+R</span></div>
+          <div onClick="{{ copyLoc }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-copy" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Copiar ruta</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle);">Ctrl+Alt+C</span></div>
+          <div style="height: 1px; margin: 5px 2px; background: var(--border);"></div>
+        </sc-if>
         <div style="padding: 6px 8px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--fg-subtle);">CARPETAS RECIENTES</div>
         <sc-for list="{{ recentFolders }}" as="r" hint-placeholder-count="4">
           <div onClick="{{ r.onClick }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);">
@@ -59,12 +65,15 @@ a:hover { color: var(--fg); }
           <div onClick="{{ r.onClick }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);">
             <i class="{{ r.icon }}" style="flex: none; font-size: 14px; color: var(--fg-subtle);"></i>
             <span style="flex: none; white-space: nowrap;">{{ r.name }}</span>
-            <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--fg-subtle);">{{ r.path }}</span>
+            <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--fg-subtle);">{{ r.dir }}</span>
           </div>
         </sc-for>
         <div style="height: 1px; margin: 5px 2px; background: var(--border);"></div>
-        <div onClick="{{ closeMenu }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-file-input" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Abrir archivo…</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle);">Ctrl+O</span></div>
-        <div onClick="{{ closeMenu }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-folder-open" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Abrir carpeta…</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle);">Ctrl+Shift+O</span></div>
+        <div onClick="{{ newFile }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-file-plus" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Nuevo archivo</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle);">Ctrl+N</span></div>
+        <div onClick="{{ newWindow }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-app-window" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Nueva ventana</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle);">Ctrl+Shift+N</span></div>
+        <div style="height: 1px; margin: 5px 2px; background: var(--border);"></div>
+        <div onClick="{{ openFileAct }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-file-input" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Abrir archivo…</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle);">Ctrl+O</span></div>
+        <div onClick="{{ openFolderAct }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-folder-open" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Abrir carpeta…</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle);">Ctrl+Shift+O</span></div>
       </div>
     </sc-if>
   </div>
@@ -81,6 +90,7 @@ a:hover { color: var(--fg); }
 
 
 
+  <div onClick="{{ openSettings }}" title="Configuración (Ctrl+,)" style="flex: none; width: 26px; height: 26px; margin-right: 4px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);" style-active="background: var(--pressed);"><i class="icon-settings" style="font-size: 16px;"></i></div>
   <div style="display: flex; align-self: stretch;">
     <div style="width: 40px; display: flex; align-items: center; justify-content: center; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-minus" style="font-size: 14px;"></i></div>
     <div style="width: 40px; display: flex; align-items: center; justify-content: center; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-square" style="font-size: 12px;"></i></div>
@@ -89,25 +99,12 @@ a:hover { color: var(--fg); }
 </div>
 
 <div style="position: relative; flex: 1; min-height: 0; display: flex;">
-  <sc-if value="{{ railA }}" hint-placeholder-val="{{ true }}">
-    <div style="order: -2; flex: none; width: 44px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 0 6px; background: var(--surface); border-right: 1px solid var(--border);">
-      <sc-for list="{{ railItems }}" as="it" hint-placeholder-count="2">
-        <div onClick="{{ it.onClick }}" title="{{ it.title }}" style="position: relative; width: 44px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: {{ it.color }};" style-hover="color: var(--fg);">
-          <div style="position: absolute; left: 0; top: 9px; bottom: 9px; width: 2px; border-radius: 0 2px 2px 0; background: var(--accent); opacity: {{ it.ind }};"></div>
-          <i class="{{ it.icon }}" style="font-size: 20px;"></i>
-          <sc-if value="{{ it.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="position: absolute; top: 6px; right: 5px; min-width: 15px; height: 15px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: var(--accent); color: var(--accent-fg); font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center;">{{ it.badge }}</span></sc-if>
-        </div>
-      </sc-for>
-      <div style="flex: 1;"></div>
-      <div onClick="{{ openSettings }}" title="Configuración (Ctrl+,)" style="width: 44px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--fg-subtle);" style-hover="color: var(--fg);"><i class="icon-settings" style="font-size: 20px;"></i></div>
-    </div>
-  </sc-if>
   <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
 <sc-if value="{{ hasTabs }}" hint-placeholder-val="{{ true }}">
   <div style="flex: none; height: 36px; display: flex; background: var(--surface); border-bottom: 1px solid var(--border);">
     <div style="display: flex; min-width: 0; overflow-x: auto; scrollbar-width: none;">
       <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
-        <div onClick="{{ t.onClick }}" title="{{ t.title }}" style="flex: none; height: 100%; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; border-right: 1px solid var(--border); cursor: pointer; white-space: nowrap; font-size: 13px; background: {{ t.bg }}; color: {{ t.color }}; box-shadow: {{ t.shadow }};" style-hover="filter: brightness(1.12);">
+        <div onClick="{{ t.onClick }}" onContextMenu="{{ t.onCtx }}" title="{{ t.title }}" style="flex: none; height: 100%; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; border-right: 1px solid var(--border); cursor: pointer; white-space: nowrap; font-size: 13px; background: {{ t.bg }}; color: {{ t.color }}; box-shadow: {{ t.shadow }};" style-hover="filter: brightness(1.12);">
           <i class="{{ t.icon }}" style="font-size: 14px; color: var(--fg-subtle);"></i>
           <span>{{ t.label }}</span>
           <sc-if value="{{ t.hasDetail }}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: var(--fg-subtle);">{{ t.detail }}</span></sc-if>
@@ -119,11 +116,76 @@ a:hover { color: var(--fg); }
       </sc-for>
     </div>
     <div style="flex: none; display: flex; align-items: center; padding: 0 6px;">
-      <div title="Nuevo archivo" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-plus" style="font-size: 14px;"></i></div>
+      <div onClick="{{ newFile }}" title="Nuevo archivo (Ctrl+N)" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-plus" style="font-size: 14px;"></i></div>
     </div>
   </div>
 </sc-if>
   <div style="position: relative; flex: 1; min-height: 0; display: flex; background: var(--bg);">
+    <sc-if value="{{ isWelcome }}" hint-placeholder-val="{{ false }}">
+      <div style="flex: 1; min-width: 0; overflow-y: auto; display: flex; justify-content: center; padding: 56px 32px 48px;">
+        <div style="width: 100%; max-width: 760px; display: flex; flex-direction: column; gap: 32px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <img src="ted-icon.svg" alt="" style="width: 44px; height: 44px; display: block;">
+            <div style="display: flex; flex-direction: column; gap: 4px;"><div style="font-size: 20px; font-weight: 600;">ted</div><div style="color: var(--fg-muted);">Abre un archivo para leerlo o una carpeta para trabajar en ella.</div></div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <div onClick="{{ openFolderAct }}" style="height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); cursor: pointer;" style-hover="border-color: var(--border-strong); background: var(--overlay);"><i class="icon-folder-open" style="font-size: 15px; color: var(--accent-text);"></i><span style="font-weight: 500;">Abrir carpeta…</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle); margin-left: 4px;">Ctrl+Shift+O</span></div>
+            <div onClick="{{ openFileAct }}" style="height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); cursor: pointer;" style-hover="border-color: var(--border-strong); background: var(--overlay);"><i class="icon-file-input" style="font-size: 15px; color: var(--accent-text);"></i><span style="font-weight: 500;">Abrir archivo…</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle); margin-left: 4px;">Ctrl+O</span></div>
+            <div onClick="{{ newFile }}" style="height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border); cursor: pointer;" style-hover="border-color: var(--border-strong); background: var(--overlay);"><i class="icon-file-plus" style="font-size: 15px; color: var(--accent-text);"></i><span style="font-weight: 500;">Nuevo archivo</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle); margin-left: 4px;">Ctrl+N</span></div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px 32px; margin: 0 -8px;">
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 8px 6px;"><div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--fg-subtle);">CARPETAS RECIENTES</div><a href="#" onClick="{{ prevent }}" style="font-size: 12px;">Ver las 14</a></div>
+            <sc-for list="{{ welFolders }}" as="r" hint-placeholder-count="8">
+              <div onClick="{{ r.onClick }}" title="{{ r.path }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);">
+                <i class="{{ r.icon }}" style="flex: none; font-size: 14px; color: var(--fg-subtle);"></i>
+                <span style="flex: none; white-space: nowrap;">{{ r.name }}</span>
+                <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--fg-subtle);">{{ r.dir }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 8px 6px;"><div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--fg-subtle);">ARCHIVOS RECIENTES</div><a href="#" onClick="{{ prevent }}" style="font-size: 12px;">Ver los 31</a></div>
+            <sc-for list="{{ welFiles }}" as="r" hint-placeholder-count="8">
+              <div onClick="{{ r.onClick }}" title="{{ r.path }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);">
+                <i class="{{ r.icon }}" style="flex: none; font-size: 14px; color: var(--fg-subtle);"></i>
+                <span style="flex: none; white-space: nowrap;">{{ r.name }}</span>
+                <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--fg-subtle);">{{ r.dir }}</span>
+              </div>
+            </sc-for>
+          </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isHistory }}" hint-placeholder-val="{{ false }}">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+        <div style="flex: none; height: 46px; box-sizing: border-box; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--border);">
+          <div style="width: 340px; max-width: 60%; height: 28px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 7px; background: var(--raised); border: 1px solid var(--border); color: var(--fg-subtle);" style-hover="border-color: var(--border-strong);">
+            <i class="icon-search" style="font-size: 14px;"></i>
+            <input value="{{ hq }}" onInput="{{ onHq }}" placeholder="Buscar en los mensajes o un id de commit" style="flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--fg); font: inherit;">
+          </div>
+          <div style="font-size: 12px; color: var(--fg-subtle); white-space: nowrap;">{{ commitCount }}</div>
+        </div>
+        <div style="flex: 1; min-height: 0; overflow: auto; padding: 4px 0 24px;">
+          <sc-for list="{{ commits }}" as="c" hint-placeholder-count="16">
+            <div onClick="{{ c.onClick }}" style="height: 34px; display: flex; align-items: center; gap: 12px; padding: 0 16px 0 12px; cursor: pointer; background: {{ c.bg }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover);">
+              <div style="position: relative; flex: none; width: 16px; align-self: stretch; display: flex; align-items: center; justify-content: center;">
+                <div style="position: absolute; left: 7px; width: 2px; top: {{ c.lineTop }}; bottom: 0; background: var(--accent);"></div>
+                <div style="position: relative; width: 10px; height: 10px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--accent); background: {{ c.dotBg }};"></div>
+              </div>
+              <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px;">
+                <sc-for list="{{ c.refs }}" as="r" hint-placeholder-count="0"><span style="flex: none; height: 20px; box-sizing: border-box; display: flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: 5px; border: 1px solid {{ r.color }}; color: {{ r.color }}; font-size: 12px; white-space: nowrap;"><i class="{{ r.icon }}" style="font-size: 12px;"></i>{{ r.label }}</span></sc-for>
+                <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ c.msg }}</span>
+              </div>
+              <div title="{{ c.authorFull }}" style="flex: none; width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-muted);">{{ c.author }}</div>
+              <div style="flex: none; width: 70px; white-space: nowrap; color: var(--fg-subtle);">{{ c.time }}</div>
+              <div style="flex: none; width: 62px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--fg-subtle);">{{ c.hash }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
     <sc-if value="{{ isMd }}" hint-placeholder-val="{{ false }}">
       <div style="position: absolute; top: 10px; right: 22px; z-index: 3; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 8px; background: var(--overlay); border: 1px solid var(--border); box-shadow: 0 4px 14px rgba(0,0,0,.22);">
         <sc-for list="{{ mdTools }}" as="m" hint-placeholder-count="3">
@@ -136,11 +198,11 @@ a:hover { color: var(--fg); }
     <sc-if value="{{ showEditor }}" hint-placeholder-val="{{ true }}">
       <div ref="{{ edRef }}" onScroll="{{ onEdScroll }}" style="flex: {{ edFlex }}; min-width: 0; overflow: auto; padding: 10px 0 40vh; font-family: 'Geist Mono', ui-monospace, monospace; font-size: {{ edSize }}; line-height: {{ lh }}; user-select: text; cursor: text;">
         <sc-for list="{{ lines }}" as="ln" hint-placeholder-count="24">
-          <div onClick="{{ ln.onClick }}" style="display: flex; min-width: max-content; background: {{ ln.bg }};">
+          <div onClick="{{ ln.onClick }}" style="display: flex; min-width: {{ lineMinW }}; background: {{ ln.bg }};">
             <sc-if value="{{ showNumbers }}" hint-placeholder-val="{{ true }}">
               <div style="flex: none; position: sticky; left: 0; width: {{ gutterW }}; box-sizing: border-box; padding-right: 16px; text-align: right; color: {{ ln.numColor }}; background: var(--bg); user-select: none;">{{ ln.n }}</div>
             </sc-if>
-            <div style="flex: 1; padding-left: 4px; padding-right: 24px; white-space: {{ wrap }};"><sc-for list="{{ ln.toks }}" as="tk" hint-placeholder-count="0"><span style="color: {{ tk.c }}; font-weight: {{ tk.w }};">{{ tk.t }}</span></sc-for>&#8203;</div>
+            <div style="flex: 1; padding-left: 4px; padding-right: 24px; white-space: {{ wrap }}; overflow-wrap: anywhere;"><sc-for list="{{ ln.toks }}" as="tk" hint-placeholder-count="0"><span style="color: {{ tk.c }}; font-weight: {{ tk.w }};">{{ tk.t }}</span></sc-for>&#8203;</div>
           </div>
         </sc-for>
       </div>
@@ -158,7 +220,7 @@ a:hover { color: var(--fg); }
         <div onMouseDown="{{ startResize }}" style="position: absolute; top: 0; bottom: 0; right: -3px; width: 6px; cursor: col-resize; z-index: 2;" style-hover="background: var(--accent); opacity: .5;"></div>
       </sc-if>
       <sc-if value="{{ showFiles }}" hint-placeholder-val="{{ true }}">
-        <div style="flex: none; height: 36px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 10px 10px 6px 14px;">
+        <div onContextMenu="{{ rootCtx }}" title="{{ rootPath }}" style="flex: none; height: 36px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 10px 10px 6px 14px;">
           <div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--fg-subtle); text-transform: uppercase;">{{ rootName }}</div>
           <div style="display: flex; gap: 2px;">
             <div title="Nuevo archivo" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-file-plus" style="font-size: 14px;"></i></div>
@@ -169,7 +231,7 @@ a:hover { color: var(--fg); }
         </div>
         <div style="flex: 1; min-height: 0; overflow-y: auto; padding: 0 6px 8px; display: flex; flex-direction: column; gap: 1px;">
           <sc-for list="{{ treeRows }}" as="r" hint-placeholder-count="12">
-            <div onClick="{{ r.onClick }}" style="flex: none; height: 26px; display: flex; align-items: center; gap: 4px; padding-left: {{ r.pad }}; padding-right: 6px; border-radius: 6px; cursor: pointer; background: {{ r.bg }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover);" style-active="box-shadow: inset 0 0 0 100px var(--pressed);">
+            <div onClick="{{ r.onClick }}" onContextMenu="{{ r.onCtx }}" style="flex: none; height: 26px; display: flex; align-items: center; gap: 4px; padding-left: {{ r.pad }}; padding-right: 6px; border-radius: 6px; cursor: pointer; background: {{ r.bg }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover);" style-active="box-shadow: inset 0 0 0 100px var(--pressed);">
               <div style="flex: none; width: 13px; display: flex; justify-content: center; color: var(--fg-subtle);"><i class="{{ r.chevron }}" style="font-size: 13px;"></i></div>
               <i class="{{ r.icon }}" style="flex: none; margin-right: 2px; font-size: 14px; color: var(--fg-subtle);"></i>
               <div style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: {{ r.color }};">{{ r.label }}</div>
@@ -185,7 +247,7 @@ a:hover { color: var(--fg); }
             <div title="Actualizar" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-refresh-cw" style="font-size: 14px;"></i></div>
             <div title="Descartar todos los cambios" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-undo-2" style="font-size: 14px;"></i></div>
             <div title="Mostrar como lista" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-list-tree" style="font-size: 14px;"></i></div>
-            <div title="Historial" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-git-graph" style="font-size: 14px;"></i></div>
+            <div onClick="{{ openHistory }}" title="Historial" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-git-graph" style="font-size: 14px;"></i></div>
             <div title="Más" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-ellipsis" style="font-size: 14px;"></i></div>
             
           </div>
@@ -223,25 +285,68 @@ a:hover { color: var(--fg); }
     </div>
   </sc-if>
 </div>
-<div style="flex: none; height: 24px; display: flex; align-items: center; gap: 16px; padding: 0 12px; background: var(--surface); border-top: 1px solid var(--border); font-size: 11.5px; color: var(--fg-subtle); white-space: nowrap;">
+<div style="flex: none; height: 30px; display: flex; align-items: center; gap: 16px; padding: 0 12px 0 4px; background: var(--surface); border-top: 1px solid var(--border); font-size: 11.5px; color: var(--fg-subtle); white-space: nowrap;">
 
   <sc-if value="{{ folder }}" hint-placeholder-val="{{ true }}">
-    <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" style-hover="text-decoration: underline;"><i class="icon-hard-drive" style="font-size: 13px;"></i><span>{{ rootPath }}</span></div>
-  </sc-if>
-  <div style="height: 20px; display: flex; align-items: center; gap: 6px; padding: 0 6px; margin: 0 -6px; border-radius: 4px; color: var(--accent-text); cursor: pointer;" style-hover="background: var(--hover);">
-    <i class="icon-git-branch" style="font-size: 13px;"></i><span>{{ branch }}</span><i class="icon-chevron-up" style="font-size: 11px;"></i>
-    <sc-if value="{{ hasAhead }}" hint-placeholder-val="{{ true }}"><span style="display: flex; align-items: center; gap: 2px;"><i class="icon-arrow-up" style="font-size: 11px;"></i>{{ ahead }}</span></sc-if>
+  <div style="display: flex; align-items: center; gap: 16px;">
+  <div style="display: flex; align-items: center; gap: 2px; margin-right: -4px;">
+    <sc-for list="{{ railItems }}" as="it" hint-placeholder-count="2">
+      <div onClick="{{ it.onClick }}" title="{{ it.title }}" style="height: 24px; min-width: 28px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 7px; border-radius: 6px; cursor: pointer; background: {{ it.bg }}; color: {{ it.color }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover); color: var(--fg);">
+        <i class="{{ it.icon }}" style="font-size: 15px;"></i>
+        <sc-if value="{{ it.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500;">{{ it.badge }}</span></sc-if>
+      </div>
+    </sc-for>
   </div>
+  <div style="width: 1px; height: 14px; background: var(--border);"></div>
+  <div style="position: relative; display: flex;">
+    <div onClick="{{ toggleBranchMenu }}" title="Ramas e historial" style="height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 6px; margin: 0 -6px; border-radius: 6px; color: var(--accent-text); cursor: pointer; background: {{ branchBg }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover);">
+      <i class="icon-git-branch" style="font-size: 13px;"></i><span>{{ branch }}</span><i class="icon-chevron-up" style="font-size: 11px;"></i>
+      <sc-if value="{{ hasAhead }}" hint-placeholder-val="{{ true }}"><span style="display: flex; align-items: center; gap: 2px;"><i class="icon-arrow-up" style="font-size: 11px;"></i>{{ ahead }}</span></sc-if>
+    </div>
+    <sc-if value="{{ branchMenu }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closeBranchMenu }}" style="position: fixed; inset: 0; z-index: 30;"></div>
+      <div style="position: absolute; bottom: 30px; left: -10px; z-index: 31; width: 264px; box-sizing: border-box; padding: 6px; display: flex; flex-direction: column; gap: 1px; background: var(--overlay); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); font-size: 13px; color: var(--fg); white-space: nowrap;">
+        <div onClick="{{ openHistory }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-git-graph" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Ver historial</span></div>
+        <div onClick="{{ doFetch }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-refresh-cw" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Fetch</span></div>
+        <div style="height: 1px; margin: 5px 2px; background: var(--border);"></div>
+        <div style="padding: 6px 8px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--fg-subtle);">RAMAS</div>
+        <sc-for list="{{ branches }}" as="b" hint-placeholder-count="3">
+          <div onClick="{{ closeBranchMenu }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-git-branch" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1; overflow: hidden; text-overflow: ellipsis;">{{ b.name }}</span><i class="icon-check" style="font-size: 14px; color: var(--accent-text); opacity: {{ b.check }};"></i></div>
+        </sc-for>
+        <div style="height: 1px; margin: 5px 2px; background: var(--border);"></div>
+        <div onClick="{{ closeBranchMenu }}" style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-plus" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">Nueva rama…</span></div>
+      </div>
+    </sc-if>
+  </div>
+  </div>
+  </sc-if>
   <div style="flex: 1;"></div>
   <sc-if value="{{ showWords }}" hint-placeholder-val="{{ false }}"><div>{{ words }}</div></sc-if>
   <sc-if value="{{ showCursor }}" hint-placeholder-val="{{ true }}"><div style="cursor: pointer;" style-hover="color: var(--fg-muted);">Ln {{ ln }}, Col {{ col }}</div></sc-if>
+  <sc-if value="{{ showFileInfo }}" hint-placeholder-val="{{ true }}">
+  <div style="display: flex; align-items: center; gap: 16px;">
+  <div onClick="{{ toggleWrap }}" title="{{ wrapTitle }}" style="height: 22px; display: flex; align-items: center; gap: 5px; padding: 0 6px; margin: 0 -6px; border-radius: 6px; cursor: pointer; background: {{ wrapBg }}; color: {{ wrapColor }};" style-hover="box-shadow: inset 0 0 0 100px var(--hover);"><i class="icon-wrap-text" style="font-size: 14px;"></i><span>Ajuste</span></div>
   <div style="cursor: pointer;" style-hover="color: var(--fg-muted);">{{ indent }}</div>
   <div style="cursor: pointer;" style-hover="color: var(--fg-muted);">UTF-8</div>
   <div style="cursor: pointer;" style-hover="color: var(--fg-muted);">LF</div>
   <div style="cursor: pointer;" style-hover="color: var(--fg-muted);">{{ langName }}</div>
+  </div>
+  </sc-if>
   <div title="Atajos de teclado" style="width: 20px; height: 20px; margin-right: -6px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--fg-muted); cursor: pointer;" style-hover="background: var(--hover);"><i class="icon-keyboard" style="font-size: 14px;"></i></div>
 </div>
 </div>
+<sc-if value="{{ ctxOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeCtx }}" onContextMenu="{{ closeCtx }}" style="position: absolute; inset: 0; z-index: 40;"></div>
+  <div style="position: fixed; left: {{ ctxX }}; top: {{ ctxY }}; z-index: 41; width: 240px; box-sizing: border-box; padding: 6px; display: flex; flex-direction: column; gap: 1px; background: var(--overlay); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); font-size: 13px; color: var(--fg); white-space: nowrap;">
+    <sc-for list="{{ ctxItems }}" as="m" hint-placeholder-count="0">
+      <sc-if value="{{ m.sep }}" hint-placeholder-val="{{ false }}"><div style="height: 1px; margin: 5px 2px; background: var(--border);"></div></sc-if>
+      <sc-if value="{{ m.item }}" hint-placeholder-val="{{ true }}"><div onClick="{{ m.onClick }}" style="height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; cursor: pointer;" style-hover="background: var(--hover);"><i class="{{ m.icon }}" style="font-size: 14px; color: var(--fg-subtle);"></i><span style="flex: 1;">{{ m.label }}</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--fg-subtle);">{{ m.key }}</span></div></sc-if>
+    </sc-for>
+  </div>
+</sc-if>
+<sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
+  <div style="position: absolute; left: 50%; bottom: 46px; z-index: 45; transform: translateX(-50%); max-width: 80%; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: var(--overlay); border: 1px solid var(--border); box-shadow: var(--shadow); white-space: nowrap; overflow: hidden;"><i class="icon-check" style="flex: none; font-size: 14px; color: var(--success);"></i><span style="overflow: hidden; text-overflow: ellipsis;">{{ toast }}</span></div>
+</sc-if>
 <sc-if value="{{ settings }}" hint-placeholder-val="{{ false }}">
   <div onClick="{{ closeSettings }}" style="position: absolute; inset: 0; z-index: 20; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 16px;">
     <div onClick="{{ stop }}" style="width: 800px; max-width: 100%; height: 720px; max-height: 100%; display: flex; background: var(--overlay); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden;">
@@ -296,7 +401,7 @@ a:hover { color: var(--fg); }
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Tamaño de la fuente</div><div style="display: flex; align-items: center; gap: 8px;"><div onClick="{{ edDec }}" style="width: 30px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--raised); border: 1px solid var(--border-strong); cursor: pointer;" style-hover="background: var(--overlay);"><i class="icon-minus" style="font-size: 14px;"></i></div><div style="width: 64px; text-align: center; font-family: 'Geist Mono', monospace;">{{ edSizeLabel }} px</div><div onClick="{{ edInc }}" style="width: 30px; height: 30px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--raised); border: 1px solid var(--border-strong); cursor: pointer;" style-hover="background: var(--overlay);"><i class="icon-plus" style="font-size: 14px;"></i></div></div></div>
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Números de línea</div><div onClick="{{ swNumbers.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swNumbers.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swNumbers.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div>Resaltar la línea actual</div><div onClick="{{ swCurLine.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swCurLine.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swCurLine.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div style="display: flex; flex-direction: column; gap: 2px;"><div>Ajuste de línea</div><div style="font-size: 12px; color: var(--fg-muted);">Las líneas largas continúan debajo en lugar de desplazarse en horizontal.</div></div><div onClick="{{ swWrap.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swWrap.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swWrap.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div style="display: flex; flex-direction: column; gap: 2px;"><div>Ajuste de línea</div><div style="font-size: 12px; color: var(--fg-muted);">Valor por defecto. Cada lenguaje puede cambiarlo en Lenguajes y Alt+Z lo cambia en el archivo abierto.</div></div><div onClick="{{ swWrap.toggle }}" style="position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: {{ swWrap.bg }}; cursor: pointer;"><div style="position: absolute; top: 2px; left: {{ swWrap.x }}; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: left .15s;"></div></div></div>
             </div>
             <div style="flex: none; height: 1px; background: var(--border);"></div>
             <div style="display: flex; flex-direction: column; gap: 14px;">
@@ -343,16 +448,16 @@ a:hover { color: var(--fg); }
             <div style="display: flex; flex-direction: column; gap: 14px;">
               <div style="display: flex; flex-direction: column; gap: 2px;"><div style="font-weight: 500;">Lenguajes</div><div style="font-size: 12px; color: var(--fg-muted);">Resaltado con tree-sitter. Cada lenguaje puede tener su propia indentación.</div></div>
               <div style="border: 1px solid var(--border); border-radius: 10px; overflow: hidden;">
-                <div style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11.5px; font-weight: 500; color: var(--fg-subtle);"><div style="width: 120px;">Lenguaje</div><div style="flex: 1;">Extensiones</div><div style="width: 80px; text-align: right;">Tabulación</div></div>
-                <sc-for list="{{ languages }}" as="l" hint-placeholder-count="8">
-                  <div style="height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--border);" style-hover="background: var(--hover);"><div style="width: 120px;">{{ l.name }}</div><div style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--fg-muted);">{{ l.ext }}</div><div style="width: 80px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px;">{{ l.tab }}</div></div>
+                <div style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11.5px; font-weight: 500; color: var(--fg-subtle);"><div style="width: 120px;">Lenguaje</div><div style="flex: 1;">Extensiones</div><div style="width: 80px; text-align: right;">Tabulación</div><div style="width: 64px; text-align: right;">Ajuste</div></div>
+                <sc-for list="{{ languages }}" as="l" hint-placeholder-count="9">
+                  <div style="height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--border);" style-hover="background: var(--hover);"><div style="width: 120px;">{{ l.name }}</div><div style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--fg-muted);">{{ l.ext }}</div><div style="width: 80px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px;">{{ l.tab }}</div><div style="width: 64px; text-align: right; color: {{ l.wrapColor }};">{{ l.wrap }}</div></div>
                 </sc-for>
               </div>
             </div>
           </sc-if>
           <sc-if value="{{ cat5 }}" hint-placeholder-val="{{ false }}">
             <div style="display: flex; flex-direction: column; gap: 18px;">
-              <div style="display: flex; align-items: center; gap: 16px;"><div style="width: 48px; height: 48px; border-radius: 12px; background: var(--accent); color: var(--accent-fg); font-size: 24px; font-weight: 700; display: flex; align-items: center; justify-content: center;">t</div><div style="display: flex; flex-direction: column; gap: 4px;"><div style="font-size: 20px; font-weight: 600;">ted</div><div style="color: var(--fg-muted);">Tanis Editor · versión 0.1.0-dev</div></div></div>
+              <div style="display: flex; align-items: center; gap: 16px;"><img src="ted-icon.svg" alt="" style="width: 48px; height: 48px; display: block;"><div style="display: flex; flex-direction: column; gap: 4px;"><div style="font-size: 20px; font-weight: 600;">ted</div><div style="color: var(--fg-muted);">Tanis Editor · versión 0.1.0-dev</div></div></div>
               <div style="color: var(--fg-muted); line-height: 1.5; text-wrap: pretty;">Un editor de texto ligero, hecho con Rust, gpui y telaio. Sin cuentas, sin telemetría.</div>
               <div style="display: flex; gap: 8px;"><div style="height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 8px; background: var(--raised); border: 1px solid var(--border-strong); font-weight: 500; cursor: pointer;" style-hover="background: var(--overlay);"><i class="icon-refresh-cw" style="font-size: 14px;"></i>Buscar actualizaciones</div><div style="height: 30px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; color: var(--fg-muted); font-weight: 500; cursor: pointer;" style-hover="background: var(--hover);">Ver registros</div></div>
               <div style="display: flex; gap: 10px; font-size: 12.5px;"><a href="#">GitHub</a><span style="color: var(--fg-subtle); opacity: .6;">·</span><a href="#">Licencia Apache 2.0</a></div>
@@ -369,71 +474,120 @@ a:hover { color: var(--fg); }
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;openPanel&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;files&quot;, &quot;git&quot;, &quot;none&quot;], &quot;default&quot;: &quot;files&quot;, &quot;tsType&quot;: &quot;'files' | 'git' | 'none'&quot;, &quot;section&quot;: &quot;Barra lateral&quot;}, &quot;theme&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;dark&quot;, &quot;light&quot;], &quot;default&quot;: &quot;dark&quot;, &quot;tsType&quot;: &quot;'dark' | 'light'&quot;, &quot;section&quot;: &quot;Tema&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;folder&quot;,&quot;file&quot;,&quot;welcome&quot;],&quot;default&quot;:&quot;folder&quot;,&quot;tsType&quot;:&quot;'folder' | 'file' | 'welcome'&quot;,&quot;section&quot;:&quot;Modo&quot;},&quot;openPanel&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;files&quot;,&quot;git&quot;,&quot;none&quot;],&quot;default&quot;:&quot;files&quot;,&quot;tsType&quot;:&quot;'files' | 'git' | 'none'&quot;,&quot;section&quot;:&quot;Panel&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark' | 'light'&quot;,&quot;section&quot;:&quot;Tema&quot;}}">
 class Component extends DCLogic {
   static DEF = { uiSize: 13, edSize: 12.5, tab: 4, spaces: true, wrap: false, numbers: true, curLine: true, autosave: true, trim: true, finalNl: true, gitFetch: true, gitConfirm: true, mdSync: true };
+  static LANG_WRAP = { markdown: true, text: true };
+  static FOLDER_TABS = ['README.md', 'src/buffer.rs', 'config/default.json', 'logs/ted.log'];
+  static RECENT_FOLDERS = [['ted', '~/projects/ted'], ['postino', '~/projects/postino'], ['telaio', '~/projects/telaio'], ['dotfiles', '~/dotfiles'], ['infra', '~/projects/infra'], ['blog', '~/projects/blog'], ['aoc-2025', '~/projects/aoc-2025'], ['scripts', '~/scripts']];
+  static RECENT_FILES = [['ted.log', '~/projects/ted/logs', 'logs/ted.log'], ['README.md', '~/projects/ted', 'README.md'], ['default.json', '~/projects/ted/config', 'config/default.json'], ['keymap.xml', '~/projects/ted/config', 'config/keymap.xml'], ['main.rs', '~/projects/ted/src', 'src/main.rs'], ['Cargo.toml', '~/projects/ted', 'Cargo.toml'], ['preview.html', '~/projects/ted/assets', 'assets/preview.html'], ['preview.js', '~/projects/ted/assets', 'assets/preview.js']];
+  static COMMITS = [
+    ['Editor: git change marks in the gutter', 'hace 18 h', 'd1a4034', ['b:main', 'r:origin/main']],
+    ['Git panel: history tab with the commit graph', 'hace 18 h', 'd9dfa5c'],
+    ['Git panel: the changes of a file in a diff tab', 'hace 18 h', '2025022'],
+    ['Git: refresh on .git changes, saves and focus, and automatic fetch', 'hace 18 h', '449ae4f'],
+    ['Explorer: git status letters on files and a dot on changed folders', 'hace 18 h', '3100d20'],
+    ['Status bar: branch with ahead and behind, and the branch menu', 'hace 18 h', '28478cc'],
+    ['Git panel: commit box with Amend, Commit and Commit and push', 'hace 18 h', '611045f'],
+    ['Git panel: detect git, read the folder\'s status, stage and discard', 'hace 18 h', '7e6d7c3'],
+    ['Start 0.3.0-dev', 'ayer', 'a758c8d'],
+    ['Release 0.2.0', 'ayer', 'a665e9f', ['t:v0.2.0']],
+    ['Highlight CSS, .editorconfig and .gitignore', 'ayer', 'f6482cf'],
+    ['Move the welcome screen header up', 'ayer', '9b5eb80'],
+    ['Show a scrollbar on the welcome screen', 'ayer', 'd1624b9'],
+    ['Move the line up or down with Alt+Up and Alt+Down', 'ayer', '096528e'],
+    ['Welcome screen: scroll and a New file action', 'ayer', '6d15d24'],
+    ['Add a + button to the tab bar to create a new file', 'ayer', '5a0f78e'],
+    ['Add new untitled documents kept in memory until saved', 'ayer', 'fffe030'],
+    ['Highlight batch files and PowerShell', 'ayer', '2691942'],
+    ['Highlight shell scripts and Python', 'ayer', '7aa7e42'],
+    ['Add a context menu to the editor', 'ayer', '3944eab'],
+    ['Duplicate the line with Ctrl+D and delete it with Ctrl+Alt+D', 'ayer', 'b02bb07'],
+    ['Select the next occurrence with Alt+J and unselect it with Alt+Shift+J', 'ayer', 'ad338ee'],
+    ['Add multiple cursors: Alt+click and the middle button column selection', 'ayer', 'f96bb5e'],
+  ];
   state = {
     lib: null, data: null,
     theme: this.props.theme ?? 'dark',
-    panel: this.props.openPanel ?? 'files',
-    panelW: 260, pinned: false, menu: false,
-    tabs: [{ p: 'README.md' }, { p: 'src/buffer.rs' }, { p: 'config/default.json' }, { p: 'logs/ted.log' }],
-    active: 0, mdView: 'split',
+    ...this.modeState(this.props.mode ?? 'folder'),
+    panelW: 260, mdView: 'split',
     open: { src: true, 'src/syntax': false, config: true, assets: false, logs: false },
-    cur: 4, settings: false, cat: 0,
+    settings: false, cat: 0,
     staged: { 'README.md': true, 'src/buffer.rs': true },
     groups: { changes: true, unversioned: true }, amend: false,
     s: { ...Component.DEF },
+    wrapOv: {}, ctx: null, toast: '', branchMenu: false, hq: '', selCommit: 0, untitled: 0,
   };
   hl = {};
   hot = false;
   edRef = React.createRef();
   pvRef = React.createRef();
 
+  modeState(mode, file) {
+    if (mode === 'welcome') return { mode, tabs: [], active: 0, panel: 'none', menu: false, cur: 0 };
+    if (mode === 'file') return { mode, tabs: [file || { p: 'logs/ted.log', name: 'ted.log', abs: '~/projects/ted/logs/ted.log' }], active: 0, panel: 'none', menu: false, cur: 0 };
+    return { mode: 'folder', tabs: Component.FOLDER_TABS.map((p) => ({ p })), active: 0, panel: this.props.openPanel ?? 'files', menu: false, cur: 4 };
+  }
+  setMode(m, file) { this.setState({ ...this.modeState(m, file), ctx: null, branchMenu: false }); }
+
   componentDidMount() {
     const u = (f) => new URL(f, document.baseURI).href;
     Promise.all([import(u('./ted-lang.js')), import(u('./ted-data.js'))]).then(([lib, data]) => this.setState({ lib, data }));
     this.onKey = (e) => {
       if (this.props.embedded && !this.hot) return;
-      const k = e.key.toLowerCase(), c = e.ctrlKey || e.metaKey;
+      const k = e.key.toLowerCase(), c = e.ctrlKey || e.metaKey, st = this.state;
       if (k === 'escape') {
-        if (this.state.settings) this.setState({ settings: false });
-        else if (this.state.menu) this.setState({ menu: false });
-        else if (this.floating()) this.setState({ panel: 'none' });
+        if (st.ctx) this.setState({ ctx: null });
+        else if (st.settings) this.setState({ settings: false });
+        else if (st.menu || st.branchMenu) this.setState({ menu: false, branchMenu: false });
       }
       else if (c && k === ',') { e.preventDefault(); this.setState({ settings: true }); }
+      else if (e.altKey && !c && k === 'z') { e.preventDefault(); this.wrapToggle && this.wrapToggle(); }
+      else if (c && e.shiftKey && k === 'n') { e.preventDefault(); this.flash('Se abre una ventana nueva de ted'); }
+      else if (c && k === 'n') { e.preventDefault(); this.newFile(); }
+      else if (c && k === 'w') { e.preventDefault(); if (st.tabs.length) this.closeTab(st.active); }
+      else if (c && k === 'tab') { e.preventDefault(); if (st.tabs.length > 1) this.setState({ active: (st.active + (e.shiftKey ? st.tabs.length - 1 : 1)) % st.tabs.length, cur: 0 }); }
       else if (c && !e.shiftKey && k === 'b') { e.preventDefault(); this.togglePanel('files'); }
       else if (c && e.shiftKey && k === 'g') { e.preventDefault(); this.togglePanel('git'); }
       else if (c && e.shiftKey && k === 'v') { e.preventDefault(); this.setState((s) => ({ mdView: s.mdView === 'editor' ? 'split' : s.mdView === 'split' ? 'preview' : 'editor' })); }
     };
     window.addEventListener('keydown', this.onKey);
   }
-  componentWillUnmount() { window.removeEventListener('keydown', this.onKey); }
+  componentWillUnmount() { window.removeEventListener('keydown', this.onKey); clearTimeout(this.tt); }
   componentDidUpdate(prev) {
+    if (prev.mode !== this.props.mode && this.props.mode) return this.setMode(this.props.mode);
     const sync = {};
     if (prev.theme !== this.props.theme && this.props.theme) sync.theme = this.props.theme;
     if (prev.openPanel !== this.props.openPanel && this.props.openPanel) sync.panel = this.props.openPanel;
     if (Object.keys(sync).length) this.setState(sync);
   }
 
-  railB() { return false; }
-  floating() { return this.railB() && !this.state.pinned; }
-  togglePanel(p) { this.setState((s) => ({ panel: s.panel === p ? 'none' : p, menu: false })); }
+  flash(msg) {
+    clearTimeout(this.tt);
+    this.setState({ toast: msg, ctx: null, menu: false, branchMenu: false });
+    this.tt = setTimeout(() => this.setState({ toast: '' }), 2200);
+  }
+  togglePanel(p) { if (this.state.mode !== 'folder') return; this.setState((s) => ({ panel: s.panel === p ? 'none' : p, menu: false })); }
   openFile(p) {
     this.setState((s) => {
       const i = s.tabs.findIndex((t) => t.p === p && !t.preview);
-      const next = { cur: 0 };
-      if (i >= 0) next.active = i; else { next.tabs = [...s.tabs, { p }]; next.active = s.tabs.length; }
-      if (this.floating()) next.panel = 'none';
-      return next;
+      return i >= 0 ? { active: i, cur: 0 } : { tabs: [...s.tabs, { p }], active: s.tabs.length, cur: 0 };
+    });
+  }
+  newFile() {
+    this.setState((s) => {
+      const n = s.untitled + 1, t = { p: 'untitled:' + n, name: 'Sin título-' + n, untitled: true };
+      if (s.mode === 'welcome') return { ...this.modeState('file', t), untitled: n };
+      return { tabs: [...s.tabs, t], active: s.tabs.length, untitled: n, cur: 0, menu: false };
     });
   }
   closeTab(i) {
+    if (this.state.mode === 'file' && this.state.tabs.length === 1) return this.setMode('welcome');
     this.setState((s) => {
       const tabs = s.tabs.filter((_, j) => j !== i);
       let active = s.active;
       if (i < active || active >= tabs.length) active = Math.max(0, active - 1);
-      return { tabs, active };
+      return { tabs, active, ctx: null };
     });
   }
   openPreviewTab(p) {
@@ -442,6 +596,44 @@ class Component extends DCLogic {
       if (i >= 0) return { active: i };
       return { tabs: [...s.tabs, { p, preview: true }], active: s.tabs.length };
     });
+  }
+  openHistory() {
+    this.setState((s) => {
+      const i = s.tabs.findIndex((t) => t.kind === 'history');
+      const base = { branchMenu: false, menu: false };
+      if (i >= 0) return { ...base, active: i };
+      return { ...base, tabs: [...s.tabs, { p: 'history:', kind: 'history', name: 'Historial' }], active: s.tabs.length };
+    });
+  }
+  openCtx(e, items) {
+    e.preventDefault(); e.stopPropagation();
+    const h = items.reduce((a, m) => a + (m === 'sep' ? 11 : 29), 12);
+    this.setState({ ctx: { x: Math.max(4, Math.min(e.clientX, window.innerWidth - 248)), y: Math.max(4, Math.min(e.clientY, window.innerHeight - h - 8)), items }, menu: false, branchMenu: false });
+  }
+  absOf(t) { return t.untitled || t.kind ? null : t.abs || this.state.data.ROOT_PATH + '/' + t.p; }
+  dirOf(a) { return a.slice(0, a.lastIndexOf('/')); }
+  pathItems(abs, rel) {
+    const items = [{ icon: 'icon-copy', label: 'Copiar ruta', key: 'Ctrl+Alt+C', run: () => this.flash('Ruta copiada: ' + abs) }];
+    if (rel) items.push({ icon: 'icon-clipboard-copy', label: 'Copiar ruta relativa', run: () => this.flash('Ruta copiada: ' + rel) });
+    items.push({ icon: 'icon-folder-search', label: 'Mostrar en el explorador', key: 'Ctrl+Alt+R', run: () => this.flash('Abriendo ' + this.dirOf(abs) + ' en el explorador de archivos') });
+    return items;
+  }
+  tabCtx(e, i) {
+    const t = this.state.tabs[i], abs = this.absOf(t);
+    const items = [
+      { icon: 'icon-x', label: 'Cerrar', key: 'Ctrl+W', run: () => this.closeTab(i) },
+      { icon: 'icon-copy-x', label: 'Cerrar las demás', run: () => this.setState((s) => ({ tabs: [s.tabs[i]], active: 0, ctx: null })) },
+    ];
+    if (abs) items.push('sep', ...this.pathItems(abs, this.state.mode === 'folder' && !t.abs ? t.p : null));
+    this.openCtx(e, items);
+  }
+  treeCtx(e, n) {
+    const d = this.state.data, abs = n ? d.ROOT_PATH + '/' + n.path : d.ROOT_PATH;
+    const items = [];
+    if (!n || n.dir) items.push({ icon: 'icon-file-plus', label: 'Nuevo archivo', run: () => this.setState({ ctx: null }) }, { icon: 'icon-folder-plus', label: 'Nueva carpeta', run: () => this.setState({ ctx: null }) }, 'sep');
+    if (n) items.push(...this.pathItems(abs, n.path));
+    else items.push({ icon: 'icon-copy', label: 'Copiar ruta', key: 'Ctrl+Alt+C', run: () => this.flash('Ruta copiada: ' + abs) }, { icon: 'icon-folder-search', label: 'Mostrar en el explorador', key: 'Ctrl+Alt+R', run: () => this.flash('Abriendo ' + abs + ' en el explorador de archivos') });
+    this.openCtx(e, items);
   }
   setS(k, v) { this.setState((s) => ({ s: { ...s.s, [k]: v } })); }
   startResize(e) {
@@ -479,39 +671,47 @@ class Component extends DCLogic {
   renderVals() {
     const st = this.state;
     const ready = !!(st.lib && st.data);
-    const railB = this.railB(), floating = this.floating();
+    const mode = st.mode, folder = mode === 'folder', isWelcome = mode === 'welcome';
     const tab = st.tabs[st.active];
     const path = tab ? tab.p : null;
-    const lang = ready && path ? st.lib.langOf(path) : 'text';
+    const isHistory = !!(tab && tab.kind === 'history');
+    const lang = ready && path && !isHistory ? st.lib.langOf(path) : 'text';
     const isPreviewTab = !!(tab && tab.preview);
     const isMd = lang === 'markdown' && !isPreviewTab;
     const view = isPreviewTab ? 'preview' : isMd ? st.mdView : 'editor';
+    const isDoc = !!tab && !isHistory && !isWelcome;
     const edSize = st.s.edSize, lh = Math.round(edSize * 1.6);
 
-    const lines = ready && path ? this.lines(path).map((toks, i) => ({
+    const wrapOn = isDoc ? (st.wrapOv[path] ?? Component.LANG_WRAP[lang] ?? st.s.wrap) : false;
+    this.wrapToggle = isDoc ? () => this.setState((s) => ({ wrapOv: { ...s.wrapOv, [path]: !wrapOn } })) : null;
+
+    const lines = ready && isDoc ? this.lines(path).map((toks, i) => ({
       n: i + 1, toks, onClick: () => this.setState({ cur: i }),
       bg: st.s.curLine && i === st.cur ? 'var(--hover)' : 'transparent',
       numColor: i === st.cur ? 'var(--fg-muted)' : 'var(--fg-subtle)',
     })) : [];
     const gutterW = String(lines.length).length * Math.ceil(edSize * 0.62) + 28;
-    const text = ready && path ? st.data.FILES[path] || '' : '';
+    const text = ready && isDoc ? st.data.FILES[path] || '' : '';
     const curLine = lines[st.cur] ? lines[st.cur].toks.map((t) => t.t).join('') : '';
 
     const tabs = st.tabs.map((t, i) => {
       const on = i === st.active;
-      const dirty = !t.preview && ready && !!st.data.DIRTY[t.p];
+      const dirty = !t.preview && !t.kind && ready && !!st.data.DIRTY[t.p];
+      const abs = ready ? this.absOf(t) : null;
       return {
-        label: t.p.split('/').pop(), icon: t.preview ? 'icon-eye' : this.icon(t.p), detail: t.preview ? 'Vista previa' : '',
-        hasDetail: !!t.preview, dirty, clean: !dirty,
+        label: t.name || t.p.split('/').pop(),
+        icon: t.kind === 'history' ? 'icon-git-graph' : t.preview ? 'icon-eye' : t.untitled ? 'icon-file' : this.icon(t.p),
+        detail: t.preview ? 'Vista previa' : '', hasDetail: !!t.preview, dirty, clean: !dirty,
         bg: on ? 'var(--bg)' : 'transparent', color: on ? 'var(--fg)' : 'var(--fg-muted)',
-        shadow: on ? 'inset 0 2px 0 var(--accent)' : 'none', title: ready ? st.data.ROOT_PATH + '/' + t.p : t.p,
+        shadow: on ? 'inset 0 2px 0 var(--accent)' : 'none', title: abs || t.name || '',
         onClick: () => this.setState({ active: i, cur: 0 }),
         onClose: (e) => { e.stopPropagation(); this.closeTab(i); },
+        onCtx: (e) => ready && this.tabCtx(e, i),
       };
     });
 
     const treeRows = [];
-    if (ready) {
+    if (ready && folder) {
       for (const n of st.data.TREE) {
         const parts = n.path.split('/');
         let hidden = false;
@@ -526,6 +726,7 @@ class Component extends DCLogic {
           bg: sel ? 'var(--accent-subtle)' : 'transparent', color: sel ? 'var(--accent-text)' : chg ? this.letterColor(chg.letter) : 'var(--fg)',
           letter: chg ? chg.letter : '', letterColor: chg ? this.letterColor(chg.letter) : 'inherit',
           onClick: () => n.dir ? this.setState((s) => ({ open: { ...s.open, [n.path]: !s.open[n.path] } })) : this.openFile(n.path),
+          onCtx: (e) => this.treeCtx(e, n),
         });
       }
     }
@@ -551,19 +752,17 @@ class Component extends DCLogic {
     const stagedCount = [...G.changes, ...G.unversioned].filter((c) => st.staged[c.path]).length;
     const changeCount = G.changes.length + G.unversioned.length;
 
-    const panelOpen = st.panel !== 'none';
-    const railItems = [['files', 'icon-files', 'Archivos', 'Explorador (Ctrl+B)'], ['git', 'icon-git-branch', 'Git', 'Control de código (Ctrl+Shift+G)']].map(([key, icon, label, title]) => {
+    const panelOpen = folder && st.panel !== 'none';
+    const railItems = [['files', 'icon-files', 'Explorador (Ctrl+B)'], ['git', 'icon-git-branch', 'Control de código (Ctrl+Shift+G)']].map(([key, icon, title]) => {
       const on = panelOpen && st.panel === key;
       return {
-        icon, label, title, ind: on ? 1 : 0,
-        bg: on && railB ? 'var(--accent-subtle)' : 'transparent',
-        color: on ? (railB ? 'var(--accent-text)' : 'var(--fg)') : railB ? 'var(--fg-muted)' : 'var(--fg-subtle)',
+        icon, title, bg: on ? 'var(--accent-subtle)' : 'transparent', color: on ? 'var(--accent-text)' : 'var(--fg-muted)',
         badge: key === 'git' ? changeCount : '', hasBadge: key === 'git' && changeCount > 0,
         onClick: () => this.togglePanel(key),
       };
     });
 
-    const previewEl = ready && view !== 'editor' && path ? React.createElement('div', {
+    const previewEl = ready && isDoc && view !== 'editor' ? React.createElement('div', {
       style: { maxWidth: 720, margin: '0 auto', padding: '36px 40px 80px', fontSize: 14, color: 'var(--fg)', userSelect: 'text' },
       dangerouslySetInnerHTML: { __html: st.lib.renderMarkdown(text) },
     }) : null;
@@ -575,10 +774,31 @@ class Component extends DCLogic {
     }));
 
     const closeMenu = () => this.setState({ menu: false });
-    const recentFolders = [['ted', '~/projects/ted'], ['postino', '~/projects/postino'], ['telaio', '~/projects/telaio'], ['dotfiles', '~/dotfiles']]
-      .map(([name, p], i) => ({ name, path: p, checkOpacity: i === 0 ? 1 : 0, onClick: closeMenu }));
-    const recentFiles = [['notas.md', '~/Documentos'], ['nginx.conf', '/etc/nginx'], ['docker-compose.yml', '~/projects/infra'], ['app.log', '~/Descargas']]
-      .map(([name, p]) => ({ name, path: p, icon: this.icon(name), onClick: closeMenu }));
+    const folders = Component.RECENT_FOLDERS.map(([name, p], i) => ({ name, path: p, dir: p, icon: 'icon-folder', checkOpacity: folder && i === 0 ? 1 : 0, onClick: () => this.setMode('folder') }));
+    const files = Component.RECENT_FILES.map(([name, dir, src]) => ({ name, dir, path: dir + '/' + name, icon: this.icon(name), onClick: () => this.setMode('file', { p: src, name, abs: dir + '/' + name }) }));
+
+    const docAbs = ready && tab && mode === 'file' ? this.absOf(tab) : null;
+    const locPath = folder ? (ready ? st.data.ROOT_PATH : '') : docAbs || '';
+    const selLabel = folder ? (ready ? st.data.ROOT : '') : isWelcome ? 'Abrir' : tabs[st.active] ? tabs[st.active].label : '';
+
+    let commits = [];
+    if (isHistory) {
+      const q = st.hq.trim().toLowerCase();
+      const REF = { b: ['icon-git-branch', 'var(--accent-text)'], r: ['icon-cloud', 'var(--info)'], t: ['icon-tag', 'var(--warning)'] };
+      commits = Component.COMMITS.map(([msg, time, hash, refs = []], i) => ({ msg, time, hash, refs, i }))
+        .filter((c) => !q || c.msg.toLowerCase().includes(q) || c.hash.startsWith(q))
+        .map((c, j) => ({
+          msg: c.msg, time: c.time, hash: c.hash, author: 'Estanislao', authorFull: 'Estanislao Pérez',
+          refs: c.refs.map((r) => { const [k, label] = r.split(':'); return { label, icon: REF[k][0], color: REF[k][1] }; }),
+          lineTop: j === 0 ? '50%' : '0', dotBg: c.i === 0 ? 'var(--bg)' : 'var(--accent)',
+          bg: c.i === st.selCommit ? 'var(--accent-subtle)' : 'transparent',
+          onClick: () => this.setState({ selCommit: c.i }),
+        }));
+    }
+
+    const ctxItems = st.ctx ? st.ctx.items.map((m) => m === 'sep' ? { sep: true, item: false } : {
+      sep: false, item: true, icon: m.icon, label: m.label, key: m.key || '', onClick: () => { this.setState({ ctx: null }); m.run(); },
+    }) : [];
 
     const cats = [
       { label: 'Apariencia', icon: 'icon-palette' }, { label: 'Editor', icon: 'icon-square-pen' },
@@ -593,37 +813,55 @@ class Component extends DCLogic {
       const on = st.theme === t;
       return { label, ring: on ? 'var(--accent)' : 'var(--border-strong)', frameBg: on ? 'var(--accent-subtle)' : 'var(--surface)', bw: on ? '2px' : '1px', pad: on ? '7px' : '8px', radioBw: on ? '4px' : '1px', onClick: () => t !== 'system' && this.setState({ theme: t }) };
     };
-    const languages = ['Markdown', 'Rust', 'JavaScript', 'JSON', 'TOML', 'HTML', 'XML', 'Log'].map((l, i) => ({ name: l, ext: ['.md', '.rs', '.js .mjs .ts', '.json', '.toml', '.html .htm', '.xml .svg', '.log'][i], tab: ['Markdown', 'JSON', 'HTML', 'XML'].includes(l) ? 2 : 4 }));
+    const languages = [['Markdown', 'markdown', '.md', 2], ['Texto plano', 'text', '.txt', 4], ['Rust', 'rust', '.rs', 4], ['JavaScript', 'js', '.js .mjs .ts', 2], ['JSON', 'json', '.json', 2], ['TOML', 'toml', '.toml', 4], ['HTML', 'html', '.html .htm', 2], ['XML', 'xml', '.xml .svg', 2], ['Log', 'log', '.log', 4]]
+      .map(([name, k, ext, tab]) => { const w = Component.LANG_WRAP[k] ?? st.s.wrap; return { name, ext, tab, wrap: w ? 'Sí' : 'No', wrapColor: w ? 'var(--accent-text)' : 'var(--fg-subtle)' }; });
 
     return {
-      ready, theme: st.theme, folder: true, hasTabs: true,
+      ready, theme: st.theme, folder, hasTabs: folder || st.tabs.length > 1, isWelcome, isHistory,
       onEnter: () => { this.hot = true; }, onLeave: () => { this.hot = false; },
-      railA: !railB, railB, railItems, showLogo: !railB,
+      railItems, showLogo: true,
       rootName: ready ? st.data.ROOT : '', rootPath: ready ? st.data.ROOT_PATH : '',
-      menuOpen: st.menu, toggleMenu: () => this.setState((s) => ({ menu: !s.menu })), closeMenu,
-      menuBtnBg: st.menu ? 'var(--pressed)' : 'transparent', recentFolders, recentFiles,
+      selIcon: folder ? 'icon-folder' : isWelcome ? 'icon-folder-open' : tabs[st.active] ? tabs[st.active].icon : 'icon-file',
+      selLabel, selTitle: locPath || 'Recientes y abrir',
+      hasLoc: !!locPath, locHeading: folder ? 'CARPETA' : 'ARCHIVO', locPath,
+      revealLoc: () => this.flash('Abriendo ' + (folder ? locPath : this.dirOf(locPath)) + ' en el explorador de archivos'),
+      copyLoc: () => this.flash('Ruta copiada: ' + locPath),
+      menuOpen: st.menu, toggleMenu: () => this.setState((s) => ({ menu: !s.menu, branchMenu: false })), closeMenu,
+      menuBtnBg: st.menu ? 'var(--pressed)' : 'transparent',
+      recentFolders: folders.slice(0, 4), recentFiles: files.slice(0, 4), welFolders: folders, welFiles: files,
+      newFile: () => this.newFile(), newWindow: () => this.flash('Se abre una ventana nueva de ted'),
+      openFolderAct: () => this.setMode('folder'), openFileAct: () => this.setMode('file'), prevent: (e) => e.preventDefault(),
       tabs,
-      lines, lh: lh + 'px', edSize: edSize + 'px', gutterW: gutterW + 'px', showNumbers: st.s.numbers, wrap: st.s.wrap ? 'pre-wrap' : 'pre',
+      lines, lh: lh + 'px', edSize: edSize + 'px', gutterW: gutterW + 'px', showNumbers: st.s.numbers,
+      wrap: wrapOn ? 'pre-wrap' : 'pre', lineMinW: wrapOn ? '0' : 'max-content',
+      wrapBg: wrapOn ? 'var(--accent-subtle)' : 'transparent', wrapColor: wrapOn ? 'var(--accent-text)' : 'var(--fg-subtle)',
+      wrapTitle: (wrapOn ? 'Ajuste de línea activado' : 'Ajuste de línea desactivado') + ' (Alt+Z)', toggleWrap: () => this.wrapToggle && this.wrapToggle(),
       edRef: this.edRef, pvRef: this.pvRef,
       onEdScroll: () => this.syncScroll(this.edRef.current, this.pvRef.current),
-      showEditor: view !== 'preview', showPreview: view !== 'editor', previewEl,
+      showEditor: isDoc && view !== 'preview', showPreview: isDoc && view !== 'editor', previewEl,
       edFlex: view === 'split' ? '1 1 0' : '1 1 auto',
-      isMd, mdTools, openPreviewTab: () => this.openPreviewTab(path),
-      panelOpen, showFiles: st.panel === 'files', showGit: st.panel === 'git', docked: !floating,
-      pW: st.panelW + 'px', pPos: floating ? 'absolute' : 'relative',
-      pShadow: floating ? '12px 0 32px rgba(0,0,0,.35)' : 'none',
-      showPin: railB, togglePin: () => this.setState((s) => ({ pinned: !s.pinned })),
-      pinIcon: st.pinned ? 'icon-pin-off' : 'icon-pin', pinTitle: st.pinned ? 'Soltar: flota sobre el editor' : 'Fijar junto al editor',
-      pinColor: st.pinned ? 'var(--accent-text)' : 'var(--fg-muted)',
+      isMd: isMd && isDoc, mdTools, openPreviewTab: () => this.openPreviewTab(path),
+      panelOpen, showFiles: st.panel === 'files', showGit: st.panel === 'git', docked: true,
+      pW: st.panelW + 'px', pPos: 'relative', pShadow: 'none',
       startResize: (e) => this.startResize(e),
-      treeRows, collapseAll: () => this.setState({ open: {} }),
+      treeRows, collapseAll: () => this.setState({ open: {} }), rootCtx: (e) => ready && this.treeCtx(e, null),
       gitRows, branch: G.branch, ahead: G.ahead, hasAhead: G.ahead > 0, changeCount, hasChanges: changeCount > 0,
       statsAdd: '+' + (G.stats.additions || 0), statsDel: '\u2212' + (G.stats.deletions || 0),
       stagedLabel: stagedCount === 1 ? '1 archivo' : stagedCount + ' archivos', commitOpacity: stagedCount ? 1 : 0.45,
       amend: this.check(st.amend ? 'on' : 'off', () => this.setState((s) => ({ amend: !s.amend }))),
+      openHistory: () => this.openHistory(),
+      branchMenu: st.branchMenu, branchBg: st.branchMenu ? 'var(--pressed)' : 'transparent',
+      toggleBranchMenu: () => this.setState((s) => ({ branchMenu: !s.branchMenu, menu: false })), closeBranchMenu: () => this.setState({ branchMenu: false }),
+      doFetch: () => this.flash('Fetch completado: main está al día con origin'),
+      branches: ['main', 'feature/soft-wrap', 'fix/welcome-columns'].map((name, i) => ({ name, check: i === 0 ? 1 : 0 })),
+      hq: st.hq, onHq: (e) => this.setState({ hq: e.target.value }), commits,
+      commitCount: st.hq.trim() ? commits.length + (commits.length === 1 ? ' resultado' : ' resultados') : '56 commits',
+      ctxOpen: !!st.ctx, ctxX: st.ctx ? st.ctx.x + 'px' : '0', ctxY: st.ctx ? st.ctx.y + 'px' : '0', ctxItems,
+      closeCtx: (e) => { e.preventDefault(); this.setState({ ctx: null }); },
+      toastOn: !!st.toast, toast: st.toast,
       ln: st.cur + 1, col: curLine.length + 1, indent: st.s.spaces ? 'Espacios: ' + st.s.tab : 'Tabulación: ' + st.s.tab,
       langName: ready ? st.lib.LANG_NAMES[lang] : '', words: isMd && ready ? st.lib.wordCount(text).toLocaleString('es-ES') + ' palabras' : '',
-      showWords: isMd, showCursor: view !== 'preview',
+      showWords: isMd && isDoc, showCursor: isDoc && view !== 'preview', showFileInfo: isDoc,
       settings: st.settings, openSettings: () => this.setState({ settings: true, menu: false }), closeSettings: () => this.setState({ settings: false }),
       stop: (e) => e.stopPropagation(), cats, catTitle: cats[st.cat].label,
       cat0: st.cat === 0, cat1: st.cat === 1, cat2: st.cat === 2, cat3: st.cat === 3, cat4: st.cat === 4, cat5: st.cat === 5,
@@ -634,7 +872,7 @@ class Component extends DCLogic {
       tabDec: () => this.setS('tab', Math.max(1, st.s.tab - 1)), tabInc: () => this.setS('tab', Math.min(8, st.s.tab + 1)),
       swSpaces: sw('spaces'), swWrap: sw('wrap'), swNumbers: sw('numbers'), swCurLine: sw('curLine'), swAutosave: sw('autosave'),
       swTrim: sw('trim'), swFinalNl: sw('finalNl'), swGitFetch: sw('gitFetch'), swGitConfirm: sw('gitConfirm'), swMdSync: sw('mdSync'),
-      languages, resetSettings: () => this.setState({ s: { ...Component.DEF } }),
+      languages, resetSettings: () => this.setState({ s: { ...Component.DEF }, wrapOv: {} }),
     };
   }
 }

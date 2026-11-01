@@ -1,7 +1,7 @@
 # ted design system
 
 Reference for anyone (human or agent) touching the UI. It is written from the Claude Design
-prototype in `design_system/` (`ted v2.dc.html`, the final one, which replaces `ted.dc.html`;
+prototype in `design_system/` (`ted v3.dc.html`, the latest one, which replaces `ted v2.dc.html`;
 `ted-lang.js`, `ted-data.js`), as the shared rules
 ask (1.3). Once the UI is implemented the code is the source of truth and this file its readable
 summary: if they disagree, the code wins; fix this file.

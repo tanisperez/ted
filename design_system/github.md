@@ -4,6 +4,15 @@ branch: main
 Also reads: tanisperez/telaio (main), the shared design system (palette, metrics, components).
 
 ## Last sync
+date: 2026-11-01T13:34:08Z
+note: also read tanisperez/ted (main, d1a4034) for the history tab
+
+### Updated in this project
+- ted v3: welcome screen in 2 columns, soft wrap toggle (Alt+Z) in the status bar
+- Path moved out of the status bar into the folder menu and context menus
+- File mode: Ctrl+N adds tabs; history tab and branch menu
+
+## Previous sync
 date: 2026-10-30T08:03:25Z
 
 ### Updated in this project
