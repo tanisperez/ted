@@ -222,6 +222,10 @@ pub struct Settings {
     /// generated file never costs a long parse nor the memory of its tree. Logs are highlighted
     /// at any size: they need no parse.
     pub highlight_max_size_mb: u32,
+    /// Linux and the other freedesktop systems: whether the files ted opens by default show ted's
+    /// document icon (`ted_workspace::sync_mime_icons`). Off by default: it changes the user's
+    /// MIME database.
+    pub document_icons: bool,
     /// What the explorer hides, in the gitignore syntax (`target`, `*.log`). `.gitignore` is
     /// honored too.
     pub explorer_exclude: Vec<String>,
@@ -266,6 +270,7 @@ impl Default for Settings {
             trim_trailing_whitespace: true,
             insert_final_newline: true,
             highlight_max_size_mb: 4,
+            document_icons: false,
             explorer_exclude: [".git", "target", "node_modules"]
                 .map(String::from)
                 .to_vec(),
@@ -378,6 +383,9 @@ fn parse_settings(content: &str) -> Settings {
     }
     if let Some(value) = text("startup").and_then(Startup::parse) {
         settings.startup = value;
+    }
+    if let Some(value) = flag("document_icons") {
+        settings.document_icons = value;
     }
     if let Some(patterns) = table
         .get("explorer_exclude")
@@ -523,6 +531,7 @@ mod tests {
             tab_size: 2,
             insert_spaces: false,
             trim_trailing_whitespace: false,
+            document_icons: true,
             explorer_exclude: vec!["dist".to_string(), "*.log".to_string()],
             log_level: LogLevel::Debug,
             git_executable: Some(PathBuf::from("/opt/git/bin/git")),

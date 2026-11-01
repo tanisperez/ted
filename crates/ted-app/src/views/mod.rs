@@ -2,6 +2,7 @@
 
 mod choice;
 mod document;
+mod document_icons;
 mod editor;
 mod explorer;
 mod find;

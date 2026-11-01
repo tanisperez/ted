@@ -114,6 +114,15 @@ _version: 2
 "settings.explorer.exclude_description":
   en: "Hidden from the explorer. Comma separated, in the .gitignore syntax; .gitignore is honored too."
   es: "Se ocultan en el explorador. Separados por comas, con la sintaxis de .gitignore; también se respeta .gitignore."
+"settings.default_app.title":
+  en: "Default app"
+  es: "App predeterminada"
+"settings.default_app.icons":
+  en: "Show ted's icon on the files it opens by default"
+  es: "Mostrar el icono de ted en los archivos que abre por defecto"
+"settings.default_app.icons_description":
+  en: "Only for the file types whose default app is ted. Your file manager may need a reload (F5)."
+  es: "Solo en los tipos de archivo cuya app predeterminada es ted. Puede que el gestor de archivos necesite recargar (F5)."
 "settings.about.footer":
   en: "ted does not update itself yet: new versions are published on GitHub."
   es: "ted aún no se actualiza solo: las versiones nuevas se publican en GitHub."

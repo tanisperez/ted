@@ -33,7 +33,7 @@ description: Every setting of ted, its default, and the settings.toml file.
     </tbody>
 </table></div>
 
-<h2>Files</h2>
+<h2 id="files">Files</h2>
 <div class="table"><table>
     <thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
     <tbody>
@@ -41,6 +41,7 @@ description: Every setting of ted, its default, and the settings.toml file.
         <tr><td>Trim trailing whitespace</td><td>On</td><td>Saving removes the spaces and tabs at the end of every line.</td></tr>
         <tr><td>Insert final newline</td><td>On</td><td>Saving ends the file with a line break.</td></tr>
         <tr><td>Exclude</td><td><code>.git, target, node_modules</code></td><td>What the explorer hides, comma separated, in the <code>.gitignore</code> syntax (<code>*.log</code>, <code>/build</code>). Applied when you press <kbd>Enter</kbd> or leave the field. <code>.gitignore</code> files are honored too.</td></tr>
+        <tr><td>Show ted's icon on the files it opens by default</td><td>Off</td><td>Linux only. The file types whose default app is ted show its document icon in the file manager; see <a href="installation.html#default-app">ted as the default app</a>. ted writes the icons and a file type definition under <code>~/.local/share</code>, for your user only, and removes them when you turn it off.</td></tr>
     </tbody>
 </table></div>
 

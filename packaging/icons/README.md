@@ -31,4 +31,6 @@ The Windows installer installs the `.ico` files in `{app}\icons` and points one 
 extension (`ted.md`, ...) at them; `packaging/macos/bundle.sh` copies the `.icns` files into the
 bundle, named by `CFBundleTypeIconFile` in `Info.plist`. Neither takes over a file type: the
 user chooses ted with Open with. Linux has no per-app document icon (the icon follows the MIME
-type and the theme), so the Linux packages install none.
+type and the theme), so the Linux packages install none: ted itself gives the SVG masters, built
+into the binary, to the MIME types whose default app is ted, in the user's own MIME database,
+when the user turns it on in Settings (`ted-workspace/src/mime_icons.rs`).

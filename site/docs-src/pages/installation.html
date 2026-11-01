@@ -36,7 +36,7 @@ $ sudo pacman -U ./ted-X.Y.Z-1-x86_64.pkg.tar.zst
 <ul>
     <li><strong>Windows</strong>: right click a file, <strong>Open with</strong>, <strong>Choose another app</strong>, pick ted and <strong>Always</strong>. Windows remembers it. This needs the installer: the portable zip registers nothing.</li>
     <li><strong>macOS</strong>: select a file, <strong>File</strong>, <strong>Get Info</strong>, pick ted under <strong>Open with</strong> and press <strong>Change All</strong>.</li>
-    <li><strong>Linux</strong>: pick ted in your file manager's <strong>Open With</strong> dialog, or run <code>xdg-mime default codes.tanis.ted.desktop text/markdown</code>. The icon does not change: Linux file managers draw the icon of the file type from the icon theme, whatever app opens it.</li>
+    <li><strong>Linux</strong>: pick ted in your file manager's <strong>Open With</strong> dialog (with <strong>Remember</strong> in Dolphin), or run <code>xdg-mime default codes.tanis.ted.desktop text/markdown</code>. Linux file managers draw the icon of a file type from the icon theme, whatever app opens it, so the icon only changes if you turn on <a href="settings.html#files">Show ted's icon on the files it opens by default</a> in Settings. ted then gives its icon, for your user only, to the types whose default app is ted, and follows your choices while it runs. Your file manager may need a reload (<kbd>F5</kbd>) to show it.</li>
 </ul>
 
 <h2>First launch</h2>

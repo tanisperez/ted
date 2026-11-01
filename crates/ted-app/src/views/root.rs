@@ -37,6 +37,7 @@ use crate::theme::metrics::{
     EXPLORER_RESIZE_HANDLE, EXPLORER_WIDTH, EXPLORER_WIDTH_MAX, EXPLORER_WIDTH_MIN,
 };
 
+use super::document_icons::DocumentIcons;
 use super::editor::EditorView;
 use super::explorer::{ExplorerEvent, ExplorerView};
 use super::git::{CheckoutChoice, GitTasks, MenuContext, new_branch_menu};
@@ -168,6 +169,8 @@ pub struct AppView {
     pub(crate) branch_menu_context: Rc<RefCell<MenuContext>>,
     /// The choice of the checkout dialog while it is open.
     pub(crate) checkout_choice: CheckoutChoice,
+    /// ted's icon on the files it opens by default (Linux).
+    pub(crate) document_icons: DocumentIcons,
     /// Checks the open file on disk when the window gets the focus back.
     _activation: Subscription,
 }
@@ -227,9 +230,11 @@ impl AppView {
             branch_menu,
             branch_menu_context,
             checkout_choice: CheckoutChoice::default(),
+            document_icons: DocumentIcons::default(),
             _activation: activation,
         };
         view.detect_git(cx);
+        view.follow_document_icons(cx);
         view.update_title(window, cx);
         view.open_paths(&paths, window, cx);
         if paths.is_empty() && view.settings.startup == Startup::NewFile {

@@ -1,7 +1,8 @@
 //! The Settings modal: opened from the title bar gear and `Ctrl ,` / `Cmd ,`, closed with the
 //! cross, Escape or a click outside, as Postino's (`views/settings.rs`). The 0.1.0 subset of the
 //! design: Appearance (language, theme, interface size), Editor (font size, line numbers, current
-//! line, tab size, spaces), Files (save cleanup, explorer excludes) and About.
+//! line, tab size, spaces), Files (save cleanup, explorer excludes, document icons on Linux) and
+//! About.
 //!
 //! Every control writes `AppView::settings` and calls [`AppView::apply_settings`], which applies
 //! the change at once and saves `settings.toml`: there is no Save button.
@@ -28,6 +29,7 @@ use crate::state::settings::{
 };
 use crate::theme::{self, Palette, PaletteExt};
 
+use super::document_icons;
 use super::editor::EditorDisplay;
 use super::logo::logo;
 use super::root::AppView;
@@ -97,6 +99,7 @@ impl AppView {
         apply_editor_settings(settings, cx);
         log::info!("settings changed: {settings:?}");
         settings::save_settings(settings);
+        self.follow_document_icons(cx);
         cx.refresh_windows();
         cx.notify();
     }
@@ -246,11 +249,17 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
             text_section(weak.clone(), &palette, &settings),
             indentation_section(weak.clone(), &palette, &settings),
         ],
-        SettingsCategory::Files => vec![
-            startup_section(weak.clone(), settings.startup),
-            saving_section(weak.clone(), &palette, &settings),
-            explorer_section(exclude_input.as_ref(), cx),
-        ],
+        SettingsCategory::Files => {
+            let mut sections = vec![
+                startup_section(weak.clone(), settings.startup),
+                saving_section(weak.clone(), &palette, &settings),
+                explorer_section(exclude_input.as_ref(), cx),
+            ];
+            if document_icons::SUPPORTED {
+                sections.push(default_app_section(weak.clone(), &palette, &settings));
+            }
+            sections
+        }
         SettingsCategory::Git => git_sections(
             weak.clone(),
             &palette,
@@ -615,6 +624,31 @@ fn startup_section(weak: WeakEntity<AppView>, startup: Startup) -> AnyElement {
         .child(
             LabeledRow::new(t!("settings.startup.label"), control)
                 .description(t!("settings.startup.description")),
+        )
+        .into_any_element()
+}
+
+/// "Default app", Linux only: ted's icon on the files it opens by default.
+fn default_app_section(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    settings: &Settings,
+) -> AnyElement {
+    v_flex()
+        .gap(px(14.0))
+        .child(SectionHeading::new(t!("settings.default_app.title")))
+        .child(
+            LabeledRow::new(
+                t!("settings.default_app.icons"),
+                toggle(
+                    "settings-document-icons",
+                    weak,
+                    palette,
+                    settings.document_icons,
+                    |settings, on| settings.document_icons = on,
+                ),
+            )
+            .description(t!("settings.default_app.icons_description")),
         )
         .into_any_element()
 }
