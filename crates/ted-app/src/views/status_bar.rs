@@ -1,8 +1,8 @@
 //! The status bar at the bottom of the main window. In folder mode it starts with the panel
-//! toggles (Files and Git, with its count of changed files), a separator and the folder path (a click
-//! opens it in the file manager); with a document open, the cursor position, the indentation, the
-//! encoding, the line ending and the language, right aligned as in the design. Inside a git
-//! repository the branch comes before the folder path.
+//! toggles (Files and Git, with its count of changed files), a separator and, inside a git
+//! repository, the branch; with a document open, the cursor position, the indentation, the
+//! encoding, the line ending and the language, right aligned as in the design. The folder's path
+//! lives in the title bar's switcher menu.
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::Button;
@@ -14,7 +14,7 @@ use rust_i18n::t;
 use telaio_ui::components::{NeutralButtonExt, SearchableMenu};
 
 use crate::actions::{ToggleExplorer, ToggleGit};
-use crate::state::launch::{Target, shorten_path};
+use crate::state::launch::Target;
 use crate::state::status::DocumentStatus;
 use crate::theme::metrics::{
     RADIUS_MD, STATUS_BAR_HEIGHT, STATUS_TOGGLE_HEIGHT, STATUS_TOGGLE_MIN_WIDTH,
@@ -93,18 +93,6 @@ impl AppView {
                         .tooltip(t!("git.menu.tooltip"))
                         .child(content),
                 )
-            }))
-            .children(folder.map(|root| {
-                let label = shorten_path(&root, std::env::home_dir().as_deref());
-                h_flex()
-                    .id("status-folder")
-                    .items_center()
-                    .gap(px(6.0))
-                    .cursor_pointer()
-                    .hover(|style| style.underline())
-                    .child(Icon::new(IconName::HardDrive).small())
-                    .child(label)
-                    .on_click(move |_, _, cx| cx.open_with_system(&root))
             }))
             .children(self.git.sync.running.map(|op| {
                 h_flex()

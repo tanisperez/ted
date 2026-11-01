@@ -51,7 +51,14 @@ pub fn display_name(path: &Path) -> String {
         .unwrap_or_else(|| path.display().to_string())
 }
 
-/// `path` with the home folder written as `~`, for the recents and the status bar.
+/// `path` relative to `root`, in the platform's separators, when it is inside it (and is not
+/// `root` itself), for Copy relative path.
+pub fn relative_path(root: &Path, path: &Path) -> Option<String> {
+    let relative = path.strip_prefix(root).ok()?;
+    (!relative.as_os_str().is_empty()).then(|| relative.display().to_string())
+}
+
+/// `path` with the home folder written as `~`, for the recents and the menus.
 pub fn shorten_path(path: &Path, home: Option<&Path>) -> String {
     if let Some(home) = home
         && let Ok(rest) = path.strip_prefix(home)
@@ -113,6 +120,17 @@ fn percent_decode(text: &str) -> Option<String> {
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn relative_paths_need_the_root() {
+        let root = Path::new("/home/me/project");
+        assert_eq!(
+            relative_path(root, Path::new("/home/me/project/src/main.rs")),
+            Some(Path::new("src").join("main.rs").display().to_string())
+        );
+        assert_eq!(relative_path(root, Path::new("/home/me/other.txt")), None);
+        assert_eq!(relative_path(root, root), None);
+    }
 
     #[test]
     fn files_folders_and_missing_paths() {

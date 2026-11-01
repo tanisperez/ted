@@ -871,6 +871,8 @@ impl Render for AppView {
                     this.close_document(document.id, window, cx);
                 }
             }))
+            .on_action(cx.listener(Self::copy_current_path))
+            .on_action(cx.listener(Self::reveal_current))
             .on_action(cx.listener(|this, _: &NextTab, window, cx| {
                 if this.documents.cycle(true) {
                     this.document_shown(window, cx);

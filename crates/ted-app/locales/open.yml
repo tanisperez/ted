@@ -15,6 +15,24 @@ _version: 2
 "welcome.tagline":
   en: "A fast, lightweight text editor"
   es: "Un editor de texto ligero y rápido"
+"open.location_folder":
+  en: "Folder"
+  es: "Carpeta"
+"open.location_file":
+  en: "File"
+  es: "Archivo"
+"open.copy_path":
+  en: "Copy path"
+  es: "Copiar ruta"
+"open.copy_relative_path":
+  en: "Copy relative path"
+  es: "Copiar ruta relativa"
+"open.reveal":
+  en: "Show in file manager"
+  es: "Mostrar en el gestor de archivos"
+"open.path_copied":
+  en: "Path copied"
+  es: "Ruta copiada"
 "open.new_file":
   en: "New file"
   es: "Nuevo archivo"

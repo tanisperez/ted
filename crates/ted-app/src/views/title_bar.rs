@@ -1,5 +1,6 @@
 //! The title bar: the app icon, "ted" and the switcher with what is open (the folder or the file),
-//! whose menu lists the recent folders and files and the two Open actions. At the right, the
+//! whose menu starts with its path (Copy path, Show in file manager), then lists the recent
+//! folders and files and the two Open actions. At the right, the
 //! settings gear, then the window controls drawn by gpui-kit's `TitleBar`.
 
 use gpui_kit::assets::IconName;
@@ -20,11 +21,14 @@ use crate::theme::metrics::{
 };
 use crate::theme::{Palette, PaletteExt};
 
+use super::location;
 use super::logo::logo;
 use super::root::AppView;
 
 /// Width of the switcher's menu.
 const MENU_WIDTH: f32 = 360.0;
+/// Space the switcher's menu leaves between its bottom and the window's, at its tallest.
+const MENU_WINDOW_MARGIN: f32 = 56.0;
 /// Height of the switcher button.
 const SWITCHER_HEIGHT: f32 = 26.0;
 
@@ -68,6 +72,15 @@ impl AppView {
             .target
             .as_ref()
             .map(|target| target.path().to_path_buf());
+        // The location block at the top: the folder in folder mode, the file shown otherwise.
+        let location = match &self.target {
+            Some(Target::Folder(root)) => Some((root.clone(), true)),
+            _ => self
+                .documents
+                .active()
+                .and_then(|document| document.path.clone())
+                .map(|path| (path, false)),
+        };
         let folders = self.recents.folders.clone();
         let files = self.recents.files.clone();
         let weak = cx.weak_entity();
@@ -82,8 +95,22 @@ impl AppView {
             .icon(Icon::new(icon).small())
             .label(label)
             .dropdown_caret(true)
-            .dropdown_menu(move |menu, _, _| {
-                let mut menu = rich_menu_width(menu, MENU_WIDTH);
+            .dropdown_menu(move |menu, window, _| {
+                // It scrolls instead of running past the window, as the design's
+                // `max-height: calc(100vh - 56px)`.
+                let max_height = window.viewport_size().height - px(MENU_WINDOW_MARGIN);
+                let mut menu = rich_menu_width(menu, MENU_WIDTH)
+                    .scrollable(true)
+                    .max_h(max_height);
+                if let Some((path, folder)) = &location {
+                    menu = location::path_items(
+                        menu.item(location_heading(path, *folder)),
+                        path,
+                        *folder,
+                        None,
+                    )
+                    .separator();
+                }
                 for (group, paths) in [(IconName::Folder, &folders), (IconName::FileText, &files)] {
                     if paths.is_empty() {
                         continue;
@@ -135,6 +162,7 @@ fn recent_item(icon: IconName, name: String, detail: String, selected: bool) -> 
         h_flex()
             .flex_1()
             .min_w_0()
+            .overflow_hidden()
             .h(px(RICH_MENU_ROW_HEIGHT))
             .px(px(4.0))
             .text_size(px(RICH_MENU_TEXT_SIZE))
@@ -163,6 +191,41 @@ fn recent_item(icon: IconName, name: String, detail: String, selected: bool) -> 
                     .text_color(palette.accent_text)
             }))
     })
+}
+
+/// The top of the switcher's menu: FOLDER or FILE and the full path in mono, truncated.
+fn location_heading(path: &std::path::Path, folder: bool) -> PopupMenuItem {
+    let heading = match folder {
+        true => t!("open.location_folder"),
+        false => t!("open.location_file"),
+    }
+    .to_uppercase();
+    let path = path.display().to_string();
+    PopupMenuItem::element(move |_, cx| {
+        let palette = cx.palette();
+        v_flex()
+            .flex_1()
+            .min_w_0()
+            .px(px(4.0))
+            .py(px(6.0))
+            .gap(px(3.0))
+            .child(
+                div()
+                    .text_size(px(11.0))
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .text_color(palette.fg_subtle)
+                    .child(heading.clone()),
+            )
+            .child(
+                div()
+                    .truncate()
+                    .font_family(cx.theme().mono_font_family.clone())
+                    .text_size(px(11.5))
+                    .text_color(palette.fg_muted)
+                    .child(path.clone()),
+            )
+    })
+    .disabled(true)
 }
 
 /// The settings gear: opens the Settings modal, as `Ctrl+,`.

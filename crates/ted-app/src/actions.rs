@@ -28,8 +28,12 @@ actions!(
         Save,
         /// Opens the Settings modal (`Ctrl+,`).
         OpenSettings,
-        /// Closes the active tab in folder mode (`Ctrl+W`).
+        /// Closes the active tab (`Ctrl+W`).
         CloseTab,
+        /// Copies the path of the file shown, or of the open folder (`Ctrl+Alt+C`).
+        CopyPath,
+        /// Shows the file shown, or the open folder, in the system file manager (`Ctrl+Alt+R`).
+        RevealInFileManager,
         /// Shows the next tab, wrapping around (`Ctrl+Tab`).
         NextTab,
         /// Shows the previous tab, wrapping around (`Ctrl+Shift+Tab`).
@@ -43,6 +47,8 @@ pub mod hints {
     pub const NEW_FILE: &str = "\u{2318}N";
     pub const OPEN_FILE: &str = "\u{2318}O";
     pub const OPEN_FOLDER: &str = "\u{21e7}\u{2318}O";
+    pub const COPY_PATH: &str = "\u{2325}\u{2318}C";
+    pub const REVEAL: &str = "\u{2325}\u{2318}R";
 }
 
 /// The shortcut labels shown next to the actions, as typed on this platform.
@@ -51,6 +57,8 @@ pub mod hints {
     pub const NEW_FILE: &str = "Ctrl+N";
     pub const OPEN_FILE: &str = "Ctrl+O";
     pub const OPEN_FOLDER: &str = "Ctrl+Shift+O";
+    pub const COPY_PATH: &str = "Ctrl+Alt+C";
+    pub const REVEAL: &str = "Ctrl+Alt+R";
 }
 
 /// Registers the app wide key bindings. `None` as the context: anywhere in the window.
@@ -64,6 +72,8 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-s", Save, None),
         KeyBinding::new("cmd-w", CloseTab, None),
         KeyBinding::new("cmd-,", OpenSettings, None),
+        KeyBinding::new("cmd-alt-c", CopyPath, None),
+        KeyBinding::new("cmd-alt-r", RevealInFileManager, None),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
@@ -74,6 +84,8 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-s", Save, None),
         KeyBinding::new("ctrl-w", CloseTab, None),
         KeyBinding::new("ctrl-,", OpenSettings, None),
+        KeyBinding::new("ctrl-alt-c", CopyPath, None),
+        KeyBinding::new("ctrl-alt-r", RevealInFileManager, None),
     ]);
     // Ctrl+Tab switches tabs on every platform, macOS included, as in Postino. The editor binds
     // only plain `tab` and `shift-tab`, so this still fires while it has the focus.

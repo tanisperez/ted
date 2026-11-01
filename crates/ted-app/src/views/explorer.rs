@@ -1,13 +1,16 @@
 //! The folder explorer of folder mode: the opened folder's tree, listed one folder at a time in the
 //! background, rendered as a virtualized list (only the visible rows are built), and kept live by a
 //! watcher on the expanded folders. The tree logic is `state::explorer`; this view lists, watches,
-//! renders and takes the keyboard. Opening a file is an [`ExplorerEvent`] for the root view.
+//! renders and takes the keyboard. Opening a file is an [`ExplorerEvent`] for the root view. A
+//! right click on a row, or below the rows for the root, copies its path or shows it in the file
+//! manager.
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use gpui_kit::assets::IconName;
+use gpui_kit::component::menu::ContextMenuExt as _;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -20,6 +23,7 @@ use crate::state::launch::display_name;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{EXPLORER_HEADER_HEIGHT, EXPLORER_LIST_PADDING};
 use crate::views::git::letter_color;
+use crate::views::location;
 
 actions!(
     explorer,
@@ -254,6 +258,7 @@ impl Render for ExplorerView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let palette = cx.palette();
         let root_name = display_name(self.tree.root());
+        let root_path = self.tree.root().to_path_buf();
         let row_count = self.tree.rows().len();
         let list = uniform_list(
             "explorer-rows",
@@ -287,6 +292,8 @@ impl Render for ExplorerView {
                         if row.loading {
                             item = item.detail("…");
                         }
+                        let menu_path = row.path.clone();
+                        let menu_root = root.clone();
                         if let Some(letter) = git_mark(&marks, &root, &row.path) {
                             // A folder shows a dot in the color of the change under it.
                             let text = if folder { '\u{25cf}' } else { letter };
@@ -300,7 +307,14 @@ impl Render for ExplorerView {
                                     .child(text.to_string()),
                             );
                         }
-                        item
+                        // Its own right-click menu, which wins over the list's.
+                        div()
+                            .id(("row-menu", index))
+                            .child(item)
+                            .context_menu(move |menu, _, _| {
+                                location::path_items(menu, &menu_path, folder, Some(&menu_root))
+                            })
+                            .into_any_element()
                     })
                     .collect()
             }),
@@ -348,6 +362,8 @@ impl Render for ExplorerView {
                     ),
             )
             .child(list)
+            // The empty area below the rows: the root folder's menu.
+            .context_menu(move |menu, _, _| location::path_items(menu, &root_path, true, None))
     }
 }
 

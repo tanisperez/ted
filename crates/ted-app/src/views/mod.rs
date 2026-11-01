@@ -6,6 +6,7 @@ mod editor;
 mod explorer;
 mod find;
 mod git;
+mod location;
 mod logo;
 mod root;
 mod settings;

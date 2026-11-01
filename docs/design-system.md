@@ -246,7 +246,7 @@ count and the measured advance of Geist Mono, not from the 0.62 constant.
 | panel 260   | gutter | text                                  |
 |             |        |                                       |
 +-------------+------------------------------------------------+
-| status bar 30: Files, Git | branch, folder path ... Ln, Col  |
+| status bar 30: Files, Git | branch ...                Ln, Col  |
 +--------------------------------------------------------------+
 ```
 
@@ -258,7 +258,7 @@ count and the measured advance of Geist Mono, not from the 0.62 constant.
 3. **Tab bar** (folder mode only).
 4. **Editor** (and, for markdown, the preview beside it or instead of it).
 5. **Status bar** (`surface`, top border): left, the Files and Git panel toggles (folder mode;
-   Git shows its change count), a separator, the branch with the ahead count and the folder path; right, word count (markdown), `Ln n, Col n`, indentation, `UTF-8`, line ending,
+   Git shows its change count), a separator and the branch with the ahead count; right, word count (markdown), `Ln n, Col n`, indentation, `UTF-8`, line ending,
    language, shortcuts button.
 
 ## Screens
@@ -295,7 +295,10 @@ secondary buttons.
 
 Right of the logo and the separator: a ghost button 26 px high (radius 6, `fg_muted`) with an
 icon and the name of what is open: folder icon and the folder name, file-text icon and the file
-name, or folder-clock and "Open recent" with nothing open. Its menu (360 px) lists the recent
+name, or folder-clock and "Open recent" with nothing open. Its menu (360 px, scrolled when taller
+than the window less 56 px) starts with the location of what is open: a heading (FOLDER or FILE,
+11/600 `fg_subtle`) over the full path in Geist Mono 11.5 `fg_muted`, truncated, then Copy path
+(`Ctrl+Alt+C`) and Show in file manager (`Ctrl+Alt+R`) and a separator. Then the recent
 folders, a separator, the recent files (each with its `~` path at the right in 12 px `fg_subtle`
 and a check on the open one), a separator, and telaio's shortcut rows for Open file and Open
 folder. The window title is `name · ted`, or `ted` alone.
@@ -303,8 +306,8 @@ folder. The window title is `name · ted`, or `ted` alone.
 ### File mode
 
 `ted some/file.txt`, a recent file or Open file with nothing open. The switcher shows the file;
-no explorer, no tab bar: the editor fills the window. The status bar has no panel toggles and no
-folder path. Several files (`ted a.txt b.txt`) open in tabs: the tab bar shows while more than
+no explorer, no tab bar: the editor fills the window. The status bar has no panel toggles.
+`Ctrl+N` and Open file add documents next to it; several files (`ted a.txt b.txt`) open in tabs: the tab bar shows while more than
 one is open, and the switcher names the file shown. With a folder (`ted . notes.md`), the files
 open in the folder's tabs; only the first folder given is opened.
 
