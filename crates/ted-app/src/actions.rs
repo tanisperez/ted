@@ -55,6 +55,7 @@ pub mod hints {
     pub const OPEN_FOLDER: &str = "\u{21e7}\u{2318}O";
     pub const COPY_PATH: &str = "\u{2325}\u{2318}C";
     pub const REVEAL: &str = "\u{2325}\u{2318}R";
+    pub const CLOSE_TAB: &str = "\u{2318}W";
 }
 
 /// The shortcut labels shown next to the actions, as typed on this platform.
@@ -65,6 +66,7 @@ pub mod hints {
     pub const OPEN_FOLDER: &str = "Ctrl+Shift+O";
     pub const COPY_PATH: &str = "Ctrl+Alt+C";
     pub const REVEAL: &str = "Ctrl+Alt+R";
+    pub const CLOSE_TAB: &str = "Ctrl+W";
 }
 
 /// Registers the app wide key bindings. `None` as the context: anywhere in the window.

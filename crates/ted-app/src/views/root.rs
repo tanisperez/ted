@@ -591,6 +591,29 @@ impl AppView {
         );
     }
 
+    /// Close others: closes every document but `keep`, each asking first when it has unsaved
+    /// changes.
+    pub(crate) fn close_other_documents(
+        &mut self,
+        keep: u64,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(index) = self.documents.position(|document| document.id == keep) {
+            self.activate_document(index, window, cx);
+        }
+        let others: Vec<u64> = self
+            .documents
+            .items()
+            .iter()
+            .map(|document| document.id)
+            .filter(|id| *id != keep)
+            .collect();
+        for id in others {
+            self.close_document(id, window, cx);
+        }
+    }
+
     /// Asks for a file or a folder with the native dialog and opens it.
     pub(crate) fn prompt_open(
         &mut self,
