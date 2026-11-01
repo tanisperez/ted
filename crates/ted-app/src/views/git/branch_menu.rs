@@ -1,5 +1,5 @@
 //! The branch menu of the status bar, ported from Postino: telaio's searchable menu filled with
-//! the branches of `state::git_branches`, the New branch, Pull, Push and Fetch actions, a submenu
+//! the branches of `state::git_branches`, the View history, New branch, Pull, Push and Fetch actions, a submenu
 //! per branch and the "Create branch" row. The rows are rebuilt when the branches change, never in
 //! render.
 
@@ -211,6 +211,7 @@ impl AppView {
             push = push.badge(ahead.to_string());
         }
         let actions = [
+            MenuAction::new("history", t!("git.menu.history"), IconName::GitGraph),
             MenuAction::new("new", t!("git.menu.new_branch"), IconName::Plus),
             MenuAction::new("pull", t!("git.menu.pull"), IconName::ArrowDown),
             push,
@@ -254,6 +255,7 @@ impl AppView {
                 }
             }
             SearchableMenuEvent::Action(id) => match id.as_ref() {
+                "history" => self.open_git_history(window, cx),
                 "new" => self.new_branch_dialog(None, String::new(), window, cx),
                 "pull" => self.pull(false, window, cx),
                 "push" => self.start_push(true, window, cx),
