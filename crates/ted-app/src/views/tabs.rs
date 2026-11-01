@@ -1,6 +1,6 @@
-//! The document tabs of folder mode (telaio's `DocumentTabs`): one per open document, with its name,
-//! the dirty dot and the close button. A click shows the file, the cross or a middle click closes
-//! it, and dragging reorders. The + after the last tab creates a new document.
+//! The document tabs (telaio's `DocumentTabs`): one per open document, with its name, the dirty
+//! dot and the close button. A click shows the file, the cross or a middle click closes it,
+//! dragging reorders, and a right click opens Close, Close others and the path items. The + after the last tab creates a new document.
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::tooltip::Tooltip;
@@ -10,7 +10,12 @@ use gpui_kit::{SharedString, div, px};
 use rust_i18n::t;
 use telaio_ui::components::{DocumentTab, DocumentTabs};
 
-use crate::actions::NewFile;
+use gpui_kit::WeakEntity;
+use gpui_kit::component::menu::PopupMenu;
+use telaio_ui::components::menu_shortcut_item;
+
+use super::location;
+use crate::actions::{NewFile, hints};
 use crate::state::launch::shorten_path;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{ICON_BUTTON_LG, RADIUS_SM};
@@ -38,6 +43,12 @@ impl AppView {
             let select = weak.clone();
             let close = weak.clone();
             let name = document.name();
+            let menu_weak = weak.clone();
+            let menu_path = document.path.clone();
+            let menu_root = match &self.target {
+                Some(crate::state::launch::Target::Folder(root)) => Some(root.clone()),
+                _ => None,
+            };
             let tooltip = match &document.path {
                 Some(path) => shorten_path(path, home.as_deref()),
                 None => name.clone(),
@@ -64,6 +75,15 @@ impl AppView {
                     })
                     .on_close(move |window, cx| {
                         let _ = close.update(cx, |view, cx| view.close_document(id, window, cx));
+                    })
+                    .context_menu(move |menu, _, _| {
+                        tab_menu(
+                            menu,
+                            id,
+                            &menu_weak,
+                            menu_path.as_deref(),
+                            menu_root.as_deref(),
+                        )
                     }),
             );
         }
@@ -91,5 +111,37 @@ impl AppView {
                 })
                 .on_click(cx.listener(|this, _, window, cx| this.new_document(window, cx))),
         )
+    }
+}
+
+/// The right-click menu of a tab: Close, Close others and, for a file, its path items.
+fn tab_menu(
+    menu: PopupMenu,
+    id: u64,
+    weak: &WeakEntity<AppView>,
+    path: Option<&std::path::Path>,
+    root: Option<&std::path::Path>,
+) -> PopupMenu {
+    let (close, others) = (weak.clone(), weak.clone());
+    let menu = menu
+        .item(menu_shortcut_item(
+            IconName::Close,
+            t!("tabs.close"),
+            hints::CLOSE_TAB,
+            move |window, cx| {
+                let _ = close.update(cx, |view, cx| view.close_document(id, window, cx));
+            },
+        ))
+        .item(menu_shortcut_item(
+            IconName::CopyX,
+            t!("tabs.close_others"),
+            "",
+            move |window, cx| {
+                let _ = others.update(cx, |view, cx| view.close_other_documents(id, window, cx));
+            },
+        ));
+    match path {
+        Some(path) => location::path_items(menu.separator(), path, false, root),
+        None => menu,
     }
 }

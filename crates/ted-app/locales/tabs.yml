@@ -1,0 +1,8 @@
+# The document tabs.
+_version: 2
+"tabs.close":
+  en: "Close"
+  es: "Cerrar"
+"tabs.close_others":
+  en: "Close others"
+  es: "Cerrar las demás"
