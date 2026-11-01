@@ -18,8 +18,8 @@ actions!(
         /// Shows or hides the explorer in folder mode, like its status bar toggle (`Alt 1`, `Ctrl 1`
         /// on macOS, as Postino's first panel).
         ToggleExplorer,
-        /// Shows or hides the Git panel in folder mode, like its status bar toggle
-        /// (`Ctrl+Shift+G`).
+        /// Shows or hides the Git panel in folder mode, like its status bar toggle (`Alt 2`, `Ctrl 2`
+        /// on macOS, as Postino's second panel).
         ToggleGit,
         /// Commits from the Git panel's message (`Ctrl+Enter`), or commits and pushes, as the
         /// setting says.
@@ -77,6 +77,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-o", OpenFile, None),
         KeyBinding::new("cmd-shift-o", OpenFolder, None),
         KeyBinding::new("ctrl-1", ToggleExplorer, None),
+        KeyBinding::new("ctrl-2", ToggleGit, None),
         KeyBinding::new("cmd-s", Save, None),
         KeyBinding::new("cmd-w", CloseTab, None),
         KeyBinding::new("cmd-,", OpenSettings, None),
@@ -93,6 +94,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-o", OpenFile, None),
         KeyBinding::new("ctrl-shift-o", OpenFolder, None),
         KeyBinding::new("alt-1", ToggleExplorer, None),
+        KeyBinding::new("alt-2", ToggleGit, None),
         KeyBinding::new("ctrl-s", Save, None),
         KeyBinding::new("ctrl-w", CloseTab, None),
         KeyBinding::new("ctrl-,", OpenSettings, None),
@@ -113,7 +115,6 @@ pub fn bind_keys(cx: &mut App) {
         Some("CommitMessage > Input"),
     )]);
     cx.bind_keys([
-        KeyBinding::new("ctrl-shift-g", ToggleGit, None),
         KeyBinding::new("ctrl-tab", NextTab, None),
         KeyBinding::new("ctrl-shift-tab", PreviousTab, None),
     ]);
