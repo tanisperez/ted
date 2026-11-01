@@ -358,6 +358,10 @@ pub struct EditorView {
     /// Select the first match after the cursor as soon as the search finds one (the query just
     /// changed).
     pub(crate) find_jump: bool,
+    /// Whether the find bar shows its replace row (`Ctrl+H`).
+    pub(crate) replace_open: bool,
+    /// The replace field, made the first time the replace row opens.
+    pub(crate) replace_input: Option<Entity<InputState>>,
 }
 
 /// A line as painted in the last frame.
@@ -422,6 +426,8 @@ impl EditorView {
             goto_open: false,
             goto_input: None,
             find_jump: false,
+            replace_open: false,
+            replace_input: None,
         }
     }
 

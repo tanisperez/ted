@@ -1231,6 +1231,39 @@ impl EditorState {
         });
     }
 
+    /// Replace all: puts `text` in place of every range of `ranges` (sorted, not overlapping) as
+    /// one undo step, and leaves the cursor after the last one. Does nothing on a read only
+    /// document.
+    pub fn replace_ranges(&mut self, ranges: &[Range<usize>], text: &str) {
+        if self.read_only || ranges.is_empty() {
+            return;
+        }
+        let before = self.selections();
+        let edits: Vec<Edit> = ranges
+            .iter()
+            .map(|range| Edit {
+                start: range.start,
+                old_text: self.buffer.text_in(range.clone()),
+                new_text: text.to_string(),
+            })
+            .collect();
+        let shift: isize = ranges
+            .iter()
+            .map(|range| text.len() as isize - range.len() as isize)
+            .sum();
+        let last = ranges.last().map_or(0, |range| range.end);
+        let after = vec![Selection::cursor((last as isize + shift) as usize)];
+        self.history.edit_many(
+            &mut self.buffer,
+            edits,
+            EditKind::Other,
+            before,
+            after.clone(),
+        );
+        self.set_selections(&after);
+        self.scroll_to_cursor();
+    }
+
     /// Ctrl+]: indents the whole lines of every cursor and selection, wherever the cursors are.
     pub fn indent_lines(&mut self) {
         let unit = self.indent_unit();
@@ -2494,6 +2527,19 @@ mod tests {
         assert_eq!(state.cursor, Position::new(0, 3));
         state.go_to(99, 99);
         assert_eq!(state.cursor, Position::new(2, 5));
+    }
+
+    #[test]
+    fn replace_ranges_is_one_undo_step() {
+        let mut state = editor("a foo b foo c foo");
+        state.replace_ranges(&[2..5, 8..11, 14..17], "barbaz");
+        assert_eq!(state.buffer.to_text(), "a barbaz b barbaz c barbaz");
+        assert_eq!(state.cursor, Position::new(0, 26));
+        state.undo();
+        assert_eq!(state.buffer.to_text(), "a foo b foo c foo");
+        state.read_only = true;
+        state.replace_ranges(&[2..5, 8..11], "x");
+        assert_eq!(state.buffer.to_text(), "a foo b foo c foo");
     }
 
     #[test]

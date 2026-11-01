@@ -19,5 +19,13 @@ description: Find text in the open file: the find bar, the match counter, case s
 </ul>
 <p>The text is matched literally: a <code>.</code> or a <code>*</code> means itself.</p>
 
+<h2 id="replace">Replace</h2>
+<p><kbd>Ctrl</kbd> <kbd>H</kbd> (<kbd>Cmd</kbd> <kbd>Option</kbd> <kbd>F</kbd> on macOS) opens the find bar with a second field for the replacement.</p>
+<ul>
+    <li><strong>Replace</strong>, or <kbd>Enter</kbd> in the replacement field, replaces the selected match and selects the next one. When the selection is not a match, it selects the next match first.</li>
+    <li><strong>Replace all</strong> replaces every match of the file at once, searched in the background, as one step that <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes.</li>
+    <li>A read only file cannot be replaced in.</li>
+</ul>
+
 <h2>Big files</h2>
 <p>ted counts the matches in the background, a few megabytes at a time, so the window never waits; a 100 MB log is counted in about 30 ms. While it counts, the counter ends in <code>…</code>. When a file has more than 100,000 matches, next and previous still work, and the counter shows the total.</p>

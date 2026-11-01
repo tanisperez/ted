@@ -24,3 +24,12 @@ _version: 2
 "goto.placeholder":
   en: "Go to line (1 to %{count}), or line:column"
   es: "Ir a la línea (de 1 a %{count}), o línea:columna"
+"find.replace_placeholder":
+  en: "Replace"
+  es: "Reemplazar"
+"find.replace":
+  en: "Replace (Enter)"
+  es: "Reemplazar (Intro)"
+"find.replace_all":
+  en: "Replace all"
+  es: "Reemplazar todo"

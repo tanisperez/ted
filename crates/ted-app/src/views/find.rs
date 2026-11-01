@@ -1,5 +1,5 @@
 //! The find bar of an editor (`Ctrl+F`): a field, the match counter, the case toggle, previous
-//! and next, and close. It floats at the top right of the editor in the `overlay` look of the
+//! and next, and close. `Ctrl+H` adds a second row with the replacement, Replace and Replace all. It floats at the top right of the editor in the `overlay` look of the
 //! design's floating toolbars. Enter and `F3` go to the next match, Shift+Enter and `Shift+F3` to
 //! the previous one, Escape closes it and gives the focus back to the text.
 //!
@@ -34,6 +34,8 @@ actions!(
         FindPrevious,
         /// Closes the find bar (Escape in it).
         CloseFind,
+        /// Opens the find bar with the replace row (`Ctrl+H`).
+        OpenReplace,
     ]
 );
 
@@ -43,12 +45,13 @@ const FIND_CONTEXT: &str = "FindBar";
 /// Registers the find bar's key bindings, in the editor and in the bar.
 pub fn bind_keys(cx: &mut App) {
     #[cfg(target_os = "macos")]
-    let open = "cmd-f";
+    let (open, replace) = ("cmd-f", "cmd-alt-f");
     #[cfg(not(target_os = "macos"))]
-    let open = "ctrl-f";
+    let (open, replace) = ("ctrl-f", "ctrl-h");
     for context in [KEY_CONTEXT, FIND_CONTEXT] {
         cx.bind_keys([
             KeyBinding::new(open, OpenFind, Some(context)),
+            KeyBinding::new(replace, OpenReplace, Some(context)),
             KeyBinding::new("f3", FindNext, Some(context)),
             KeyBinding::new("shift-f3", FindPrevious, Some(context)),
         ]);
@@ -71,7 +74,13 @@ impl EditorView {
         div()
             .relative()
             .size_full()
-            .on_action(cx.listener(|this, _: &OpenFind, window, cx| this.open_find(window, cx)))
+            .on_action(cx.listener(|this, _: &OpenFind, window, cx| {
+                this.replace_open = false;
+                this.open_find(window, cx)
+            }))
+            .on_action(
+                cx.listener(|this, _: &OpenReplace, window, cx| this.open_replace(window, cx)),
+            )
             .on_action(cx.listener(|this, _: &FindNext, _, cx| this.find_step(true, cx)))
             .on_action(cx.listener(|this, _: &FindPrevious, _, cx| this.find_step(false, cx)))
             .on_action(cx.listener(|this, _: &CloseFind, window, cx| this.close_find(window, cx)))
@@ -127,6 +136,94 @@ impl EditorView {
             self.search(cx);
         }
         cx.notify();
+    }
+
+    /// Opens the bar with its replace row, the focus in the find field as `Ctrl+F` leaves it.
+    fn open_replace(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.replace_input.is_none() {
+            let input = cx
+                .new(|cx| InputState::new(window, cx).placeholder(t!("find.replace_placeholder")));
+            cx.subscribe_in(&input, window, |this, _, event: &InputEvent, _, cx| {
+                if let InputEvent::PressEnter { .. } = event {
+                    this.replace_one(cx);
+                }
+            })
+            .detach();
+            self.replace_input = Some(input);
+        }
+        self.replace_open = true;
+        self.open_find(window, cx);
+    }
+
+    /// The replace field's text.
+    fn replacement(&self, cx: &App) -> String {
+        self.replace_input
+            .as_ref()
+            .map(|input| input.read(cx).value().to_string())
+            .unwrap_or_default()
+    }
+
+    /// Replace: when the selection is a match, puts the replacement in its place, then selects
+    /// the next match; otherwise selects the next match first.
+    fn replace_one(&mut self, cx: &mut Context<Self>) {
+        if self.state.read_only {
+            return;
+        }
+        let Some(query) = self.find.query.clone() else {
+            return;
+        };
+        let selection = self.state.selection().range();
+        let mut is_match = false;
+        if !selection.is_empty() {
+            query.find_in(self.state.buffer.rope(), selection.clone(), |found| {
+                is_match = found == selection;
+                false
+            });
+        }
+        if is_match {
+            let text = self.replacement(cx);
+            self.state.insert(&text, ted_core::EditKind::Other);
+            // The edit restarts the search on the next frame; its first match after the
+            // cursor gets selected.
+            self.find_jump = true;
+            cx.notify();
+        } else {
+            self.find_step(true, cx);
+        }
+    }
+
+    /// Replace all: every match of the whole text, searched in the background, replaced as one
+    /// undo step if the text did not change meanwhile.
+    fn replace_all(&mut self, cx: &mut Context<Self>) {
+        if self.state.read_only {
+            return;
+        }
+        let Some(query) = self.find.query.clone() else {
+            return;
+        };
+        let text = self.replacement(cx);
+        let rope = self.state.buffer.rope().clone();
+        let version = self.state.buffer.version();
+        cx.spawn(async move |this, cx| {
+            let ranges = cx
+                .background_spawn(async move {
+                    let mut ranges = Vec::new();
+                    query.find_in(&rope, 0..rope.len(), |found| {
+                        ranges.push(found);
+                        true
+                    });
+                    ranges
+                })
+                .await;
+            let _ = this.update(cx, |editor, cx| {
+                if editor.state.buffer.version() == version {
+                    log::debug!("replacing {} matches", ranges.len());
+                    editor.state.replace_ranges(&ranges, &text);
+                    cx.notify();
+                }
+            });
+        })
+        .detach();
     }
 
     /// Closes the bar and gives the focus back to the text.
@@ -239,21 +336,9 @@ impl EditorView {
         let label = self.find.label(Some(&selection));
         let case = self.find.case_sensitive;
         let (hover, accent_subtle) = (palette.hover, palette.accent_subtle);
-        h_flex()
-            .id("find-bar")
-            .key_context(FIND_CONTEXT)
-            .absolute()
-            .top(px(10.0))
-            .right(px(22.0))
-            .occlude()
+        let find_row = h_flex()
             .items_center()
             .gap(px(4.0))
-            .p(px(4.0))
-            .bg(palette.overlay)
-            .border_1()
-            .border_color(palette.border)
-            .rounded(px(RADIUS_MD))
-            .shadow(palette.shadow.clone())
             .child(
                 div()
                     .w(px(FIND_BAR_FIELD_WIDTH))
@@ -308,7 +393,51 @@ impl EditorView {
                 IconButton::new("find-close", IconName::Close)
                     .tooltip(t!("find.close"))
                     .on_click(cx.listener(|this, _, window, cx| this.close_find(window, cx))),
-            )
+            );
+        let replace_row = self
+            .replace_input
+            .as_ref()
+            .filter(|_| self.replace_open)
+            .map(|input| {
+                let editable = !self.state.read_only;
+                h_flex()
+                    .items_center()
+                    .gap(px(4.0))
+                    .child(
+                        div()
+                            .w(px(FIND_BAR_FIELD_WIDTH))
+                            .child(text_field(input, cx)),
+                    )
+                    .child(div().w(px(FIND_COUNT_WIDTH)))
+                    .child(
+                        IconButton::new("find-replace", IconName::Replace)
+                            .tooltip(t!("find.replace"))
+                            .disabled(!editable)
+                            .on_click(cx.listener(|this, _, _, cx| this.replace_one(cx))),
+                    )
+                    .child(
+                        IconButton::new("find-replace-all", IconName::ReplaceAll)
+                            .tooltip(t!("find.replace_all"))
+                            .disabled(!editable)
+                            .on_click(cx.listener(|this, _, _, cx| this.replace_all(cx))),
+                    )
+            });
+        v_flex()
+            .id("find-bar")
+            .key_context(FIND_CONTEXT)
+            .absolute()
+            .top(px(10.0))
+            .right(px(22.0))
+            .occlude()
+            .gap(px(4.0))
+            .p(px(4.0))
+            .bg(palette.overlay)
+            .border_1()
+            .border_color(palette.border)
+            .rounded(px(RADIUS_MD))
+            .shadow(palette.shadow.clone())
+            .child(find_row)
+            .children(replace_row)
             .into_any_element()
     }
 }
