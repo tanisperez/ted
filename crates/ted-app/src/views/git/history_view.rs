@@ -315,7 +315,7 @@ impl HistoryView {
                             .text_size(px(11.0))
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(palette.fg_subtle)
-                            .child(plural("git.log.files", detail.files.len()).to_uppercase()),
+                            .child(plural("git.log.files", detail.files.len())),
                     )
                     .children(detail.files.iter().map(|file| {
                         let counts = if file.binary {

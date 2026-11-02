@@ -215,13 +215,12 @@ fn recent_item(icon: IconName, name: String, detail: String, selected: bool) -> 
     })
 }
 
-/// The top of the switcher's menu: FOLDER or FILE and the full path in mono, truncated.
+/// The top of the switcher's menu: Folder or File and the full path in mono, truncated.
 fn location_heading(path: &std::path::Path, folder: bool) -> PopupMenuItem {
     let heading = match folder {
         true => t!("open.location_folder"),
         false => t!("open.location_file"),
-    }
-    .to_uppercase();
+    };
     let path = path.display().to_string();
     PopupMenuItem::element(move |_, cx| {
         let palette = cx.palette();
