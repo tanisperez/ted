@@ -1,6 +1,6 @@
-//! The app icon (`assets/ted.svg`, from `design_system/ted-icon.svg`): the indigo text file of the
-//! design, in the title bar and the empty state. An image, not a gpui `svg`, because gpui paints
-//! an `svg` in one color and the icon has three.
+//! The app icon (`assets/ted.svg`, from `design_system/packaging/icons/ted.svg`): braces and a
+//! cursor on an indigo square, in the title bar and the empty state. An image, not a gpui `svg`,
+//! because gpui paints an `svg` in one color and the icon has three.
 
 use std::sync::{Arc, LazyLock};
 

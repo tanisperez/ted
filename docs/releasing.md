@@ -81,7 +81,7 @@ APPIMAGE_EXTRACT_AND_RUN=1 packaging/linux/appimage.sh 0.1.0 target/release/ted 
 
 ## Desktop integration
 
-- **Icons:** one master, `packaging/icons/ted.svg` (the icon of design v2). The PNGs under
+- **Icons:** one master, `packaging/icons/ted.svg` (the braces icon of 0.5.0). The PNGs under
   `packaging/icons/png/` and `crates/ted-app/assets/ted.ico` are generated from it and committed
   (`packaging/icons/README.md`). The macOS `.icns` is built at bundle time.
 - **Linux:** `codes.tanis.ted.desktop` (the Wayland `app_id` and X11 `WM_CLASS` of the window)

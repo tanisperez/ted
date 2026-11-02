@@ -1,8 +1,9 @@
 # ted icon
 
-`ted.svg` is the master: the indigo text file of design v2 (`design_system/ted-icon.svg`,
-without its metadata), the same file as `crates/ted-app/assets/ted.svg`, which the title bar,
-the empty state and About paint.
+`ted.svg` is the master: the indigo square with braces and a cursor of the 0.5.0 design
+(`design_system/packaging/icons/ted.svg`, variant 1e, without its metadata). It is the same file
+as `crates/ted-app/assets/ted.svg`, which the title bar, the empty state and About paint, and as
+`site/img/logo.svg`.
 
 The PNG sizes under `png/` and the Windows icon are generated from it and committed:
 

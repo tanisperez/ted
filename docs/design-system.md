@@ -18,8 +18,8 @@ adds only the syntax colors and the metrics of its own layout.
   `DEFAULT_DARK`. Do not copy the hex values into ted; add a token in telaio, not here.
 - Panels are flat (border only). Inputs and cards use `raised` plus a border. Menus, popovers and
   modals use `overlay` plus the shadow token. The explorer never has a shadow.
-- The app icon is the indigo text file of the v2 design (`design_system/ted-icon.svg`, copied
-  without its metadata to `crates/ted-app/assets/ted.svg`). It is painted as an image
+- The app icon is the indigo square with braces and a cursor of the 0.5.0 design
+  (`design_system/packaging/icons/ted.svg`, copied without its metadata to `crates/ted-app/assets/ted.svg`). It is painted as an image
   (`views/logo.rs`), not a gpui `svg`, which would draw it in one color.
 - Icons are Lucide, through `gpui_kit::assets::IconName`. The app must keep
   `.with_assets(gpui_kit::assets::AllAssets)` or icons render empty.
