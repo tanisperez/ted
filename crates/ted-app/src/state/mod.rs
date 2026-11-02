@@ -5,6 +5,7 @@ pub mod config;
 pub mod editor;
 pub mod explorer;
 pub mod find;
+pub mod find_files;
 pub mod git;
 pub mod git_branches;
 pub mod git_gutter;

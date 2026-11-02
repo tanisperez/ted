@@ -157,6 +157,9 @@ pub struct EditorState {
     pub wrap_override: Option<bool>,
     /// The rows of the lines wrapped so far, for the current text and width.
     wrap_cache: WrapCache,
+    /// The cursor was placed before the editor had a size (a match shown in a file that was
+    /// still loading): center it once the viewport is known.
+    pub center_on_layout: bool,
 }
 
 /// The rows of the wrapped lines, valid for one buffer version and one width in columns.
@@ -1316,6 +1319,18 @@ impl EditorState {
             .nth(column)
             .map_or(text.len(), |(byte, _)| byte);
         self.set_cursor(Position::new(line, byte), false);
+        self.center_cursor();
+    }
+
+    /// Scrolls so that the cursor's line is in the middle when it is off screen, or asks for it
+    /// once the editor has a size ([`Self::center_on_layout`]).
+    pub fn center_cursor(&mut self) {
+        if self.viewport.height <= 0.0 {
+            self.center_on_layout = true;
+            return;
+        }
+        let line = self.cursor.line;
+        let byte = self.cursor.column;
         if self.wrap {
             let rows = self.line_rows(line);
             let row = self.row_at(line, &rows, byte) as f32;
@@ -2244,6 +2259,24 @@ mod tests {
             char_width: 8.0,
         });
         state
+    }
+
+    #[test]
+    fn a_cursor_placed_before_the_layout_is_centered_once_there_is_one() {
+        let mut state = EditorState::new(Buffer::from_text(&"x\n".repeat(99)));
+        state.go_to(80, 0);
+        assert!(state.center_on_layout);
+        assert_eq!(state.scroll_y, 0.0);
+        state.set_viewport(Viewport {
+            width: 400.0,
+            height: 200.0,
+            line_height: 20.0,
+            char_width: 8.0,
+        });
+        state.center_on_layout = false;
+        state.center_cursor();
+        // Line 80 starts at 10 + 1600: half a screen above it.
+        assert_eq!(state.scroll_y, 1510.0);
     }
 
     #[test]

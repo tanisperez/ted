@@ -43,7 +43,7 @@ NAV = [
         ("editing.html", "Editing text"),
         ("folders-and-tabs.html", "Folders and tabs"),
         ("git.html", "Git"),
-        ("find.html", "Find in file"),
+        ("find.html", "Find and replace"),
         ("highlighting.html", "Syntax highlighting"),
         ("big-files.html", "Big files and logs"),
         ("saving.html", "Saving and changes on disk"),

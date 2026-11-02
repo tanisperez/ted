@@ -114,6 +114,11 @@ pub fn groups() -> Vec<ShortcutGroup> {
                 row("shortcuts.action.match_case", &[ALT, "C"]),
                 row("shortcuts.action.whole_word", &[ALT, "W"]),
                 row("shortcuts.action.regex", &[ALT, "X"]),
+                row("shortcuts.action.find_in_files", &[modifier, "Shift", "F"]),
+                row(
+                    "shortcuts.action.replace_in_files",
+                    &[modifier, "Shift", "R"],
+                ),
             ],
         },
         ShortcutGroup {

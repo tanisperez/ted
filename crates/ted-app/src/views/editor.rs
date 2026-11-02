@@ -1122,6 +1122,9 @@ impl Element for EditorElement {
                 .wrap_override
                 .unwrap_or_else(|| wraps_by_default(state.syntax.language, display.word_wrap));
             state.set_wrap(wrap);
+            if std::mem::take(&mut state.center_on_layout) {
+                state.center_cursor();
+            }
             // What each row of the screen shows: a whole line (or the visible window of a long
             // one) without wrap, a part of a line with it.
             let (segments, first_y) = if wrap {

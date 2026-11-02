@@ -3,6 +3,7 @@
 //! and keeps ted's document icons for the file types it opens by default (freedesktop systems).
 //! No `gpui`: every function here blocks, the app calls them on its background executor.
 
+mod find_files;
 mod index;
 mod list;
 mod load;
@@ -11,6 +12,10 @@ mod paths;
 mod save;
 mod watch;
 
+pub use find_files::{
+    CONTEXT_LINES, FileMask, LineMatch, MAX_LINE_BYTES, MAX_SEARCHED_FILE, find_lines, read_text,
+    replace_in_file,
+};
 pub use index::{FileIndex, index_files};
 pub use list::{DirEntry, EntryKind, ExplorerFilter, ListError, list_dir, natural_cmp};
 pub use load::{FileContent, LoadError, LoadedFile, load_file, load_head};

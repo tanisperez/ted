@@ -1,7 +1,7 @@
-title: Find in file
-description: Find text in the open file: the find bar, the match counter, its options, replace and big files.
+title: Find and replace
+description: Find and replace text in the open file and in every file of a folder: the find bar, its options, Find in files and big files.
 ---
-<h1>Find in file</h1>
+<h1>Find and replace</h1>
 <p class="lead"><kbd>Ctrl</kbd> <kbd>F</kbd> opens the find bar across the top of the editor, with the selected text in it when the selection is on one line. A selection over several lines turns on <strong>Find in selection</strong> instead.</p>
 
 <div class="shot">
@@ -34,6 +34,25 @@ description: Find text in the open file: the find bar, the match counter, its op
     <li>With <strong>Regular expression</strong> on, <code>$1</code>, <code>$2</code> and <code>${name}</code> in the replacement put the groups of the match: <code>(\w+)=(\w+)</code> replaced with <code>$2=$1</code> turns <code>a=b</code> into <code>b=a</code>. <code>$$</code> is a <code>$</code>.</li>
     <li><strong>Preserve case</strong>, the <code>AB</code> button of the replacement field, keeps the case of each match: replacing <code>find</code> with <code>search</code> turns <code>Find</code> into <code>Search</code> and <code>FIND</code> into <code>SEARCH</code>.</li>
     <li>A read only file cannot be replaced in.</li>
+</ul>
+
+<h2 id="find-in-files">Find in files</h2>
+<p><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>F</kbd> opens <strong>Find in files</strong>, a window over the editor that searches every file of the open folder, with the selected text in it. It does not cover the editor with a shade: drag it by its title to move it, and pin it (the pin at its top right) to keep it open while you work.</p>
+<ul>
+    <li>The field has the same options as the find bar: <a href="#options">match case, whole words and regular expression</a>.</li>
+    <li>The <strong>file mask</strong>, next to the pin, picks the files by name: <code>*.rs, *.toml</code> searches those, <code>!*.lock</code> leaves them out. A mask with a <code>/</code> matches the path from the folder (<code>!tests/**</code>). Empty, every file is searched.</li>
+    <li>Under the field, choose where to search: the whole <strong>Folder</strong>, a <strong>Directory…</strong> you pick, or the <strong>Open files</strong>. Files in <code>.gitignore</code> and in the <a href="settings.html#files">Exclude</a> setting are left out, as in the explorer, and so are binary files, files that are not UTF-8 and files over 50 MB.</li>
+    <li>The results list every matching line with its file and line number, and the preview below shows the selected one with the lines around it. <kbd>↑</kbd> and <kbd>↓</kbd> move through them, a click picks one, a double click or <kbd>Enter</kbd> opens it in its file with the match selected.</li>
+    <li><kbd>Ctrl</kbd> <kbd>Enter</kbd>, or <strong>Open in a tab</strong>, leaves the results in a tab, grouped by file, to come back to them later. With <strong>Open results in a new tab</strong> checked each search gets its own tab; otherwise the last results tab is reused.</li>
+    <li>Files open in tabs are searched as they are in ted, unsaved changes included. The search stops at 10,000 matches.</li>
+    <li><kbd>Esc</kbd> closes the window, and so does a click outside it unless it is pinned.</li>
+</ul>
+
+<h3 id="replace-in-files">Replace in files</h3>
+<p><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>R</kbd> opens the same window with a field for the replacement, with <strong>Preserve case</strong>, and <code>$1</code> groups with a regular expression, as in the find bar. The results and the preview show each change before it is made: the old text struck through, the new one in green.</p>
+<ul>
+    <li><strong>Replace</strong>, or <kbd>Enter</kbd> in the replacement field, replaces the selected match only.</li>
+    <li><strong>Replace all</strong> asks first, then replaces every match found. In a file open in a tab the change is made in the editor, as one step that <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes, and the file is not saved. The other files are changed and saved on disk at once: that cannot be undone from ted.</li>
 </ul>
 
 <h2>Big files</h2>

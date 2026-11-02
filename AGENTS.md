@@ -99,7 +99,8 @@ ted-app ──> ted-workspace ──> ted-core
   No gpui.
 - `ted-workspace`: filesystem access. Reads files in the background, lists one folder at a time
   (lazily, honoring `.gitignore` and the exclude patterns), watches for changes, saves
-  atomically (write a temporary file, then rename). No gpui.
+  atomically (write a temporary file, then rename), and the disk side of Find in files (file
+  masks, reading files as text, replacing on disk). No gpui.
 - `ted-cli`: `-h/--help`, `-V/--version` and the path argument, `IDENTITY` (the
   `telaio_app::AppIdentity` of ted), `build.rs` with the commit, as `postino-cli`.
 - `ted-app`: the gpui binary (`ted`). Views, the editor element and glue. Git goes through

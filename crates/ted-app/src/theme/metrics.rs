@@ -37,6 +37,14 @@ pub const GOTO_BUTTON_HEIGHT: f32 = 28.0;
 pub const FIELD_RADIUS: f32 = 7.0;
 /// Width of the focus ring around a search field.
 pub const FIELD_RING: f32 = 3.0;
+/// Width of the Find in files window.
+pub const FIND_FILES_WIDTH: f32 = 860.0;
+/// Distance from the top of the window to the Find in files window.
+pub const FIND_FILES_TOP: f32 = 64.0;
+/// Height of the results list of Find in files.
+pub const FIND_FILES_LIST_HEIGHT: f32 = 238.0;
+/// Height of a row of the Find in files results, in the window and in the results tab.
+pub const FIND_FILES_ROW_HEIGHT: f32 = 26.0;
 /// Radius of the editor's floating dialogs (Go to line, Find in files).
 pub const RADIUS_DIALOG: f32 = 12.0;
 /// Size of the search box in the title bar (folder mode).

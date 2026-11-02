@@ -56,6 +56,7 @@ impl AppView {
             let icon = match &document.view {
                 DocumentView::Diff(_) => IconName::GitCompare,
                 DocumentView::History(_) => IconName::GitGraph,
+                DocumentView::FindResults(_) => IconName::Search,
                 _ => IconName::File,
             };
             tabs = tabs.item(

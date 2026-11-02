@@ -57,6 +57,8 @@ regex = "1.13"
 # Folder explorer: gitignore matching, file watching and the batched channel. The exact versions
 # gpui already builds.
 ignore = "0.4.33"
+# The version `ignore` already builds, for the file mask of Find in files.
+globset = "0.4.20"
 notify = "8.2"
 async-channel = "2.5"
 

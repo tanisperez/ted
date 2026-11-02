@@ -83,7 +83,7 @@ pub fn bind_keys(cx: &mut App) {
 }
 
 /// One of the toggles of the bar, as the design draws them: 24 x 22, `accent_subtle` when on.
-fn toggle(
+pub(crate) fn toggle(
     id: &'static str,
     icon: IconName,
     tooltip: SharedString,

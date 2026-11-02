@@ -1,0 +1,77 @@
+# Find and replace in files.
+_version: 2
+"find_files.title":
+  en: "Find in files"
+  es: "Buscar en archivos"
+"find_files.title_replace":
+  en: "Replace in files"
+  es: "Reemplazar en archivos"
+"find_files.searching":
+  en: "Searching…"
+  es: "Buscando…"
+"find_files.matches.one":
+  en: "%{count} match"
+  es: "%{count} coincidencia"
+"find_files.matches.other":
+  en: "%{count} matches"
+  es: "%{count} coincidencias"
+"find_files.matches_more":
+  en: "%{count}+ matches"
+  es: "%{count}+ coincidencias"
+"find_files.files.one":
+  en: "%{count} file"
+  es: "%{count} archivo"
+"find_files.files.other":
+  en: "%{count} files"
+  es: "%{count} archivos"
+"find_files.summary":
+  en: "%{matches} in %{files}"
+  es: "%{matches} en %{files}"
+"find_files.mask":
+  en: "File mask"
+  es: "Máscara de archivos"
+"find_files.mask_tooltip":
+  en: "Which files to search: *.rs, *.toml, !*.lock"
+  es: "Qué archivos buscar: *.rs, *.toml, !*.lock"
+"find_files.pin":
+  en: "Pin the window"
+  es: "Fijar la ventana"
+"find_files.unpin":
+  en: "Unpin the window"
+  es: "Soltar la ventana"
+"find_files.scope_folder":
+  en: "Folder"
+  es: "Carpeta"
+"find_files.scope_directory":
+  en: "Directory…"
+  es: "Directorio…"
+"find_files.scope_open":
+  en: "Open files"
+  es: "Archivos abiertos"
+"find_files.new_tab":
+  en: "Open results in a new tab"
+  es: "Abrir los resultados en una pestaña nueva"
+"find_files.open_tab":
+  en: "Open in a tab"
+  es: "Abrir en una pestaña"
+"find_files.replace":
+  en: "Replace"
+  es: "Reemplazar"
+"find_files.replace_all":
+  en: "Replace all (%{count})"
+  es: "Reemplazar todo (%{count})"
+"find_files.confirm_title":
+  en: "Replace in files?"
+  es: "¿Reemplazar en archivos?"
+"find_files.confirm_detail":
+  en: "%{matches} in %{files} will be replaced. Files that are not open are saved at once and cannot be undone."
+  es: "Se reemplazarán %{matches} en %{files}. Los archivos que no están abiertos se guardan al momento y no se puede deshacer."
+"find_files.replaced":
+  en: "Replaced %{matches} in %{files}"
+  es: "Reemplazadas %{matches} en %{files}"
+"find_files.tab_title":
+  en: "Find: %{query}"
+  es: "Buscar: %{query}"
+"find_files.preview_empty":
+  en: "Select a result to see it here"
+  es: "Elige un resultado para verlo aquí"

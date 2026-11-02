@@ -41,6 +41,7 @@ use crate::theme::metrics::{
 use super::document_icons::DocumentIcons;
 use super::editor::EditorView;
 use super::explorer::{ExplorerEvent, ExplorerView};
+use super::find_files::{OpenFindInFiles, OpenReplaceInFiles};
 use super::git::{CheckoutChoice, GitTasks, MenuContext, new_branch_menu};
 
 /// Files at least this big show their first [`HEAD_BYTES`] while the rest loads.
@@ -82,6 +83,8 @@ pub(crate) enum DocumentView {
     Diff(Entity<super::git::DiffView>),
     /// The commit log of the repository (`views/git/history_view.rs`). There is one.
     History(Entity<super::git::HistoryView>),
+    /// Results of Find in files left in a tab (`views/find_results.rs`).
+    FindResults(Entity<super::find_results::FindResultsView>),
 }
 
 /// One open file: a tab in folder mode, the whole window in file mode.
@@ -96,7 +99,7 @@ pub(crate) struct Document {
     /// The name shown instead of the file's: the diff tab's.
     pub(crate) title: Option<String>,
     /// Keeps the window title in step with the editor (its dirty state).
-    _subscription: Option<Subscription>,
+    pub(crate) _subscription: Option<Subscription>,
 }
 
 impl Document {
@@ -133,7 +136,7 @@ pub struct AppView {
     pub(crate) documents: Tabs<Document>,
     /// The id of the next document opened.
     next_document: u64,
-    focus_handle: FocusHandle,
+    pub(crate) focus_handle: FocusHandle,
     /// The explorer of folder mode, with the subscription to its events.
     pub(crate) explorer: Option<(Entity<ExplorerView>, Subscription)>,
     /// Whether the side panel (the explorer or the Git panel) is shown.
@@ -168,6 +171,11 @@ pub struct AppView {
     pub(crate) branch_menu: Entity<telaio_ui::components::SearchableMenuState>,
     /// What the branch menu's submenus and create row need to know, updated on every rebuild.
     pub(crate) branch_menu_context: Rc<RefCell<MenuContext>>,
+    /// The Find in files window, made the first time it opens, and whether it shows.
+    pub(crate) find_files: Option<(Entity<super::find_files::FindFilesView>, Subscription)>,
+    pub(crate) find_files_open: bool,
+    /// A match to select in a file once it has loaded (Find in files).
+    pub(crate) pending_reveal: Option<(PathBuf, std::ops::Range<usize>)>,
     /// The language menu of the status bar, and whether it was open at the last change.
     pub(crate) language_menu: Entity<telaio_ui::components::SearchableMenuState>,
     pub(crate) language_menu_open: bool,
@@ -242,6 +250,9 @@ impl AppView {
             branch_menu_context,
             language_menu,
             language_menu_open: false,
+            find_files: None,
+            find_files_open: false,
+            pending_reveal: None,
             checkout_choice: CheckoutChoice::default(),
             document_icons: DocumentIcons::default(),
             file_index: None,
@@ -783,6 +794,9 @@ impl AppView {
                 }
                 document.view = DocumentView::Editor(editor.clone());
                 self.update_gutter(&editor, cx);
+                if let Some(path) = editor.read(cx).state.path.clone() {
+                    self.reveal_pending(&path, &editor, window, cx);
+                }
             }
         }
         cx.notify();
@@ -854,6 +868,9 @@ impl Render for AppView {
                     Some(DocumentView::History(history)) => {
                         div().flex_1().min_h_0().child(history.clone())
                     }
+                    Some(DocumentView::FindResults(results)) => {
+                        div().flex_1().min_h_0().child(results.clone())
+                    }
                     Some(DocumentView::Message(title, detail)) => {
                         self.render_message(title, detail.as_ref(), cx)
                     }
@@ -918,6 +935,12 @@ impl Render for AppView {
                 cx.listener(|this, _: &OpenShortcuts, window, cx| this.open_shortcuts(window, cx)),
             )
             .on_action(cx.listener(|this, _: &OpenSearch, window, cx| this.open_search(window, cx)))
+            .on_action(cx.listener(|this, _: &OpenFindInFiles, window, cx| {
+                this.open_find_in_files(false, window, cx)
+            }))
+            .on_action(cx.listener(|this, _: &OpenReplaceInFiles, window, cx| {
+                this.open_find_in_files(true, window, cx)
+            }))
             // Also without the tab bar: closing the last file of file mode goes back to the
             // welcome screen.
             .on_action(cx.listener(|this, _: &CloseTab, window, cx| {
@@ -968,10 +991,18 @@ impl Render for AppView {
                 cx.listener(|this, _, _, _| this.resizing_explorer = false),
             )
             .size_full()
+            .relative()
             .bg(palette.bg)
             .text_color(palette.fg)
             .child(self.render_title_bar(window, cx))
             .child(content)
             .child(self.render_status_bar(cx))
+            .when_some(
+                self.find_files
+                    .as_ref()
+                    .filter(|_| self.find_files_open)
+                    .map(|(view, _)| view.clone()),
+                |root, view| root.child(view),
+            )
     }
 }

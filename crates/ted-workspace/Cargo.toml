@@ -12,6 +12,7 @@ ted-core = { path = "../ted-core" }
 thiserror = { workspace = true }
 log = { workspace = true }
 ignore = { workspace = true }
+globset = { workspace = true }
 notify = { workspace = true }
 async-channel = { workspace = true }
 
