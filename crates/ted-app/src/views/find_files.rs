@@ -80,6 +80,8 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("alt-c", ToggleCase, Some(CONTEXT)),
         KeyBinding::new("alt-w", ToggleWholeWord, Some(CONTEXT)),
         KeyBinding::new("alt-x", ToggleRegex, Some(CONTEXT)),
+        // Anywhere in the window, also after a click on a result.
+        KeyBinding::new("escape", CloseFindFiles, Some(CONTEXT)),
     ]);
     // After gpui-kit's own keys of the field, so these win inside the window.
     cx.bind_keys([
@@ -601,6 +603,24 @@ impl Render for FindFilesView {
                         this.state.pinned = !this.state.pinned;
                         cx.notify();
                     })),
+            )
+            .child(
+                div()
+                    .id("find-files-close")
+                    .size(px(26.0))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(6.0))
+                    .cursor_pointer()
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                    .text_color(palette.fg_muted)
+                    .hover(move |style| style.bg(hover))
+                    .tooltip(|window, cx| {
+                        Tooltip::new(SharedString::from(t!("find.close"))).build(window, cx)
+                    })
+                    .child(Icon::new(IconName::X).size(px(15.0)))
+                    .on_click(cx.listener(|this, _, _, cx| this.close(cx))),
             );
 
         let options = self.state.options;
@@ -938,6 +958,9 @@ impl FindFilesView {
             )
             .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
                 this.state.selected = Some(row);
+                // The keys (arrows, Enter, Escape) keep working after a click.
+                this.query_input
+                    .update(cx, |input, cx| input.focus(window, cx));
                 cx.notify();
                 if event.click_count() > 1 {
                     this.open_selected(window, cx);
