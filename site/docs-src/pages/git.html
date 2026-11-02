@@ -7,6 +7,9 @@ description: The Git panel of ted: see what changed in a folder, stage, discard 
 <h2 id="requirements">What it needs</h2>
 <p>ted runs the <code>git</code> installed on your computer, version 2.30 or later; it does not bundle its own. It finds it on the <code>PATH</code>, or you can pick the executable in <a href="settings.html#git">Settings, Git</a>. Without git, or with a folder that is not a repository, ted works as before and the panel says why it is empty. A folder that is not a repository can be turned into one with <strong>Initialize repository</strong>.</p>
 
+<h2 id="trust">Folders Git does not trust</h2>
+<p>Git refuses to work in a repository that another user owns, and says so as "detected dubious ownership". On Windows this happens with every folder of WSL (<code>\\wsl.localhost\...</code>), because Windows cannot read who owns a Linux folder. The Git panel then explains it and offers <strong>Trust this folder</strong>: ted adds the folder to <code>safe.directory</code> in your Git configuration, as <code>git config --global --add safe.directory</code> would, and reads the repository again. Trust only folders that are yours.</p>
+
 <h2 id="panel">The Git panel</h2>
 <p>The <strong>Git</strong> toggle of the status bar, or <kbd>Alt</kbd> <kbd>2</kbd> (<kbd>Ctrl</kbd> <kbd>2</kbd> on macOS), shows the Git panel in place of the explorer; the <strong>Files</strong> toggle brings the explorer back. The toggle shows how many files changed. The panel lists them in two groups:</p>
 <ul>

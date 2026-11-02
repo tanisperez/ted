@@ -204,6 +204,19 @@ impl AppView {
                             })),
                     ),
             ),
+            RepoState::Untrusted(directory) => panel_empty(
+                EmptyState::new(t!("git.empty.untrusted"))
+                    .icon(Icon::new(IconName::ShieldAlert))
+                    .description(t!(
+                        "git.empty.untrusted_text",
+                        directory = directory.as_str()
+                    ))
+                    .action(
+                        PrimaryButton::new("git-trust", t!("git.empty.trust"))
+                            .icon(Icon::new(IconName::ShieldCheck))
+                            .on_click(cx.listener(|view, _, _, cx| view.trust_git_directory(cx))),
+                    ),
+            ),
             RepoState::Error(message) => panel_empty(
                 EmptyState::new(t!("git.empty.error"))
                     .icon(Icon::new(IconName::CircleAlert))

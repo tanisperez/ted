@@ -50,6 +50,21 @@ pub enum RepoState {
     },
     /// Discovery or status failed. The message is git's own, shown verbatim.
     Error(String),
+    /// Git refused the repository because another user owns it (every repository of WSL opened
+    /// from Windows). The value is what to add to `safe.directory` to trust it, once the user
+    /// agrees.
+    Untrusted(String),
+}
+
+impl RepoState {
+    /// The state for a failed discovery or status: [`RepoState::Untrusted`] when git refused an
+    /// unsafe repository, [`RepoState::Error`] otherwise.
+    pub fn failed(error: &telaio_git::GitError) -> Self {
+        match error.unsafe_directory() {
+            Some(directory) => RepoState::Untrusted(directory),
+            None => RepoState::Error(error.to_string()),
+        }
+    }
 }
 
 /// The Git state of the window: availability, repository, and what the panel folds.

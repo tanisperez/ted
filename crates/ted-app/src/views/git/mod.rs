@@ -122,7 +122,7 @@ impl AppView {
                     Ok(None) => RepoState::NotARepo,
                     Err(error) => {
                         log::warn!("git repository discovery failed: {error}");
-                        RepoState::Error(error.to_string())
+                        RepoState::failed(&error)
                     }
                 };
                 view.watch_git(cx);
@@ -131,6 +131,32 @@ impl AppView {
                 cx.notify();
             });
         }));
+    }
+
+    /// The Trust button of an unsafe repository: adds it to `safe.directory` in the user's
+    /// global git configuration, then looks for the repository again.
+    pub(crate) fn trust_git_directory(&mut self, cx: &mut Context<Self>) {
+        let (RepoState::Untrusted(directory), Some(git)) =
+            (&self.git.repo, self.git.availability.git().cloned())
+        else {
+            return;
+        };
+        let directory = directory.clone();
+        log::info!("trusting a repository owned by another user");
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_spawn(async move { git.trust_directory(&directory) })
+                .await;
+            let _ = this.update(cx, |view, cx| match result {
+                Ok(()) => view.discover_git_repo(cx),
+                Err(error) => {
+                    log::warn!("cannot trust the repository: {error}");
+                    view.git.repo = RepoState::Error(error.to_string());
+                    cx.notify();
+                }
+            });
+        })
+        .detach();
     }
 
     /// Reads `git status` again. The view is notified only when the status changed, so calling
@@ -178,7 +204,7 @@ impl AppView {
                     }
                     Err(error) => {
                         log::warn!("git status failed: {error}");
-                        view.git.repo = RepoState::Error(error.to_string());
+                        view.git.repo = RepoState::failed(&error);
                         view.rebuild_git_rows(cx);
                         cx.notify();
                     }
