@@ -20,12 +20,13 @@ const ALT: &str = "Option";
 #[cfg(not(target_os = "macos"))]
 const ALT: &str = "Alt";
 
-/// The keys of Find and replace: `Cmd+Option+F` on macOS, where `Cmd+H` hides the app.
+/// The keys of Find and replace: `Cmd+R` on macOS, `Ctrl+R` elsewhere (`Ctrl+H` and
+/// `Cmd+Option+F` work too).
 fn replace_keys() -> Vec<&'static str> {
     if cfg!(target_os = "macos") {
-        vec!["Cmd", "Option", "F"]
+        vec!["Cmd", "R"]
     } else {
-        vec!["Ctrl", "H"]
+        vec!["Ctrl", "R"]
     }
 }
 
@@ -110,6 +111,9 @@ pub fn groups() -> Vec<ShortcutGroup> {
                 row("shortcuts.action.replace", &replace_keys()),
                 row("shortcuts.action.find_next", &["F3"]),
                 row("shortcuts.action.find_previous", &["Shift", "F3"]),
+                row("shortcuts.action.match_case", &[ALT, "C"]),
+                row("shortcuts.action.whole_word", &[ALT, "W"]),
+                row("shortcuts.action.regex", &[ALT, "X"]),
             ],
         },
         ShortcutGroup {

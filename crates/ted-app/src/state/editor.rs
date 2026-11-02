@@ -1255,25 +1255,29 @@ impl EditorState {
         });
     }
 
-    /// Replace all: puts `text` in place of every range of `ranges` (sorted, not overlapping) as
-    /// one undo step, and leaves the cursor after the last one. Does nothing on a read only
-    /// document.
-    pub fn replace_ranges(&mut self, ranges: &[Range<usize>], text: &str) {
+    /// Replace all: puts `text(old)` in place of every range of `ranges` (sorted, not
+    /// overlapping), `old` being the text the range holds now, as one undo step, and leaves the
+    /// cursor after the last one. Does nothing on a read only document.
+    pub fn replace_each(&mut self, ranges: &[Range<usize>], text: impl Fn(&str) -> String) {
         if self.read_only || ranges.is_empty() {
             return;
         }
         let before = self.selections();
         let edits: Vec<Edit> = ranges
             .iter()
-            .map(|range| Edit {
-                start: range.start,
-                old_text: self.buffer.text_in(range.clone()),
-                new_text: text.to_string(),
+            .map(|range| {
+                let old_text = self.buffer.text_in(range.clone());
+                let new_text = text(&old_text);
+                Edit {
+                    start: range.start,
+                    old_text,
+                    new_text,
+                }
             })
             .collect();
-        let shift: isize = ranges
+        let shift: isize = edits
             .iter()
-            .map(|range| text.len() as isize - range.len() as isize)
+            .map(|edit| edit.new_text.len() as isize - edit.old_text.len() as isize)
             .sum();
         let last = ranges.last().map_or(0, |range| range.end);
         let after = vec![Selection::cursor((last as isize + shift) as usize)];
@@ -2576,13 +2580,13 @@ mod tests {
     #[test]
     fn replace_ranges_is_one_undo_step() {
         let mut state = editor("a foo b foo c foo");
-        state.replace_ranges(&[2..5, 8..11, 14..17], "barbaz");
+        state.replace_each(&[2..5, 8..11, 14..17], |_| "barbaz".to_string());
         assert_eq!(state.buffer.to_text(), "a barbaz b barbaz c barbaz");
         assert_eq!(state.cursor, Position::new(0, 26));
         state.undo();
         assert_eq!(state.buffer.to_text(), "a foo b foo c foo");
         state.read_only = true;
-        state.replace_ranges(&[2..5, 8..11], "x");
+        state.replace_each(&[2..5, 8..11], |_| "x".to_string());
         assert_eq!(state.buffer.to_text(), "a foo b foo c foo");
     }
 

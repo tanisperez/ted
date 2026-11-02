@@ -18,9 +18,13 @@ pub const STATUS_TOGGLE_HEIGHT: f32 = 24.0;
 /// Narrowest a panel toggle can be (the icon alone, without a count).
 pub const STATUS_TOGGLE_MIN_WIDTH: f32 = 28.0;
 /// Width of the field of the find bar.
-pub const FIND_BAR_FIELD_WIDTH: f32 = 240.0;
+pub const FIND_BAR_FIELD_WIDTH: f32 = 420.0;
+/// Height of the fields of the find bar.
+pub const FIND_BAR_FIELD_HEIGHT: f32 = 28.0;
+/// Size of the buttons of the find bar.
+pub const FIND_BAR_BUTTON: f32 = 26.0;
 /// Width of the match counter of the find bar (`120 of 4,500`).
-pub const FIND_COUNT_WIDTH: f32 = 84.0;
+pub const FIND_COUNT_WIDTH: f32 = 64.0;
 /// Width of the Go to line dialog.
 pub const GOTO_WIDTH: f32 = 380.0;
 /// Distance from the top of the editor to the Go to line dialog.

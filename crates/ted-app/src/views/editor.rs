@@ -46,6 +46,8 @@ use crate::theme::syntax::SyntaxColors;
 const LONG_LINE: usize = 2_000;
 /// Columns shaped on each side of the visible ones on a long line.
 const LONG_LINE_MARGIN: usize = 64;
+/// Height of a find match mark on the scrollbar track, and of the rows the track is cut in.
+const MATCH_MARK_HEIGHT: f32 = 3.0;
 /// Smallest height of the scrollbar thumb, in pixels.
 const MIN_THUMB: f32 = 24.0;
 /// Width of the text cursor, in pixels.
@@ -976,6 +978,9 @@ pub struct EditorLayout {
     matches: Vec<Bounds<Pixels>>,
     /// The selected match, painted stronger and over the selection.
     current_match: Vec<Bounds<Pixels>>,
+    /// The marks of the find bar's matches on the scrollbar track, and of the selected one.
+    match_marks: Vec<Bounds<Pixels>>,
+    current_mark: Option<Bounds<Pixels>>,
     /// The whole element: the mouse acts on the editor only while this is hovered, so a modal
     /// or a menu drawn over it keeps its clicks and wheel.
     hitbox: Hitbox,
@@ -1455,6 +1460,41 @@ impl Element for EditorElement {
                 }
             });
 
+            // Where the find bar's matches are in the whole text: a 3 px mark per row of the
+            // scrollbar track that holds one, from the cached rows of `Find::marks`.
+            let mut match_marks = Vec::new();
+            let mut current_mark = None;
+            if editor.find_open && editor.find.query.is_some() {
+                let track = Bounds::from_corners(
+                    point(bounds.right() - px(EDITOR_SCROLLBAR_WIDTH), bounds.top()),
+                    bounds.bottom_right(),
+                );
+                let rows = (f32::from(track.size.height) / MATCH_MARK_HEIGHT).max(1.0) as usize;
+                let buffer = &editor.state.buffer;
+                let lines = buffer.line_count();
+                let mark = |row: usize| {
+                    Bounds::new(
+                        point(
+                            track.left() + px(2.0),
+                            track.top() + px(row as f32 * MATCH_MARK_HEIGHT),
+                        ),
+                        size(track.size.width - px(4.0), px(MATCH_MARK_HEIGHT)),
+                    )
+                };
+                match_marks = editor
+                    .find
+                    .marks(rows, lines, |offset| buffer.byte_to_line(offset))
+                    .iter()
+                    .map(|row| mark(*row))
+                    .collect();
+                if !current_rects.is_empty() {
+                    current_mark = Some(mark(
+                        buffer.byte_to_line(selected.start) * rows / lines.max(1),
+                    ));
+                }
+            }
+            let state = &mut editor.state;
+
             let content_height = state.content_height();
             let scrollbar = (content_height > f64::from(viewport.height)).then(|| {
                 let track = Bounds::from_corners(
@@ -1524,6 +1564,8 @@ impl Element for EditorElement {
                 selection: selection_rects,
                 matches: match_rects,
                 current_match: current_rects,
+                match_marks,
+                current_mark,
                 hitbox: window.insert_hitbox(bounds, HitboxBehavior::Normal),
                 text_hitbox: window.insert_hitbox(text, HitboxBehavior::Normal),
                 gutter_hitbox: window.insert_hitbox(gutter, HitboxBehavior::Normal),
@@ -1629,6 +1671,12 @@ impl Element for EditorElement {
                 scrollbar.thumb.bottom_right() - point(px(2.0), px(2.0)),
             );
             window.paint_quad(fill(thumb, palette.border_strong).corner_radii(px(3.0)));
+        }
+        for mark in &layout.match_marks {
+            window.paint_quad(fill(*mark, palette.warning).corner_radii(px(1.0)));
+        }
+        if let Some(mark) = layout.current_mark {
+            window.paint_quad(fill(mark, palette.accent_text).corner_radii(px(1.0)));
         }
 
         let text_origin = layout.text.origin;

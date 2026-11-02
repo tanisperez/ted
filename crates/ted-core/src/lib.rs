@@ -17,5 +17,5 @@ pub use cleanup::cleanup_edits;
 pub use detect::{Indent, LineEnding, SAMPLE_LEN, detect_indent, detect_line_ending};
 pub use history::{Edit, EditKind, History, Selection};
 pub use ropey::{Rope, RopeSlice};
-pub use search::SearchQuery;
+pub use search::{QueryError, SearchOptions, SearchQuery, preserve_case};
 pub use words::{next_word_end, previous_word_start};

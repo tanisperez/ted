@@ -1,8 +1,8 @@
 title: Find in file
-description: Find text in the open file: the find bar, the match counter, case sensitivity and big files.
+description: Find text in the open file: the find bar, the match counter, its options, replace and big files.
 ---
 <h1>Find in file</h1>
-<p class="lead"><kbd>Ctrl</kbd> <kbd>F</kbd> opens the find bar at the top right of the editor, with the selected text in it when the selection is on one line.</p>
+<p class="lead"><kbd>Ctrl</kbd> <kbd>F</kbd> opens the find bar across the top of the editor, with the selected text in it when the selection is on one line. A selection over several lines turns on <strong>Find in selection</strong> instead.</p>
 
 <div class="shot">
     <img class="light" src="../img/log-light.webp" width="1800" height="1125" loading="lazy" alt="A 100 MB log open at line 314,446 with the find bar showing match 9,451 of 18,821 for ERROR, and the minimap on the right.">
@@ -11,19 +11,28 @@ description: Find text in the open file: the find bar, the match counter, case s
 
 <h2>Using the find bar</h2>
 <ul>
-    <li>Type, and ted selects the first match after the cursor. Every match on screen is tinted.</li>
+    <li>Type, and ted selects the first match after the cursor. Every match on screen is tinted, and the scrollbar marks where the matches of the whole file are, the selected one in a stronger color.</li>
     <li><kbd>Enter</kbd> or <kbd>F3</kbd> goes to the next match, <kbd>Shift</kbd> <kbd>Enter</kbd> or <kbd>Shift</kbd> <kbd>F3</kbd> to the previous one, wrapping around the end of the file. The arrows of the bar do the same.</li>
     <li>The counter shows which match is selected, <code>3 of 120</code>, or <code>No results</code>.</li>
-    <li>The <strong>Match case</strong> button, <code>Aa</code>, makes the search case sensitive. Without it, the search ignores case in every language.</li>
     <li><kbd>Esc</kbd> or the cross closes the bar and puts the cursor back in the text, the match still selected.</li>
 </ul>
-<p>The text is matched literally: a <code>.</code> or a <code>*</code> means itself.</p>
+
+<h2 id="options">Options</h2>
+<p>Three buttons inside the field change how the text matches. Each one has a key while the bar has the focus:</p>
+<ul>
+    <li><strong>Match case</strong> (<kbd>Alt</kbd> <kbd>C</kbd>) makes the search case sensitive. Without it, the search ignores case in every language.</li>
+    <li><strong>Whole words</strong> (<kbd>Alt</kbd> <kbd>W</kbd>) only finds the text when it is not part of a longer word: <code>find</code> does not match inside <code>finder</code>.</li>
+    <li><strong>Regular expression</strong> (<kbd>Alt</kbd> <kbd>X</kbd>) reads the text as a pattern, in the syntax of Rust's <code>regex</code> crate: <code>\d+</code>, <code>^fn</code>, <code>(\w+)=(\w+)</code>. <code>^</code> and <code>$</code> are the start and the end of a line. A pattern with an error shows <code>Invalid pattern</code> in the counter. Without it, the text is matched literally: a <code>.</code> or a <code>*</code> means itself.</li>
+</ul>
+<p><strong>Find in selection</strong>, the button after the arrows, limits the search to the text selected when it is turned on. Press it again to search the whole file.</p>
 
 <h2 id="replace">Replace</h2>
-<p><kbd>Ctrl</kbd> <kbd>H</kbd> (<kbd>Cmd</kbd> <kbd>Option</kbd> <kbd>F</kbd> on macOS) opens the find bar with a second field for the replacement.</p>
+<p><kbd>Ctrl</kbd> <kbd>R</kbd> or <kbd>Ctrl</kbd> <kbd>H</kbd> (<kbd>Cmd</kbd> <kbd>R</kbd> or <kbd>Cmd</kbd> <kbd>Option</kbd> <kbd>F</kbd> on macOS), or the arrow at the left of the bar, shows a second field for the replacement.</p>
 <ul>
     <li><strong>Replace</strong>, or <kbd>Enter</kbd> in the replacement field, replaces the selected match and selects the next one. When the selection is not a match, it selects the next match first.</li>
-    <li><strong>Replace all</strong> replaces every match of the file at once, searched in the background, as one step that <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes.</li>
+    <li><strong>Replace all</strong> replaces every match of the file (or of the selection, with Find in selection) at once, searched in the background, as one step that <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes.</li>
+    <li>With <strong>Regular expression</strong> on, <code>$1</code>, <code>$2</code> and <code>${name}</code> in the replacement put the groups of the match: <code>(\w+)=(\w+)</code> replaced with <code>$2=$1</code> turns <code>a=b</code> into <code>b=a</code>. <code>$$</code> is a <code>$</code>.</li>
+    <li><strong>Preserve case</strong>, the <code>AB</code> button of the replacement field, keeps the case of each match: replacing <code>find</code> with <code>search</code> turns <code>Find</code> into <code>Search</code> and <code>FIND</code> into <code>SEARCH</code>.</li>
     <li>A read only file cannot be replaced in.</li>
 </ul>
 

@@ -1,5 +1,6 @@
 //! [`Field`]: the text field of the find bar, Go to line and Find in files, from the 0.5.0
-//! search design. A `raised` box with a 1 px border and the input in mono. Focused, the border turns `accent` with a 3 px ring
+//! search design. A `raised` box with a 1 px border, an optional leading icon, the input in mono
+//! and optional toggles inside on the right. Focused, the border turns `accent` with a 3 px ring
 //! of `accent` at 20%; hovered, `border_strong`.
 //!
 //! The input is gpui-kit's, without its own box (`appearance(false)`), with the app's edit menu
@@ -18,12 +19,14 @@ use crate::theme::metrics::{FIELD_RADIUS, FIELD_RING};
 /// Line height of the input inside a [`Field`].
 const LINE_HEIGHT: f32 = 20.0;
 
-/// A field: the box and the input.
+/// A field: the box, the icon, the input and the toggles.
 #[derive(IntoElement)]
 pub struct Field {
     state: Entity<InputState>,
     height: f32,
     text_size: f32,
+    icon: Option<Icon>,
+    suffix: Vec<AnyElement>,
 }
 
 impl Field {
@@ -33,7 +36,21 @@ impl Field {
             state: state.clone(),
             height,
             text_size,
+            icon: None,
+            suffix: Vec::new(),
         }
+    }
+
+    /// Puts `icon` before the text, in `fg_subtle`.
+    pub fn icon(mut self, icon: impl Into<Icon>) -> Self {
+        self.icon = Some(icon.into());
+        self
+    }
+
+    /// Adds `element` after the text, inside the box (a toggle).
+    pub fn suffix(mut self, element: impl IntoElement) -> Self {
+        self.suffix.push(element.into_any_element());
+        self
     }
 }
 
@@ -69,6 +86,13 @@ impl RenderOnce for Field {
                         .hover(move |style| style.border_color(border_strong))
                 }
             })
+            .when_some(self.icon, |field, icon| {
+                field.child(
+                    icon.size(px(14.0))
+                        .flex_none()
+                        .text_color(palette.fg_subtle),
+                )
+            })
             .child(
                 div().flex_1().min_w_0().child(
                     Input::new(&self.state)
@@ -81,5 +105,6 @@ impl RenderOnce for Field {
                         .line_height(line_height),
                 ),
             )
+            .children(self.suffix)
     }
 }

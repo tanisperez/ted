@@ -10,17 +10,35 @@ _version: 2
   en: "%{index} of %{total}"
   es: "%{index} de %{total}"
 "find.case":
-  en: "Match case"
-  es: "Distinguir mayúsculas"
+  en: "Match case (Alt+C)"
+  es: "Distinguir mayúsculas (Alt+C)"
+"find.whole_word":
+  en: "Whole words (Alt+W)"
+  es: "Palabra completa (Alt+W)"
+"find.regex":
+  en: "Regular expression (Alt+X)"
+  es: "Expresión regular (Alt+X)"
+"find.in_selection":
+  en: "Find in selection"
+  es: "Buscar en la selección"
+"find.toggle_replace":
+  en: "Show or hide replace"
+  es: "Mostrar u ocultar reemplazar"
+"find.preserve_case":
+  en: "Preserve case"
+  es: "Conservar mayúsculas"
+"find.invalid":
+  en: "Invalid pattern"
+  es: "Patrón no válido"
 "find.previous":
-  en: "Previous match"
-  es: "Coincidencia anterior"
+  en: "Previous match (Shift+Enter)"
+  es: "Coincidencia anterior (Mayús+Intro)"
 "find.next":
-  en: "Next match"
-  es: "Coincidencia siguiente"
+  en: "Next match (Enter)"
+  es: "Coincidencia siguiente (Intro)"
 "find.close":
-  en: "Close"
-  es: "Cerrar"
+  en: "Close (Esc)"
+  es: "Cerrar (Esc)"
 "goto.title":
   en: "Go to line"
   es: "Ir a línea"
@@ -34,8 +52,8 @@ _version: 2
   en: "Replace"
   es: "Reemplazar"
 "find.replace":
-  en: "Replace (Enter)"
-  es: "Reemplazar (Intro)"
+  en: "Replace"
+  es: "Reemplazar"
 "find.replace_all":
   en: "Replace all"
   es: "Reemplazar todo"

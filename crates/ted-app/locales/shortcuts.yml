@@ -138,6 +138,15 @@ _version: 2
 "shortcuts.action.find_previous":
   en: "Previous match"
   es: "Coincidencia anterior"
+"shortcuts.action.match_case":
+  en: "Match case, in the find bar"
+  es: "Distinguir mayúsculas, en la barra de búsqueda"
+"shortcuts.action.whole_word":
+  en: "Whole words, in the find bar"
+  es: "Palabra completa, en la barra de búsqueda"
+"shortcuts.action.regex":
+  en: "Regular expression, in the find bar"
+  es: "Expresión regular, en la barra de búsqueda"
 "shortcuts.action.commit":
   en: "Commit, in the message"
   es: "Hacer commit, en el mensaje"
