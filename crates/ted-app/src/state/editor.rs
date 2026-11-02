@@ -252,11 +252,12 @@ impl EditorState {
     /// Scrolls so that `fraction` (0 to 1) of the scroll range is above the viewport, for the
     /// scrollbar.
     pub fn scroll_to_fraction(&mut self, fraction: f64) {
-        if self.wrap && self.wrap_fits() {
-            self.scroll_y = 0.0;
-            return;
-        }
         self.scroll_y = fraction.clamp(0.0, 1.0) * self.max_scroll_y();
+        if self.wrap {
+            // Through `set_wrap_top`, which keeps the end of the text where it may be.
+            let (line, into) = self.wrap_top();
+            self.set_wrap_top(line, into);
+        }
     }
 
     /// Scrolls so that `fraction` (0 to 1) of the horizontal range is left of the viewport, for
@@ -359,28 +360,39 @@ impl EditorState {
         (line, into as f32)
     }
 
-    /// While lines wrap: whether every row fits on screen, with the top padding and the scroll
-    /// past the end, so there is nothing to scroll (as `max_scroll_y` gives without wrapping).
-    /// Walks at most a screen of rows.
-    fn wrap_fits(&mut self) -> bool {
+    /// While lines wrap: the lowest the top of the viewport may go, as a line and the pixels
+    /// into its rows. As without wrapping, the end of the text may rise to
+    /// `1 - SCROLL_PAST_END` of the screen and no higher; a text shorter than that does not
+    /// scroll. Walks back from the last line at most a screen of rows.
+    fn wrap_max_top(&mut self) -> (usize, f32) {
         let line_height = self.viewport.line_height.max(1.0);
-        let room = self.viewport.height * (1.0 - SCROLL_PAST_END) - PADDING_TOP;
-        let mut used = 0.0;
-        for line in 0..self.buffer.line_count() {
-            used += self.line_rows(line).count() as f32 * line_height;
-            if used > room {
-                return false;
+        // As `content_height` computes the scroll past the end, so both modes agree.
+        let shown = self.viewport.height - self.viewport.height * SCROLL_PAST_END;
+        let mut below = 0.0;
+        let mut line = self.buffer.line_count() - 1;
+        loop {
+            let height = self.line_rows(line).count() as f32 * line_height;
+            if below + height >= shown {
+                // Never negative but for rounding (`SCROLL_PAST_END` is not exact in f32).
+                return (line, (height - (shown - below)).max(0.0));
             }
+            below += height;
+            if line == 0 {
+                return (0, (height - (shown - below + height)).max(-PADDING_TOP));
+            }
+            line -= 1;
         }
-        true
     }
 
-    /// Sets the top of the viewport to `into` pixels into the rows of `line`.
+    /// Sets the top of the viewport to `into` pixels into the rows of `line`, no lower than
+    /// [`Self::wrap_max_top`].
     fn set_wrap_top(&mut self, line: usize, into: f32) {
-        if self.wrap_fits() {
-            self.scroll_y = 0.0;
-            return;
-        }
+        let (max_line, max_into) = self.wrap_max_top();
+        let (line, into) = if line > max_line || (line == max_line && into > max_into) {
+            (max_line, max_into)
+        } else {
+            (line, into)
+        };
         let line_height = f64::from(self.viewport.line_height).max(1.0);
         self.scroll_y = if into < 0.0 {
             f64::from(PADDING_TOP) + f64::from(into) + line as f64 * line_height
@@ -2538,11 +2550,11 @@ mod tests {
         state.set_wrap(true);
         state.scroll_by(0.0, 100.0);
         assert_eq!(state.scroll_y, 0.0);
-        // Six rows do not fit: it scrolls as before.
+        // Six rows do not fit: it scrolls, as far as without wrapping (10 + 120 + 80 - 200).
         let mut state = editor("a\nb\nc\nd\ne\nf");
         state.set_wrap(true);
         state.scroll_by(0.0, 15.0);
-        assert_eq!(state.scroll_y, 15.0);
+        assert!((state.scroll_y - 10.0).abs() < 0.01, "{}", state.scroll_y);
     }
 
     #[test]
@@ -2585,6 +2597,25 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::expect_used)]
+    fn a_wrapped_text_does_not_scroll_past_its_end_more_than_without_wrap() {
+        // 36 lines, 20 px each, on a 200 px screen: the end may rise to 120 px from the top.
+        let text = "x\n".repeat(35);
+        let mut state = editor(&text);
+        state.set_wrap(true);
+        state.scroll_by(0.0, 1e6);
+        let (rows, first_y) = state.visible_rows();
+        let last = rows
+            .iter()
+            .position(|row| row.line == 35)
+            .expect("the last line shows");
+        assert_eq!(first_y + last as f32 * 20.0 + 20.0, 120.0);
+        let mut plain = editor(&text);
+        plain.scroll_by(0.0, 1e6);
+        assert!((state.scroll_y - plain.scroll_y).abs() < 0.01);
+    }
+
+    #[test]
     fn one_long_wrapped_line_scrolls_to_its_end() {
         let text = "word ".repeat(200);
         let mut state = wrapped(&text);
@@ -2596,9 +2627,14 @@ mod tests {
             rows.last().is_some_and(|row| row.last),
             "the last row shows"
         );
+        // At the end, the last row is 60% down the screen, as without wrapping: not at the top.
         state.scroll_to_fraction(1.0);
         let (rows, _) = state.visible_rows();
-        assert!(!rows.is_empty() && rows[0].last, "the last row at the top");
+        assert!(
+            rows.last().is_some_and(|row| row.last),
+            "the last row shows"
+        );
+        assert!(rows.len() >= 2 && !rows[0].last, "rows above the last one");
     }
 
     #[test]
