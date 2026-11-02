@@ -132,7 +132,9 @@ Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; Val
 ; sets an extension's default value nor its UserChoice: files keep their app and their icon until
 ; the user picks ted in "Open with" with "Always". Windows then remembers ted.<ext>, and Explorer
 ; shows its icon. packaging/icons/documents/generate.py makes the .ico files; this list is the
-; extensions ted highlights (crates/ted-syntax/src/language.rs) plus YAML, INI and CSV.
+; extensions ted highlights (crates/ted-syntax/src/language.rs) plus YAML, INI and CSV, minus the
+; scripts Windows runs on a double click (.ps1, .bat, .cmd): with a second handler listed, Windows
+; asks which app opens them, and picking ted there stops them from running.
 Root: HKA; Subkey: "Software\Classes\ted.txt"; ValueType: string; ValueName: ""; ValueData: "Text document"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\ted.txt\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\icons\txt.ico"
 Root: HKA; Subkey: "Software\Classes\ted.txt\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
@@ -293,10 +295,13 @@ Root: HKA; Subkey: "Software\Classes\ted.pyi"; ValueType: string; ValueName: "";
 Root: HKA; Subkey: "Software\Classes\ted.pyi\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\icons\py.ico"
 Root: HKA; Subkey: "Software\Classes\ted.pyi\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
 Root: HKA; Subkey: "Software\Classes\.pyi\OpenWithProgids"; ValueType: string; ValueName: "ted.pyi"; ValueData: ""; Flags: uninsdeletevalue
-Root: HKA; Subkey: "Software\Classes\ted.ps1"; ValueType: string; ValueName: ""; ValueData: "PowerShell script"; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Classes\ted.ps1\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\icons\ps1.ico"
-Root: HKA; Subkey: "Software\Classes\ted.ps1\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
-Root: HKA; Subkey: "Software\Classes\.ps1\OpenWithProgids"; ValueType: string; ValueName: "ted.ps1"; ValueData: ""; Flags: uninsdeletevalue
+; Installs before 0.5.0 listed ted for .ps1, .bat and .cmd. Remove those entries on upgrade.
+Root: HKA; Subkey: "Software\Classes\.ps1\OpenWithProgids"; ValueType: none; ValueName: "ted.ps1"; Flags: deletevalue
+Root: HKA; Subkey: "Software\Classes\.bat\OpenWithProgids"; ValueType: none; ValueName: "ted.bat"; Flags: deletevalue
+Root: HKA; Subkey: "Software\Classes\.cmd\OpenWithProgids"; ValueType: none; ValueName: "ted.cmd"; Flags: deletevalue
+Root: HKA; Subkey: "Software\Classes\ted.ps1"; ValueType: none; Flags: deletekey
+Root: HKA; Subkey: "Software\Classes\ted.bat"; ValueType: none; Flags: deletekey
+Root: HKA; Subkey: "Software\Classes\ted.cmd"; ValueType: none; Flags: deletekey
 Root: HKA; Subkey: "Software\Classes\ted.psm1"; ValueType: string; ValueName: ""; ValueData: "PowerShell script"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\ted.psm1\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\icons\ps1.ico"
 Root: HKA; Subkey: "Software\Classes\ted.psm1\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
@@ -305,14 +310,6 @@ Root: HKA; Subkey: "Software\Classes\ted.psd1"; ValueType: string; ValueName: ""
 Root: HKA; Subkey: "Software\Classes\ted.psd1\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\icons\ps1.ico"
 Root: HKA; Subkey: "Software\Classes\ted.psd1\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
 Root: HKA; Subkey: "Software\Classes\.psd1\OpenWithProgids"; ValueType: string; ValueName: "ted.psd1"; ValueData: ""; Flags: uninsdeletevalue
-Root: HKA; Subkey: "Software\Classes\ted.bat"; ValueType: string; ValueName: ""; ValueData: "Batch file"; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Classes\ted.bat\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\icons\bat.ico"
-Root: HKA; Subkey: "Software\Classes\ted.bat\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
-Root: HKA; Subkey: "Software\Classes\.bat\OpenWithProgids"; ValueType: string; ValueName: "ted.bat"; ValueData: ""; Flags: uninsdeletevalue
-Root: HKA; Subkey: "Software\Classes\ted.cmd"; ValueType: string; ValueName: ""; ValueData: "Batch file"; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Classes\ted.cmd\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\icons\bat.ico"
-Root: HKA; Subkey: "Software\Classes\ted.cmd\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
-Root: HKA; Subkey: "Software\Classes\.cmd\OpenWithProgids"; ValueType: string; ValueName: "ted.cmd"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKA; Subkey: "Software\Classes\ted.ini"; ValueType: string; ValueName: ""; ValueData: "Configuration file"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\ted.ini\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\icons\ini.ico"
 Root: HKA; Subkey: "Software\Classes\ted.ini\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
