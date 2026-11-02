@@ -21,6 +21,20 @@ pub const STATUS_TOGGLE_MIN_WIDTH: f32 = 28.0;
 pub const FIND_BAR_FIELD_WIDTH: f32 = 240.0;
 /// Width of the match counter of the find bar (`120 of 4,500`).
 pub const FIND_COUNT_WIDTH: f32 = 84.0;
+/// Width of the Go to line dialog.
+pub const GOTO_WIDTH: f32 = 380.0;
+/// Distance from the top of the editor to the Go to line dialog.
+pub const GOTO_TOP: f32 = 20.0;
+/// Height of the Go to line field.
+pub const GOTO_FIELD_HEIGHT: f32 = 32.0;
+/// Height of the Cancel and Go buttons of the dialog.
+pub const GOTO_BUTTON_HEIGHT: f32 = 28.0;
+/// Radius of the search fields (find bar, Go to line, Find in files).
+pub const FIELD_RADIUS: f32 = 7.0;
+/// Width of the focus ring around a search field.
+pub const FIELD_RING: f32 = 3.0;
+/// Radius of the editor's floating dialogs (Go to line, Find in files).
+pub const RADIUS_DIALOG: f32 = 12.0;
 /// Size of the search box in the title bar (folder mode).
 pub const SEARCH_TRIGGER_WIDTH: f32 = 360.0;
 pub const SEARCH_TRIGGER_HEIGHT: f32 = 26.0;

@@ -21,9 +21,15 @@ _version: 2
 "find.close":
   en: "Close"
   es: "Cerrar"
-"goto.placeholder":
-  en: "Go to line (1 to %{count}), or line:column"
-  es: "Ir a la línea (de 1 a %{count}), o línea:columna"
+"goto.title":
+  en: "Go to line"
+  es: "Ir a línea"
+"goto.hint":
+  en: "Line and an optional column, from 1 to %{count}. For example 80 or 80:12."
+  es: "Línea y columna opcional, de 1 a %{count}. Por ejemplo 80 o 80:12."
+"goto.go":
+  en: "Go"
+  es: "Ir"
 "find.replace_placeholder":
   en: "Replace"
   es: "Reemplazar"

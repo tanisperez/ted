@@ -5,6 +5,7 @@ mod document;
 mod document_icons;
 mod editor;
 mod explorer;
+mod field;
 mod find;
 mod git;
 mod goto;
