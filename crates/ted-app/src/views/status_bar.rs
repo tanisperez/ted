@@ -111,7 +111,22 @@ impl AppView {
                     .children(status.indent)
                     .child(status.encoding)
                     .child(status.line_ending)
-                    .child(status.language)
+                    .child(
+                        SearchableMenu::new("status-language-menu", &self.language_menu)
+                            .anchor(Anchor::BottomRight)
+                            .trigger(
+                                Button::new("status-language")
+                                    .neutral_ghost(cx, palette.fg_subtle)
+                                    .compact()
+                                    .h(px(22.0))
+                                    .px(px(6.0))
+                                    .mx(px(-6.0))
+                                    .rounded(px(RADIUS_MD - 2.0))
+                                    .text_size(px(11.5))
+                                    .tooltip(t!("status.language_tooltip"))
+                                    .child(status.language),
+                            ),
+                    )
             }))
             .child(self.render_shortcuts_button(&palette, cx))
             .into_any_element()

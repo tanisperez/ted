@@ -168,6 +168,9 @@ pub struct AppView {
     pub(crate) branch_menu: Entity<telaio_ui::components::SearchableMenuState>,
     /// What the branch menu's submenus and create row need to know, updated on every rebuild.
     pub(crate) branch_menu_context: Rc<RefCell<MenuContext>>,
+    /// The language menu of the status bar, and whether it was open at the last change.
+    pub(crate) language_menu: Entity<telaio_ui::components::SearchableMenuState>,
+    pub(crate) language_menu_open: bool,
     /// The choice of the checkout dialog while it is open.
     pub(crate) checkout_choice: CheckoutChoice,
     /// ted's icon on the files it opens by default (Linux).
@@ -211,6 +214,7 @@ impl AppView {
         .detach();
         let branch_menu_context = Rc::new(RefCell::new(MenuContext::default()));
         let branch_menu = new_branch_menu(Rc::clone(&branch_menu_context), window, cx);
+        let language_menu = super::language_menu::new_language_menu(window, cx);
         let mut view = Self {
             settings,
             recents: recents::load(),
@@ -236,6 +240,8 @@ impl AppView {
             commit_input,
             branch_menu,
             branch_menu_context,
+            language_menu,
+            language_menu_open: false,
             checkout_choice: CheckoutChoice::default(),
             document_icons: DocumentIcons::default(),
             file_index: None,

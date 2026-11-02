@@ -36,6 +36,28 @@ pub enum Language {
 }
 
 impl Language {
+    /// Every language, in the order the language menu of the status bar lists them: plain text
+    /// first, then by name.
+    pub const ALL: [Language; 17] = [
+        Language::PlainText,
+        Language::Batch,
+        Language::Css,
+        Language::EditorConfig,
+        Language::GitIgnore,
+        Language::Html,
+        Language::JavaScript,
+        Language::Json,
+        Language::Log,
+        Language::Make,
+        Language::Markdown,
+        Language::PowerShell,
+        Language::Python,
+        Language::Rust,
+        Language::Shell,
+        Language::Toml,
+        Language::Xml,
+    ];
+
     /// The language of a file, from its name first and then its extension (case insensitive).
     /// Anything unknown is [`Language::PlainText`].
     pub fn detect(path: &Path) -> Language {
@@ -150,6 +172,46 @@ impl Language {
             Language::GitIgnore => "Gitignore",
             Language::Log => "Log",
             Language::PlainText => "Plain text",
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn all_lists_every_language_once() {
+        let mut names: Vec<&str> = Language::ALL
+            .iter()
+            .map(|language| language.name())
+            .collect();
+        assert_eq!(names[0], "Plain text");
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(names.len(), Language::ALL.len());
+        // A new variant must be added to ALL too: this match stops compiling until it is
+        // handled here, which is the reminder.
+        for language in Language::ALL {
+            match language {
+                Language::Rust
+                | Language::JavaScript
+                | Language::Json
+                | Language::Toml
+                | Language::Markdown
+                | Language::Xml
+                | Language::Html
+                | Language::Make
+                | Language::Shell
+                | Language::Python
+                | Language::PowerShell
+                | Language::Batch
+                | Language::Css
+                | Language::EditorConfig
+                | Language::GitIgnore
+                | Language::Log
+                | Language::PlainText => {}
+            }
         }
     }
 }

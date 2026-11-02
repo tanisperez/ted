@@ -27,3 +27,15 @@ _version: 2
 "status.wrap_off":
   en: "Long lines do not wrap (Alt+Z)"
   es: "Las líneas largas no se ajustan (Alt+Z)"
+"status.languages":
+  en: "Languages"
+  es: "Lenguajes"
+"status.language_search":
+  en: "Search languages"
+  es: "Buscar lenguajes"
+"status.language_empty":
+  en: "No language matches"
+  es: "Ningún lenguaje coincide"
+"status.language_tooltip":
+  en: "Highlight as another language"
+  es: "Resaltar como otro lenguaje"

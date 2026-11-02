@@ -83,6 +83,16 @@ impl Syntax {
         }
     }
 
+    /// Highlights the document as `language` from now on, whatever its file name says. The tree
+    /// of the old language is dropped and a parse of the new one starts on the next frame.
+    pub fn set_language(&mut self, language: Language) {
+        if self.language != language {
+            self.language = language;
+            self.tree = None;
+            self.stale = true;
+        }
+    }
+
     /// Whether this document is parsed at all: a language with a grammar and a buffer that is
     /// not too big.
     fn parses(&self, buffer: &Buffer) -> bool {
@@ -134,7 +144,10 @@ impl Syntax {
     ) -> Option<ParseRequest> {
         self.parsing = false;
         match tree {
-            Some(tree) if tree.version() == buffer.version() => {
+            // A tree of the language the document had before `set_language` is dropped.
+            Some(tree)
+                if tree.version() == buffer.version() && tree.language() == self.language =>
+            {
                 // The changes made it into this tree already.
                 let _ = buffer.take_changes();
                 self.tree = Some(tree);
@@ -369,6 +382,26 @@ mod tests {
         run(&mut syntax, &mut buffer, next);
         let spans = syntax.line_spans(&buffer, 1, 0..5);
         assert_eq!(spans, vec![span(0..5, Highlight::Comment)]);
+    }
+
+    #[test]
+    fn a_new_language_drops_the_old_tree_and_a_running_parse() {
+        let mut buffer = Buffer::from_text("{\"a\": 1}\n");
+        let mut syntax = Syntax::new(Language::PlainText, MAX);
+        assert!(
+            syntax.sync(&mut buffer).is_none(),
+            "plain text is not parsed"
+        );
+        syntax.set_language(Language::Json);
+        let json = syntax.sync(&mut buffer).expect("a JSON parse");
+        // Switched again while the JSON parse runs: its tree is not kept.
+        syntax.set_language(Language::Rust);
+        let next = syntax
+            .parsed(json.run(), &mut buffer)
+            .expect("a Rust parse");
+        assert_eq!(next.language, Language::Rust);
+        run(&mut syntax, &mut buffer, next);
+        assert_eq!(syntax.language, Language::Rust);
     }
 
     #[test]

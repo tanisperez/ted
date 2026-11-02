@@ -1,5 +1,5 @@
 title: Syntax highlighting
-description: The languages ted highlights, how it detects them, and how it handles logs and big files.
+description: The languages ted highlights, how it detects them, how to change one, and how it handles logs and big files.
 ---
 <h1>Syntax highlighting</h1>
 <p class="lead">ted colors code with tree-sitter, in the background, and keeps the colors in step as you type. Logs, batch files, <code>.editorconfig</code> and <code>.gitignore</code> get a highlighter of their own, fast at any size.</p>
@@ -28,6 +28,9 @@ description: The languages ted highlights, how it detects them, and how it handl
     </tbody>
 </table></div>
 <p>Anything else is <strong>Plain text</strong>. In Markdown, headings, lists, quotes and code blocks are colored; inline code and emphasis are not yet.</p>
+
+<h2 id="change-language">Changing the language</h2>
+<p>Click the language at the right of the status bar to pick another one: a menu lists every language ted highlights, with a search box at its top, and the current one checked. Type part of a name, such as <code>js</code>, and press <kbd>Enter</kbd>, or click a row. The file is highlighted as that language until you close it; its name and its contents do not change.</p>
 
 <h2>Logs</h2>
 <p>In a <code>.log</code> file, the date and time at the start of each line and the level word (<code>ERROR</code>, <code>WARN</code>, <code>INFO</code>, <code>DEBUG</code>, <code>TRACE</code>, and <code>FATAL</code>, <code>ERR</code>, <code>WARNING</code>) are colored. Only the lines on screen are looked at, so a log of any size scrolls as fast with colors as without.</p>

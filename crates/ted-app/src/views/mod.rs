@@ -9,6 +9,7 @@ mod field;
 mod find;
 mod git;
 mod goto;
+mod language_menu;
 mod location;
 mod logo;
 mod root;

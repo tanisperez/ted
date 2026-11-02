@@ -46,12 +46,17 @@ impl DocumentStatus {
             indent,
             encoding,
             line_ending: state.buffer.line_ending().label(),
-            language: match state.syntax.language {
-                Language::PlainText => t!("status.plain_text").into_owned(),
-                language => language.name().to_string(),
-            },
+            language: language_label(state.syntax.language),
             wrap: state.wrap,
         }
+    }
+}
+
+/// The name of `language` in the status bar and its menu, in the UI language for plain text.
+pub fn language_label(language: Language) -> String {
+    match language {
+        Language::PlainText => t!("status.plain_text").into_owned(),
+        language => language.name().to_string(),
     }
 }
 
