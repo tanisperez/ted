@@ -249,6 +249,10 @@ impl EditorState {
     /// Scrolls so that `fraction` (0 to 1) of the scroll range is above the viewport, for the
     /// scrollbar.
     pub fn scroll_to_fraction(&mut self, fraction: f64) {
+        if self.wrap && self.wrap_fits() {
+            self.scroll_y = 0.0;
+            return;
+        }
         self.scroll_y = fraction.clamp(0.0, 1.0) * self.max_scroll_y();
     }
 
@@ -352,8 +356,28 @@ impl EditorState {
         (line, into as f32)
     }
 
+    /// While lines wrap: whether every row fits on screen, with the top padding and the scroll
+    /// past the end, so there is nothing to scroll (as `max_scroll_y` gives without wrapping).
+    /// Walks at most a screen of rows.
+    fn wrap_fits(&mut self) -> bool {
+        let line_height = self.viewport.line_height.max(1.0);
+        let room = self.viewport.height * (1.0 - SCROLL_PAST_END) - PADDING_TOP;
+        let mut used = 0.0;
+        for line in 0..self.buffer.line_count() {
+            used += self.line_rows(line).count() as f32 * line_height;
+            if used > room {
+                return false;
+            }
+        }
+        true
+    }
+
     /// Sets the top of the viewport to `into` pixels into the rows of `line`.
     fn set_wrap_top(&mut self, line: usize, into: f32) {
+        if self.wrap_fits() {
+            self.scroll_y = 0.0;
+            return;
+        }
         let line_height = f64::from(self.viewport.line_height).max(1.0);
         self.scroll_y = if into < 0.0 {
             f64::from(PADDING_TOP) + f64::from(into) + line as f64 * line_height
@@ -2462,6 +2486,26 @@ mod tests {
             .collect();
         assert_eq!(parts, [(0, 0..5), (0, 5..10), (0, 10..14)]);
         assert!(rows[0].first && !rows[0].last && rows[2].last);
+    }
+
+    #[test]
+    fn a_wrapped_document_that_fits_does_not_scroll() {
+        // 200 px high: 10 of padding and 80 kept past the end leave 110 px, five rows.
+        let mut state = editor("");
+        state.set_wrap(true);
+        state.scroll_by(0.0, 100.0);
+        assert_eq!(state.scroll_y, 0.0);
+        state.scroll_to_fraction(1.0);
+        assert_eq!(state.scroll_y, 0.0);
+        let mut state = editor("a\nb\nc\nd\ne");
+        state.set_wrap(true);
+        state.scroll_by(0.0, 100.0);
+        assert_eq!(state.scroll_y, 0.0);
+        // Six rows do not fit: it scrolls as before.
+        let mut state = editor("a\nb\nc\nd\ne\nf");
+        state.set_wrap(true);
+        state.scroll_by(0.0, 15.0);
+        assert_eq!(state.scroll_y, 15.0);
     }
 
     #[test]
