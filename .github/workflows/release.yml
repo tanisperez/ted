@@ -206,8 +206,8 @@ jobs:
         working-directory: dist
         run: |
           for pattern in 'ted-*-macos-arm64.dmg' 'ted-*-windows-x86_64-setup.exe' \
-            'ted-*-windows-x86_64-portable.zip' 'ted_*_amd64.deb' 'ted-*.x86_64.rpm' \
-            'ted-*-x86_64.pkg.tar.zst' 'ted-*-x86_64.AppImage' 'ted-*-linux-x86_64.tar.gz'; do
+            'ted-*-windows-x86_64-portable.zip' 'ted-editor_*_amd64.deb' 'ted-editor-*.x86_64.rpm' \
+            'ted-editor-*-x86_64.pkg.tar.zst' 'ted-*-x86_64.AppImage' 'ted-*-linux-x86_64.tar.gz'; do
             if ! ls $pattern > /dev/null 2>&1; then
               echo "::error::Missing $pattern in dist"
               exit 1

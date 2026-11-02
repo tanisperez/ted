@@ -27,9 +27,9 @@ terminal.
 
 | Platform | Package | Notes |
 | --- | --- | --- |
-| Debian, Ubuntu | `ted_X.Y.Z_amd64.deb` | `sudo apt install ./ted_X.Y.Z_amd64.deb` |
-| Fedora, openSUSE | `ted-X.Y.Z-1.x86_64.rpm` | `sudo dnf install ./ted-X.Y.Z-1.x86_64.rpm` |
-| Arch Linux | `ted-X.Y.Z-1-x86_64.pkg.tar.zst` | `sudo pacman -U ./ted-X.Y.Z-1-x86_64.pkg.tar.zst` |
+| Debian, Ubuntu | `ted-editor_X.Y.Z_amd64.deb` | `sudo apt install ./ted-editor_X.Y.Z_amd64.deb` |
+| Fedora, openSUSE | `ted-editor-X.Y.Z-1.x86_64.rpm` | `sudo dnf install ./ted-editor-X.Y.Z-1.x86_64.rpm` |
+| Arch Linux | `ted-editor-X.Y.Z-1-x86_64.pkg.tar.zst` | `sudo pacman -U ./ted-editor-X.Y.Z-1-x86_64.pkg.tar.zst` |
 | Any Linux | `ted-X.Y.Z-x86_64.AppImage` | `chmod +x` and run it; nothing is installed |
 | Any Linux | `ted-X.Y.Z-linux-x86_64.tar.gz` | `bin/ted` plus the desktop entry and icons in a `/usr` layout |
 | Windows | `ted-X.Y.Z-windows-x86_64-setup.exe` | Per user install, no administrator rights: Start menu entry, `ted` on the `PATH`, "Open with ted" in Explorer |

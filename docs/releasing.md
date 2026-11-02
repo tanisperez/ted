@@ -59,8 +59,8 @@ scripts live in `packaging/`, and every one can run locally.
 | Asset | Content |
 | --- | --- |
 | `ted-X.Y.Z-linux-x86_64.tar.gz` | `bin/ted`, the desktop entry and the icons in a `/usr`-like layout |
-| `ted_X.Y.Z_amd64.deb`, `ted-X.Y.Z-1.x86_64.rpm` | built with `nfpm` from `packaging/linux/nfpm.yaml` |
-| `ted-X.Y.Z-1-x86_64.pkg.tar.zst` | Arch package, written by `package.sh` with `bsdtar` and `zstd` |
+| `ted-editor_X.Y.Z_amd64.deb`, `ted-editor-X.Y.Z-1.x86_64.rpm` | built with `nfpm` from `packaging/linux/nfpm.yaml` |
+| `ted-editor-X.Y.Z-1-x86_64.pkg.tar.zst` | Arch package, written by `package.sh` with `bsdtar` and `zstd` |
 | `ted-X.Y.Z-x86_64.AppImage` | the same files in an AppImage; system libraries are not bundled |
 | `ted-X.Y.Z-macos-arm64.dmg`, `.app.tar.gz` | `ted.app`, ad-hoc signed |
 | `ted-X.Y.Z-windows-x86_64-setup.exe` | Inno Setup, **per-user** install, no administrator rights |

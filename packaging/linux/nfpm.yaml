@@ -4,7 +4,9 @@
 #   TED_ARCH     amd64 or arm64 (Go style, nfpm converts it for rpm)
 #   TED_BIN      path to the ted binary
 #   TED_ROOT     repo root
-name: ted
+# The package is ted-editor: "ted" is taken in the AUR by an RTF word processor. The binary
+# stays ted.
+name: ted-editor
 arch: ${TED_ARCH}
 platform: linux
 version: ${TED_VERSION}
@@ -79,27 +81,27 @@ contents:
       mode: 0644
   # deb convention: the license under /usr/share/doc/<name>/.
   - src: ${TED_ROOT}/LICENSE
-    dst: /usr/share/doc/ted/LICENSE
+    dst: /usr/share/doc/ted-editor/LICENSE
     expand: true
     file_info:
       mode: 0644
     packager: deb
   - src: ${TED_ROOT}/NOTICE
-    dst: /usr/share/doc/ted/NOTICE
+    dst: /usr/share/doc/ted-editor/NOTICE
     expand: true
     file_info:
       mode: 0644
     packager: deb
   # rpm convention: /usr/share/licenses/<name>/, flagged as a license file.
   - src: ${TED_ROOT}/LICENSE
-    dst: /usr/share/licenses/ted/LICENSE
+    dst: /usr/share/licenses/ted-editor/LICENSE
     expand: true
     type: license
     file_info:
       mode: 0644
     packager: rpm
   - src: ${TED_ROOT}/NOTICE
-    dst: /usr/share/licenses/ted/NOTICE
+    dst: /usr/share/licenses/ted-editor/NOTICE
     expand: true
     type: license
     file_info:
@@ -118,8 +120,18 @@ depends:
   - libegl1
 recommends:
   - libvulkan1
+# Up to 0.4.1 the package was named ted: replace it on upgrade. Only those versions, so the
+# unrelated ted packages of other repositories are left alone.
+replaces:
+  - ted (<< 0.5.0~)
+conflicts:
+  - ted (<< 0.5.0~)
 overrides:
   rpm:
+    replaces:
+      - ted < 0.5.0
+    conflicts:
+      - ted < 0.5.0
     depends:
       - libxkbcommon
       - libxkbcommon-x11
