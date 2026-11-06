@@ -24,6 +24,9 @@ _version: 2
 "search.action.new_file":
   en: "New file"
   es: "Nuevo archivo"
+"search.action.new_window":
+  en: "New window"
+  es: "Nueva ventana"
 "search.action.open_file":
   en: "Open file…"
   es: "Abrir archivo…"

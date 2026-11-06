@@ -21,6 +21,17 @@ impl Target {
     }
 }
 
+/// What to run for a new window: the executable itself, or the AppImage it came from, since the
+/// path of the running executable inside an AppImage is gone when the first window closes.
+pub fn new_window_program(
+    appimage: Option<PathBuf>,
+    executable: Option<PathBuf>,
+) -> Option<PathBuf> {
+    appimage
+        .filter(|path| !path.as_os_str().is_empty())
+        .or(executable)
+}
+
 /// Why a path cannot be opened.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LaunchError {
@@ -122,6 +133,16 @@ fn percent_decode(text: &str) -> Option<String> {
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn a_new_window_runs_the_appimage_when_there_is_one() {
+        let exe = || Some(PathBuf::from("/tmp/.mount_ted/usr/bin/ted"));
+        let appimage = Some(PathBuf::from("/home/me/ted.AppImage"));
+        assert_eq!(new_window_program(appimage.clone(), exe()), appimage);
+        assert_eq!(new_window_program(None, exe()), exe());
+        assert_eq!(new_window_program(Some(PathBuf::new()), exe()), exe());
+        assert_eq!(new_window_program(None, None), None);
+    }
 
     #[test]
     fn relative_paths_need_the_root() {

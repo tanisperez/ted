@@ -11,6 +11,8 @@ actions!(
     [
         /// Creates a new untitled document (`Ctrl+N`).
         NewFile,
+        /// Opens another window, empty, as running `ted` again (`Ctrl+Shift+N`).
+        NewWindow,
         /// Opens a file with the native dialog (`Ctrl+O`).
         OpenFile,
         /// Opens a folder with the native dialog (`Ctrl+Shift+O`).
@@ -80,6 +82,7 @@ pub fn bind_keys(cx: &mut App) {
     #[cfg(target_os = "macos")]
     cx.bind_keys([
         KeyBinding::new("cmd-n", NewFile, None),
+        KeyBinding::new("cmd-shift-n", NewWindow, None),
         KeyBinding::new("cmd-o", OpenFile, None),
         KeyBinding::new("cmd-shift-o", OpenFolder, None),
         KeyBinding::new("ctrl-1", ToggleExplorer, None),
@@ -99,6 +102,7 @@ pub fn bind_keys(cx: &mut App) {
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
         KeyBinding::new("ctrl-n", NewFile, None),
+        KeyBinding::new("ctrl-shift-n", NewWindow, None),
         KeyBinding::new("ctrl-o", OpenFile, None),
         KeyBinding::new("ctrl-shift-o", OpenFolder, None),
         KeyBinding::new("alt-1", ToggleExplorer, None),

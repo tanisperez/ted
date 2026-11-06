@@ -322,6 +322,7 @@ fn boxed_action(action: ActionId) -> Option<Box<dyn Action>> {
     use ActionId::*;
     Some(match action {
         NewFile => Box::new(actions::NewFile),
+        NewWindow => Box::new(actions::NewWindow),
         OpenFile => Box::new(actions::OpenFile),
         OpenFolder => Box::new(actions::OpenFolder),
         Save => Box::new(actions::Save),
@@ -618,6 +619,7 @@ fn action_icon(action: ActionId) -> Lucide {
     use ActionId::*;
     match action {
         NewFile => Lucide::FilePlus,
+        NewWindow => Lucide::AppWindow,
         OpenFile => Lucide::FileInput,
         OpenFolder => Lucide::FolderOpen,
         Save => Lucide::Save,

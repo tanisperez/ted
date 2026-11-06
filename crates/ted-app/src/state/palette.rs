@@ -17,6 +17,7 @@ pub const MAX_FILE_RESULTS: usize = 50;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActionId {
     NewFile,
+    NewWindow,
     OpenFile,
     OpenFolder,
     Save,
@@ -51,7 +52,7 @@ impl ActionId {
     /// The actions available in `context`, in the order the search lists them.
     pub fn available(context: Context) -> Vec<ActionId> {
         use ActionId::*;
-        let mut actions = vec![NewFile, OpenFile, OpenFolder];
+        let mut actions = vec![NewFile, NewWindow, OpenFile, OpenFolder];
         if context.document {
             actions.extend([Save, CloseTab]);
         }
@@ -73,6 +74,7 @@ impl ActionId {
         use ActionId::*;
         let key = match self {
             NewFile => "search.action.new_file",
+            NewWindow => "search.action.new_window",
             OpenFile => "search.action.open_file",
             OpenFolder => "search.action.open_folder",
             Save => "search.action.save",
@@ -406,7 +408,7 @@ mod tests {
             document: true,
             editor: true,
         });
-        assert_eq!(all.len(), 18);
+        assert_eq!(all.len(), 19);
     }
 
     #[test]

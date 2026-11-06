@@ -39,6 +39,7 @@ pub fn groups() -> Vec<ShortcutGroup> {
             title: t!("shortcuts.group.files").to_string(),
             shortcuts: vec![
                 row("shortcuts.action.new_file", &[modifier, "N"]),
+                row("shortcuts.action.new_window", &[modifier, "Shift", "N"]),
                 row("shortcuts.action.open_file", &[modifier, "O"]),
                 row("shortcuts.action.open_folder", &[modifier, "Shift", "O"]),
                 row("shortcuts.action.save", &[modifier, "S"]),

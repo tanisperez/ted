@@ -23,8 +23,8 @@ use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
 use telaio_ui::components::{EmptyState, open_shortcuts_dialog};
 
 use crate::actions::{
-    CloseTab, NewFile, NextTab, OpenFile, OpenFolder, OpenSearch, OpenSettings, OpenShortcuts,
-    PreviousTab, Save, ToggleExplorer, ToggleGit, ZoomIn, ZoomOut, ZoomReset,
+    CloseTab, NewFile, NewWindow, NextTab, OpenFile, OpenFolder, OpenSearch, OpenSettings,
+    OpenShortcuts, PreviousTab, Save, ToggleExplorer, ToggleGit, ZoomIn, ZoomOut, ZoomReset,
 };
 use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::git::GitState;
@@ -803,6 +803,26 @@ impl AppView {
     }
 }
 
+/// Opens another window by running ted again: each window is its own process, with nothing shared
+/// but the files in the config directory. The thread only waits for it, so that a window closed
+/// first does not stay as a zombie process.
+fn open_new_window() {
+    let program = launch::new_window_program(
+        std::env::var_os("APPIMAGE").map(PathBuf::from),
+        std::env::current_exe().ok(),
+    );
+    let Some(program) = program else {
+        log::warn!("cannot open a new window: the path of the executable is unknown");
+        return;
+    };
+    std::thread::spawn(move || match std::process::Command::new(&program).spawn() {
+        Ok(mut child) => {
+            let _ = child.wait();
+        }
+        Err(error) => log::warn!("cannot open a new window: {error}"),
+    });
+}
+
 /// The language of a file: from its name, or for a script without an extension, from the
 /// shebang in its first line.
 fn detect_language(path: &Path, buffer: &Buffer) -> Language {
@@ -919,6 +939,7 @@ impl Render for AppView {
             .key_context("App")
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(|this, _: &NewFile, window, cx| this.new_document(window, cx)))
+            .on_action(|_: &NewWindow, _, _| open_new_window())
             .on_action(
                 cx.listener(|this, _: &OpenFile, window, cx| this.prompt_open(false, window, cx)),
             )
