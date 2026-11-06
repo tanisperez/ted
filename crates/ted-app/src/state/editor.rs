@@ -23,7 +23,7 @@ use super::syntax::Syntax;
 use super::wrap::{LineRows, line_rows};
 
 /// Empty space above the first line, in pixels.
-pub const PADDING_TOP: f32 = 10.0;
+pub const PADDING_TOP: f32 = 2.0;
 /// How far the document scrolls past its last line, as a fraction of the viewport height.
 pub const SCROLL_PAST_END: f32 = 0.4;
 /// Empty space after the longest line, in pixels.
@@ -2287,27 +2287,27 @@ mod tests {
         });
         state.center_on_layout = false;
         state.center_cursor();
-        // Line 80 starts at 10 + 1600: half a screen above it.
-        assert_eq!(state.scroll_y, 1510.0);
+        // Line 80 starts at 2 + 1600: half a screen above it.
+        assert_eq!(state.scroll_y, 1502.0);
     }
 
     #[test]
     fn the_scroll_range_has_padding_and_scroll_past_the_end() {
         let state = editor(&"x\n".repeat(99));
-        // 10 + 100 lines * 20 + 40% of 200.
-        assert_eq!(state.content_height(), 2090.0);
-        assert_eq!(state.max_scroll_y(), 1890.0);
+        // 2 + 100 lines * 20 + 40% of 200.
+        assert_eq!(state.content_height(), 2082.0);
+        assert_eq!(state.max_scroll_y(), 1882.0);
     }
 
     #[test]
     fn visible_lines_follow_the_scroll() {
         let mut state = editor(&"x\n".repeat(99));
-        assert_eq!(state.visible_lines(), (0..11, 10.0));
+        assert_eq!(state.visible_lines(), (0..11, 2.0));
         state.scroll_by(0.0, 35.0);
-        // The document y of the viewport's top is 25: line 1 starts 5 px above it.
-        assert_eq!(state.visible_lines(), (1..12, -5.0));
+        // The top of the viewport is 33 px below the first line: line 1 starts 13 px above it.
+        assert_eq!(state.visible_lines(), (1..12, -13.0));
         state.scroll_by(0.0, 1e9);
-        assert_eq!(state.scroll_y, 1890.0);
+        assert_eq!(state.scroll_y, 1882.0);
         assert_eq!(state.visible_lines().0.end, 100);
     }
 
@@ -2359,8 +2359,8 @@ mod tests {
         let mut state = editor(&"x\n".repeat(99));
         state.move_cursor(Movement::DocumentEnd, false);
         assert_eq!(state.cursor, Position::new(99, 0));
-        // Line 99's bottom is 10 + 100 * 20 = 2010, at the bottom of a 200 px viewport.
-        assert_eq!(state.scroll_y, 1810.0);
+        // Line 99's bottom is 2 + 100 * 20 = 2002, at the bottom of a 200 px viewport.
+        assert_eq!(state.scroll_y, 1802.0);
         state.move_cursor(Movement::DocumentStart, false);
         assert_eq!(state.scroll_y, 0.0);
     }
@@ -2550,11 +2550,11 @@ mod tests {
         state.set_wrap(true);
         state.scroll_by(0.0, 100.0);
         assert_eq!(state.scroll_y, 0.0);
-        // Six rows do not fit: it scrolls, as far as without wrapping (10 + 120 + 80 - 200).
+        // Six rows do not fit: it scrolls, as far as without wrapping (2 + 120 + 80 - 200).
         let mut state = editor("a\nb\nc\nd\ne\nf");
         state.set_wrap(true);
         state.scroll_by(0.0, 15.0);
-        assert!((state.scroll_y - 10.0).abs() < 0.01, "{}", state.scroll_y);
+        assert!((state.scroll_y - 2.0).abs() < 0.01, "{}", state.scroll_y);
     }
 
     #[test]

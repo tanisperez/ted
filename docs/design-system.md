@@ -229,7 +229,7 @@ Shared sizes come from telaio's `metrics.rs`. ted's own layout sizes go in ted's
 | --- | --- |
 | Font size | 12.5 px (10 to 18, step 0.5) |
 | Line height | `round(font size * 1.6)`, 20 px at 12.5 |
-| Padding above the first line | 10 |
+| Padding above the first line | 2 |
 | Scroll past the end | 40% of the viewport height below the last line |
 | Gutter width | `digits * ceil(font size * 0.62) + 28`; 7.5 -> 8 px per digit at 12.5 |
 | Gutter | right aligned, 16 px right padding, `bg` background, sticky on horizontal scroll |
