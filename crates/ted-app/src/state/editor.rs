@@ -208,13 +208,12 @@ impl EditorState {
             + f64::from(viewport.height * SCROLL_PAST_END)
     }
 
-    /// The largest vertical scroll offset.
-    pub fn max_scroll_y(&self) -> f64 {
+    /// The largest vertical scroll offset. While lines wrap, the offset of
+    /// [`Self::wrap_max_top`], which walks back at most a screen of rows.
+    pub fn max_scroll_y(&mut self) -> f64 {
         if self.wrap {
-            // Into the rows of the last line: they may fill the screen. `wrap_top` stops at its
-            // last row.
-            let lines = self.buffer.line_count() as f64 - 0.001;
-            return f64::from(PADDING_TOP) + lines * f64::from(self.viewport.line_height);
+            let (line, into) = self.wrap_max_top();
+            return self.wrap_offset(line, into).max(0.0);
         }
         (self.content_height() - f64::from(self.viewport.height)).max(0.0)
     }
@@ -393,14 +392,19 @@ impl EditorState {
         } else {
             (line, into)
         };
+        self.scroll_y = self.wrap_offset(line, into).max(0.0);
+    }
+
+    /// While lines wrap: the scroll offset that puts the top of the viewport `into` pixels into
+    /// the rows of `line`. The inverse of [`Self::wrap_top`].
+    fn wrap_offset(&mut self, line: usize, into: f32) -> f64 {
         let line_height = f64::from(self.viewport.line_height).max(1.0);
-        self.scroll_y = if into < 0.0 {
+        if into < 0.0 {
             f64::from(PADDING_TOP) + f64::from(into) + line as f64 * line_height
         } else {
             let rows = self.line_rows(line).count() as f64;
             f64::from(PADDING_TOP) + line as f64 * line_height + f64::from(into) / rows
-        };
-        self.scroll_y = self.scroll_y.clamp(0.0, self.max_scroll_y().max(0.0));
+        }
     }
 
     /// Scrolls `dy` pixels of rows while lines wrap, walking only the lines it passes.
@@ -2293,7 +2297,7 @@ mod tests {
 
     #[test]
     fn the_scroll_range_has_padding_and_scroll_past_the_end() {
-        let state = editor(&"x\n".repeat(99));
+        let mut state = editor(&"x\n".repeat(99));
         // 2 + 100 lines * 20 + 40% of 200.
         assert_eq!(state.content_height(), 2082.0);
         assert_eq!(state.max_scroll_y(), 1882.0);
@@ -2555,6 +2559,35 @@ mod tests {
         state.set_wrap(true);
         state.scroll_by(0.0, 15.0);
         assert!((state.scroll_y - 2.0).abs() < 0.01, "{}", state.scroll_y);
+    }
+
+    #[test]
+    fn a_wrapped_document_at_its_end_has_the_scrollbar_at_its_end() {
+        let mut state = editor(&"x\n".repeat(99));
+        state.set_wrap(true);
+        state.scroll_by(0.0, 1e6);
+        // As far as without wrapping: the same document scrolls the same.
+        assert!((state.max_scroll_y() - 1882.0).abs() < 0.01);
+        assert!((state.scroll_y - state.max_scroll_y()).abs() < 0.01);
+
+        state.scroll_to_fraction(0.0);
+        assert_eq!(state.scroll_y, 0.0);
+        state.scroll_to_fraction(1.0);
+        assert!((state.scroll_y - state.max_scroll_y()).abs() < 0.01);
+        // Dragging the thumb: it stays under the pointer, within the row it snaps to.
+        state.scroll_to_fraction(0.5);
+        let half = state.max_scroll_y() / 2.0;
+        assert!((state.scroll_y - half).abs() <= 20.0, "{}", state.scroll_y);
+    }
+
+    #[test]
+    fn a_wrapped_long_last_line_also_ends_the_scroll_at_the_maximum() {
+        let mut state = wrapped(&format!("{}\n{}", "a\n".repeat(30), "word ".repeat(400)));
+        state.scroll_by(0.0, 1e6);
+        assert!((state.scroll_y - state.max_scroll_y()).abs() < 0.01);
+        let top = state.scroll_y;
+        state.scroll_by(0.0, 100.0);
+        assert_eq!(state.scroll_y, top);
     }
 
     #[test]

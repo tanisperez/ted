@@ -1510,8 +1510,9 @@ impl Element for EditorElement {
                 let thumb_height = (f64::from(track_height) * f64::from(viewport.height)
                     / content_height)
                     .max(f64::from(MIN_THUMB)) as f32;
-                let fraction = if state.max_scroll_y() > 0.0 {
-                    (state.scroll_y / state.max_scroll_y()) as f32
+                let max_scroll_y = state.max_scroll_y();
+                let fraction = if max_scroll_y > 0.0 {
+                    (state.scroll_y / max_scroll_y) as f32
                 } else {
                     0.0
                 };
