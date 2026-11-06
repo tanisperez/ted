@@ -1,18 +1,22 @@
 title: Files and folders
-description: Where ted keeps its settings, its recent files list and its log file on each system.
+description: Where ted keeps its settings, its recent files list, its window size and its log file on each system.
 ---
 <h1>Files and folders</h1>
-<p class="lead">ted keeps three files of its own. It never writes anywhere else except the files you save.</p>
+<p class="lead">ted keeps four files of its own. It never writes anywhere else except the files you save.</p>
 
 <div class="table"><table>
     <thead><tr><th>File</th><th>Linux</th><th>macOS</th><th>Windows</th></tr></thead>
     <tbody>
         <tr><td>Settings</td><td><code>~/.config/ted/settings.toml</code></td><td><code>~/Library/Application Support/ted/settings.toml</code></td><td><code>%APPDATA%\ted\settings.toml</code></td></tr>
         <tr><td>Recent folders and files</td><td><code>~/.config/ted/recents.toml</code></td><td><code>~/Library/Application Support/ted/recents.toml</code></td><td><code>%APPDATA%\ted\recents.toml</code></td></tr>
+        <tr><td>Window size</td><td><code>~/.config/ted/window.toml</code></td><td><code>~/Library/Application Support/ted/window.toml</code></td><td><code>%APPDATA%\ted\window.toml</code></td></tr>
         <tr><td>Log file</td><td><code>~/.local/state/ted/ted.log</code></td><td><code>~/Library/Logs/ted/ted.log</code></td><td><code>%LOCALAPPDATA%\ted\logs\ted.log</code></td></tr>
     </tbody>
 </table></div>
-<p>On Linux, <code>XDG_CONFIG_HOME</code> and <code>XDG_STATE_HOME</code> move the first two and the last one.</p>
+<p>On Linux, <code>XDG_CONFIG_HOME</code> and <code>XDG_STATE_HOME</code> move the first three and the last one.</p>
+
+<h2>Window size</h2>
+<p>When the window closes, ted saves its size and whether it was maximized, and opens with them the next time, always centered. Deleting <code>window.toml</code> goes back to the default size.</p>
 
 <h2>Recent files</h2>
 <p>ted remembers the last ten folders and the last ten files you opened, most recent first. A recent entry that no longer exists leaves the list when you try to open it.</p>
