@@ -54,6 +54,10 @@ tree-sitter-powershell = "=0.26.6"
 tree-sitter-css = "=0.23.2"
 # YAML: the version gpui-component pins behind its `tree-sitter-yaml` feature.
 tree-sitter-yaml = "=0.7.1"
+# Java and Kotlin: the versions gpui-component pins behind its `tree-sitter-java` and
+# `tree-sitter-kotlin` features.
+tree-sitter-java = "=0.23.5"
+tree-sitter-kotlin-sg = "=0.4.0"
 # Dockerfile: not in gpui-component. tree-sitter-dockerfile needs tree-sitter 0.20, this one only
 # tree-sitter-language.
 tree-sitter-containerfile = "=0.9.2"

@@ -31,6 +31,8 @@ pub enum Language {
     Css,
     Yaml,
     Dockerfile,
+    Java,
+    Kotlin,
     EditorConfig,
     GitIgnore,
     Log,
@@ -40,7 +42,7 @@ pub enum Language {
 impl Language {
     /// Every language, in the order the language menu of the status bar lists them: plain text
     /// first, then by name.
-    pub const ALL: [Language; 19] = [
+    pub const ALL: [Language; 21] = [
         Language::PlainText,
         Language::Batch,
         Language::Css,
@@ -48,8 +50,10 @@ impl Language {
         Language::EditorConfig,
         Language::GitIgnore,
         Language::Html,
+        Language::Java,
         Language::JavaScript,
         Language::Json,
+        Language::Kotlin,
         Language::Log,
         Language::Make,
         Language::Markdown,
@@ -102,6 +106,8 @@ impl Language {
             "bat" | "cmd" => Language::Batch,
             "css" => Language::Css,
             "yaml" | "yml" => Language::Yaml,
+            "java" => Language::Java,
+            "kt" | "kts" => Language::Kotlin,
             "dockerfile" | "containerfile" => Language::Dockerfile,
             "log" => Language::Log,
             _ => Language::PlainText,
@@ -146,7 +152,9 @@ impl Language {
     /// plain text).
     pub fn comment(self) -> Option<Comment> {
         match self {
-            Language::Rust | Language::JavaScript => Some(Comment::Line("//")),
+            Language::Rust | Language::JavaScript | Language::Java | Language::Kotlin => {
+                Some(Comment::Line("//"))
+            }
             Language::Toml
             | Language::Make
             | Language::Shell
@@ -183,6 +191,8 @@ impl Language {
             Language::Css => "CSS",
             Language::Yaml => "YAML",
             Language::Dockerfile => "Dockerfile",
+            Language::Java => "Java",
+            Language::Kotlin => "Kotlin",
             Language::EditorConfig => "EditorConfig",
             Language::GitIgnore => "Gitignore",
             Language::Log => "Log",
@@ -247,6 +257,8 @@ mod tests {
                 | Language::Css
                 | Language::Yaml
                 | Language::Dockerfile
+                | Language::Java
+                | Language::Kotlin
                 | Language::EditorConfig
                 | Language::GitIgnore
                 | Language::Log

@@ -206,6 +206,8 @@ mod tests {
             Language::Css,
             Language::Yaml,
             Language::Dockerfile,
+            Language::Java,
+            Language::Kotlin,
         ] {
             assert!(grammar(l).is_some(), "{l:?}");
         }
@@ -252,6 +254,9 @@ mod tests {
         assert_eq!(d("api.Dockerfile"), Language::Dockerfile);
         assert_eq!(d("Containerfile"), Language::Dockerfile);
         assert_eq!(d("dockerfiles"), Language::PlainText);
+        assert_eq!(d("src/Main.java"), Language::Java);
+        assert_eq!(d("src/Main.kt"), Language::Kotlin);
+        assert_eq!(d("build.gradle.kts"), Language::Kotlin);
         assert_eq!(Language::Rust.name(), "Rust");
         let s = Language::from_shebang;
         assert_eq!(s("#!/bin/sh"), Some(Language::Shell));
@@ -324,6 +329,53 @@ mod tests {
         has(Language::Rust, src, "#[derive(", Attribute);
         let got = spans(Language::Rust, src);
         assert!(!got.iter().any(|(_, h)| *h == Variable), "{got:?}");
+    }
+
+    #[test]
+    fn java_highlights() {
+        let src = "// c\n@Override\npublic class Foo extends Bar {\n  private int count = 3;\n  static final String NAME = \"x\";\n  void run(int a) {\n    if (a > 1.5) { return; }\n    boolean ok = true;\n    Object o = null;\n    this.count = a;\n    print(a);\n  }\n}\n";
+        has(Language::Java, src, "// c", Comment);
+        has(Language::Java, src, "Override", Attribute);
+        has(Language::Java, src, "public", Keyword);
+        has(Language::Java, src, "class", Keyword);
+        has(Language::Java, src, "Foo", Type);
+        has(Language::Java, src, "int", Type);
+        has(Language::Java, src, "count", Property);
+        has(Language::Java, src, "3", Number);
+        has(Language::Java, src, "NAME", Constant);
+        has(Language::Java, src, "\"x\"", String);
+        has(Language::Java, src, "run", Function);
+        has(Language::Java, src, "a", Variable);
+        has(Language::Java, src, "if", Control);
+        has(Language::Java, src, "return", Control);
+        has(Language::Java, src, "true", Boolean);
+        has(Language::Java, src, "null", Constant);
+        has(Language::Java, src, "this", BuiltinVariable);
+    }
+
+    #[test]
+    fn kotlin_highlights() {
+        let src = "// c\npackage app\nimport a.b\n@Deprecated\nclass Foo(val id: Int) {\n  private val name = \"x $id\"\n  fun run(a: Int): Boolean {\n    if (a > 1.5) { return true }\n    for (i in 0..3) { println(i) }\n    val n: String? = null\n    return this.name.isEmpty()\n  }\n}\n";
+        has(Language::Kotlin, src, "// c", Comment);
+        has(Language::Kotlin, src, "package", Keyword);
+        has(Language::Kotlin, src, "import", Control);
+        has(Language::Kotlin, src, "@Deprecated", Attribute);
+        has(Language::Kotlin, src, "class", Keyword);
+        has(Language::Kotlin, src, "Foo", Type);
+        has(Language::Kotlin, src, "id", Property);
+        has(Language::Kotlin, src, "private", Keyword);
+        has(Language::Kotlin, src, "fun", Keyword);
+        has(Language::Kotlin, src, "run", Function);
+        has(Language::Kotlin, src, "a", Variable);
+        has(Language::Kotlin, src, "Int", Type);
+        has(Language::Kotlin, src, "if", Control);
+        has(Language::Kotlin, src, "return", Control);
+        has(Language::Kotlin, src, "true", Boolean);
+        has(Language::Kotlin, src, "1.5", Number);
+        has(Language::Kotlin, src, "null", Constant);
+        has(Language::Kotlin, src, "println", Function);
+        has(Language::Kotlin, src, "this", BuiltinVariable);
+        has(Language::Kotlin, src, "isEmpty", Function);
     }
 
     #[test]

@@ -158,6 +158,59 @@ const DOCKERFILE_EXTRA: &str = r#"
 [(heredoc_marker) (heredoc_end)] @keyword
 "#;
 
+// The bundled java query paints `true`, `false` and `null` alike, and `super` as a function.
+const JAVA_EXTRA: &str = r#"
+[(true) (false)] @boolean
+(super) @variable.builtin
+(record_declaration name: (identifier) @type)
+(annotation_type_declaration name: (identifier) @type)
+(field_declaration declarator: (variable_declarator name: (identifier) @property))
+(field_access field: (identifier) @property)
+((identifier) @constant (#match? @constant "^_*[A-Z][A-Z\\d_]+$"))
+[
+  "if" "else" "switch" "case" "default" "for" "while" "do" "break" "continue" "return" "yield"
+  "try" "catch" "finally" "throw" "import"
+] @keyword.control
+"#;
+
+// The bundled kotlin query uses captures ted has no class for (`@conditional`, `@repeat`, `@float`)
+// and paints whole nodes (`return x`, the primary constructor) in one color, so ted uses its own.
+const KOTLIN_QUERY: &str = r#"
+(simple_identifier) @variable
+[(this_expression) (super_expression)] @variable.builtin
+(class_parameter (simple_identifier) @property)
+(class_body (property_declaration (variable_declaration (simple_identifier) @property)))
+(navigation_suffix (simple_identifier) @property)
+(enum_entry (simple_identifier) @constant)
+(type_identifier) @type
+(function_declaration . (simple_identifier) @function)
+(call_expression . (simple_identifier) @function)
+(call_expression (navigation_expression (navigation_suffix (simple_identifier) @function) .))
+[(line_comment) (multiline_comment) (shebang_line)] @comment
+[
+  (integer_literal) (long_literal) (hex_literal) (bin_literal) (unsigned_literal) (real_literal)
+] @number
+(boolean_literal) @boolean
+(null_literal) @constant
+[(character_literal) (string_literal)] @string
+(character_escape_seq) @string.escape
+(interpolated_identifier) @property
+[
+  (class_modifier) (member_modifier) (function_modifier) (property_modifier) (platform_modifier)
+  (variance_modifier) (parameter_modifier) (visibility_modifier) (reification_modifier)
+  (inheritance_modifier)
+] @keyword
+[
+  "val" "var" "fun" "class" "object" "interface" "enum" "typealias" "package" "constructor"
+  "init" "get" "set" "is" "as" "as?"
+] @keyword
+["if" "else" "when" "for" "while" "do" "try" "catch" "finally" "in" "import"] @keyword.control
+(jump_expression ["return" "return@" "break" "break@" "continue" "continue@" "throw"] @keyword.control)
+(annotation "@" @attribute)
+(annotation (user_type (type_identifier) @attribute))
+(annotation (constructor_invocation (user_type (type_identifier) @attribute)))
+"#;
+
 /// The grammar of a language, `None` for those without one (or if its query failed to compile,
 /// which the tests rule out).
 pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
@@ -174,6 +227,8 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
     static CSS: OnceLock<Option<Grammar>> = OnceLock::new();
     static YAML: OnceLock<Option<Grammar>> = OnceLock::new();
     static DOCKERFILE: OnceLock<Option<Grammar>> = OnceLock::new();
+    static JAVA: OnceLock<Option<Grammar>> = OnceLock::new();
+    static KOTLIN: OnceLock<Option<Grammar>> = OnceLock::new();
 
     let (cell, ts_language, query) = match language {
         Language::Rust => (
@@ -249,6 +304,16 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
                 tree_sitter_containerfile::HIGHLIGHTS_QUERY
             ),
         ),
+        Language::Java => (
+            &JAVA,
+            tree_sitter_java::LANGUAGE,
+            format!("{}\n{JAVA_EXTRA}", tree_sitter_java::HIGHLIGHTS_QUERY),
+        ),
+        Language::Kotlin => (
+            &KOTLIN,
+            tree_sitter_kotlin_sg::LANGUAGE,
+            KOTLIN_QUERY.to_string(),
+        ),
         Language::Log
         | Language::Batch
         | Language::EditorConfig
@@ -296,6 +361,8 @@ mod tests {
             Css,
             Yaml,
             Dockerfile,
+            Java,
+            Kotlin,
             EditorConfig,
             GitIgnore,
             Log,
