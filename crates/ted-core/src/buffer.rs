@@ -155,6 +155,11 @@ impl Buffer {
         self.rope.len()
     }
 
+    /// Length of the text in characters.
+    pub fn len_chars(&self) -> usize {
+        self.rope.len_chars()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.rope.len() == 0
     }

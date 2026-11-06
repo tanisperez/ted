@@ -200,12 +200,25 @@ impl EditorState {
             .max(self.expected_lines.unwrap_or(0))
     }
 
-    /// Height of the whole document, padding and scroll past the end included.
+    /// Height of the whole document, padding and scroll past the end included. An estimate while
+    /// lines wrap.
     pub fn content_height(&self) -> f64 {
         let viewport = &self.viewport;
         f64::from(PADDING_TOP)
-            + self.buffer.line_count() as f64 * f64::from(viewport.line_height)
+            + self.rows_estimate() * f64::from(viewport.line_height)
             + f64::from(viewport.height * SCROLL_PAST_END)
+    }
+
+    /// The rows of the document, exact unless lines wrap. Then, from its totals, as walking every
+    /// line of a big file on each frame is not an option: right for lines that fit a row and for
+    /// long lines, somewhat short when lines take just over a row.
+    fn rows_estimate(&self) -> f64 {
+        let lines = self.buffer.line_count() as f64;
+        if self.wrap {
+            lines.max(self.buffer.len_chars() as f64 / self.wrap_columns() as f64)
+        } else {
+            lines
+        }
     }
 
     /// The largest vertical scroll offset. While lines wrap, the offset of
@@ -2526,6 +2539,26 @@ mod tests {
         });
         state.set_wrap(true);
         state
+    }
+
+    #[test]
+    fn a_wrapped_document_of_few_long_lines_is_as_tall_as_its_rows() {
+        let mut state = wrapped(&"x".repeat(1000));
+        assert!(state.max_scroll_y() > 0.0);
+        let rows = state.line_rows(0).count() as f64;
+        assert!(rows > 3.0);
+        let height = state.content_height();
+        assert!((height - (2.0 + rows * 20.0 + 24.0)).abs() <= 20.0);
+    }
+
+    #[test]
+    fn a_wrapped_document_of_short_lines_is_as_tall_as_its_lines() {
+        let mut state = wrapped("a\nb\nc");
+        assert_eq!(state.content_height(), 86.0);
+        // Three rows do not fit the 60% of the screen that the end of the text may rise to.
+        assert!(state.max_scroll_y() > 0.0);
+        let mut short = wrapped("a");
+        assert_eq!(short.max_scroll_y(), 0.0);
     }
 
     #[test]

@@ -50,6 +50,8 @@ const LONG_LINE_MARGIN: usize = 64;
 const MATCH_MARK_HEIGHT: f32 = 3.0;
 /// Smallest height of the scrollbar thumb, in pixels.
 const MIN_THUMB: f32 = 24.0;
+/// Largest share of its track the scrollbar thumb takes, so it can always move.
+const MAX_THUMB_SHARE: f32 = 0.9;
 /// Width of the text cursor, in pixels.
 const CURSOR_WIDTH: f32 = 2.0;
 /// The x of the git change marks from the left of the gutter.
@@ -1501,21 +1503,19 @@ impl Element for EditorElement {
             let state = &mut editor.state;
 
             let content_height = state.content_height();
-            let scrollbar = (content_height > f64::from(viewport.height)).then(|| {
+            let max_scroll_y = state.max_scroll_y();
+            let scrollbar = (max_scroll_y > 0.0).then(|| {
                 let track = Bounds::from_corners(
                     point(bounds.right() - px(EDITOR_SCROLLBAR_WIDTH), bounds.top()),
                     bounds.bottom_right(),
                 );
                 let track_height = f32::from(track.size.height);
-                let thumb_height = (f64::from(track_height) * f64::from(viewport.height)
-                    / content_height)
-                    .max(f64::from(MIN_THUMB)) as f32;
-                let max_scroll_y = state.max_scroll_y();
-                let fraction = if max_scroll_y > 0.0 {
-                    (state.scroll_y / max_scroll_y) as f32
-                } else {
-                    0.0
-                };
+                // The height of wrapped text is an estimate, which may fall short of the screen.
+                let thumb_height = ((f64::from(track_height) * f64::from(viewport.height)
+                    / content_height) as f32)
+                    .min(track_height * MAX_THUMB_SHARE)
+                    .max(MIN_THUMB);
+                let fraction = (state.scroll_y / max_scroll_y) as f32;
                 let thumb_top = (track_height - thumb_height) * fraction;
                 let thumb = Bounds::new(
                     point(track.left(), track.top() + px(thumb_top)),
