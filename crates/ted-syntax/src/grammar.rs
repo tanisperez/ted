@@ -128,6 +128,18 @@ const CSS_EXTRA: &str = r#"
 (pseudo_class_selector (class_name) @attribute)
 "#;
 
+// The bundled yaml query captures anchors and aliases as `@label`, which has no class.
+const YAML_EXTRA: &str = r#"
+[(anchor_name) (alias_name)] @constant
+"#;
+
+// The bundled query paints only the variables in capitals, and captures the markers of a heredoc as
+// `@label`, which has no class. The commands of `RUN` stay plain, as the recipes of a Makefile.
+const DOCKERFILE_EXTRA: &str = r#"
+(variable) @constant
+[(heredoc_marker) (heredoc_end)] @keyword
+"#;
+
 /// The grammar of a language, `None` for those without one (or if its query failed to compile,
 /// which the tests rule out).
 pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
@@ -142,6 +154,8 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
     static PYTHON: OnceLock<Option<Grammar>> = OnceLock::new();
     static POWERSHELL: OnceLock<Option<Grammar>> = OnceLock::new();
     static CSS: OnceLock<Option<Grammar>> = OnceLock::new();
+    static YAML: OnceLock<Option<Grammar>> = OnceLock::new();
+    static DOCKERFILE: OnceLock<Option<Grammar>> = OnceLock::new();
 
     let (cell, ts_language, query) = match language {
         Language::Rust => (
@@ -201,6 +215,19 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
             tree_sitter_css::LANGUAGE,
             format!("{}\n{CSS_EXTRA}", tree_sitter_css::HIGHLIGHTS_QUERY),
         ),
+        Language::Yaml => (
+            &YAML,
+            tree_sitter_yaml::LANGUAGE,
+            format!("{}\n{YAML_EXTRA}", tree_sitter_yaml::HIGHLIGHTS_QUERY),
+        ),
+        Language::Dockerfile => (
+            &DOCKERFILE,
+            tree_sitter_containerfile::LANGUAGE,
+            format!(
+                "{}\n{DOCKERFILE_EXTRA}",
+                tree_sitter_containerfile::HIGHLIGHTS_QUERY
+            ),
+        ),
         Language::Log
         | Language::Batch
         | Language::EditorConfig
@@ -246,6 +273,8 @@ mod tests {
             PowerShell,
             Batch,
             Css,
+            Yaml,
+            Dockerfile,
             EditorConfig,
             GitIgnore,
             Log,

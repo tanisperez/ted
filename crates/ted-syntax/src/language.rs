@@ -29,6 +29,8 @@ pub enum Language {
     PowerShell,
     Batch,
     Css,
+    Yaml,
+    Dockerfile,
     EditorConfig,
     GitIgnore,
     Log,
@@ -38,10 +40,11 @@ pub enum Language {
 impl Language {
     /// Every language, in the order the language menu of the status bar lists them: plain text
     /// first, then by name.
-    pub const ALL: [Language; 17] = [
+    pub const ALL: [Language; 19] = [
         Language::PlainText,
         Language::Batch,
         Language::Css,
+        Language::Dockerfile,
         Language::EditorConfig,
         Language::GitIgnore,
         Language::Html,
@@ -56,6 +59,7 @@ impl Language {
         Language::Shell,
         Language::Toml,
         Language::Xml,
+        Language::Yaml,
     ];
 
     /// The language of a file, from its name first and then its extension (case insensitive).
@@ -67,12 +71,17 @@ impl Language {
         match name {
             "Cargo.lock" | "Pipfile" | "poetry.lock" | "uv.lock" => return Language::Toml,
             "Makefile" | "makefile" | "GNUmakefile" => return Language::Make,
-            ".bashrc" | ".bash_profile" | ".bash_logout" | ".profile" | ".zshrc" | ".zshenv"
-            | ".zprofile" | "PKGBUILD" => return Language::Shell,
+            "PKGBUILD" => return Language::Shell,
             ".babelrc" | ".prettierrc" | ".eslintrc" | "composer.lock" => return Language::Json,
             ".editorconfig" => return Language::EditorConfig,
             ".gitignore" => return Language::GitIgnore,
             _ => {}
+        }
+        if is_shell_config_name(name) {
+            return Language::Shell;
+        }
+        if is_dockerfile_name(name) {
+            return Language::Dockerfile;
         }
         let Some(extension) = path.extension().and_then(|e| e.to_str()) else {
             return Language::PlainText;
@@ -92,6 +101,8 @@ impl Language {
             "ps1" | "psm1" | "psd1" => Language::PowerShell,
             "bat" | "cmd" => Language::Batch,
             "css" => Language::Css,
+            "yaml" | "yml" => Language::Yaml,
+            "dockerfile" | "containerfile" => Language::Dockerfile,
             "log" => Language::Log,
             _ => Language::PlainText,
         }
@@ -141,6 +152,8 @@ impl Language {
             | Language::Shell
             | Language::Python
             | Language::PowerShell
+            | Language::Yaml
+            | Language::Dockerfile
             | Language::EditorConfig
             | Language::GitIgnore => Some(Comment::Line("#")),
             Language::Batch => Some(Comment::Line("REM")),
@@ -168,12 +181,37 @@ impl Language {
             Language::PowerShell => "PowerShell",
             Language::Batch => "Batch",
             Language::Css => "CSS",
+            Language::Yaml => "YAML",
+            Language::Dockerfile => "Dockerfile",
             Language::EditorConfig => "EditorConfig",
             Language::GitIgnore => "Gitignore",
             Language::Log => "Log",
             Language::PlainText => "Plain text",
         }
     }
+}
+
+/// The startup files of the shells, with their dot (`.zshrc`) or without it, as a dotfiles repository
+/// keeps them (`zshrc`).
+fn is_shell_config_name(name: &str) -> bool {
+    matches!(
+        name.strip_prefix('.').unwrap_or(name),
+        "bashrc"
+            | "bash_profile"
+            | "bash_logout"
+            | "bash_aliases"
+            | "zshrc"
+            | "zshenv"
+            | "zprofile"
+            | "zlogin"
+            | "zlogout"
+    ) || name == ".profile"
+}
+
+/// `Dockerfile` or `Containerfile`, alone or followed by a variant (`Dockerfile.dev`), in any case.
+fn is_dockerfile_name(name: &str) -> bool {
+    let stem = name.split('.').next().unwrap_or(name);
+    stem.eq_ignore_ascii_case("dockerfile") || stem.eq_ignore_ascii_case("containerfile")
 }
 
 #[cfg(test)]
@@ -207,6 +245,8 @@ mod tests {
                 | Language::PowerShell
                 | Language::Batch
                 | Language::Css
+                | Language::Yaml
+                | Language::Dockerfile
                 | Language::EditorConfig
                 | Language::GitIgnore
                 | Language::Log

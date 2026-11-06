@@ -204,6 +204,8 @@ mod tests {
             Language::Python,
             Language::PowerShell,
             Language::Css,
+            Language::Yaml,
+            Language::Dockerfile,
         ] {
             assert!(grammar(l).is_some(), "{l:?}");
         }
@@ -237,6 +239,19 @@ mod tests {
         assert_eq!(d("site/style.css"), Language::Css);
         assert_eq!(d("repo/.editorconfig"), Language::EditorConfig);
         assert_eq!(d("repo/.gitignore"), Language::GitIgnore);
+        assert_eq!(d("home/.zshrc"), Language::Shell);
+        assert_eq!(d("dotfiles/zsh/zshrc"), Language::Shell);
+        assert_eq!(d("dotfiles/bashrc"), Language::Shell);
+        assert_eq!(d("home/.bash_aliases"), Language::Shell);
+        assert_eq!(d("profile"), Language::PlainText);
+        assert_eq!(d("ci/deploy.yml"), Language::Yaml);
+        assert_eq!(d("compose.YAML"), Language::Yaml);
+        assert_eq!(d("Dockerfile"), Language::Dockerfile);
+        assert_eq!(d("dockerfile"), Language::Dockerfile);
+        assert_eq!(d("Dockerfile.dev"), Language::Dockerfile);
+        assert_eq!(d("api.Dockerfile"), Language::Dockerfile);
+        assert_eq!(d("Containerfile"), Language::Dockerfile);
+        assert_eq!(d("dockerfiles"), Language::PlainText);
         assert_eq!(Language::Rust.name(), "Rust");
         let s = Language::from_shebang;
         assert_eq!(s("#!/bin/sh"), Some(Language::Shell));
@@ -289,6 +304,31 @@ mod tests {
         has(Language::Toml, src, "\"ted\"", String);
         has(Language::Toml, src, "3", Number);
         has(Language::Toml, src, "true", Boolean);
+    }
+
+    #[test]
+    fn yaml_highlights() {
+        let src = "# c\nname: ted\nn: 3\nok: true\nz: null\nbase: &b \"s\"\nuse: *b\n";
+        has(Language::Yaml, src, "# c", Comment);
+        has(Language::Yaml, src, "name", Property);
+        has(Language::Yaml, src, "ted", String);
+        has(Language::Yaml, src, "3", Number);
+        has(Language::Yaml, src, "true", Boolean);
+        has(Language::Yaml, src, "null", Constant);
+        has(Language::Yaml, src, "\"s\"", String);
+        has(Language::Yaml, src, "b", Constant);
+    }
+
+    #[test]
+    fn dockerfile_highlights() {
+        let src = "# c\nFROM alpine:3 AS base\nENV NAME=\"x\"\nEXPOSE 8080\nCOPY $src /app\n";
+        has(Language::Dockerfile, src, "# c\n", Comment);
+        has(Language::Dockerfile, src, "FROM", Keyword);
+        has(Language::Dockerfile, src, "AS", Keyword);
+        has(Language::Dockerfile, src, "NAME", Property);
+        has(Language::Dockerfile, src, "\"x\"", String);
+        has(Language::Dockerfile, src, "8080", Number);
+        has(Language::Dockerfile, src, "src", Constant);
     }
 
     #[test]
