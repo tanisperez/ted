@@ -25,10 +25,19 @@ const RUST_EXTRA: &str = r#"
 (raw_string_literal) @string
 (char_literal) @string
 ((identifier) @constant (#any-of? @constant "None" "Some" "Ok" "Err"))
+["if" "else" "match" "for" "while" "loop" "in" "break" "continue" "return" "await"] @keyword.control
 "#;
+
+// The bundled rust query has no general pattern for identifiers. It goes before the bundled query,
+// so every more specific pattern wins.
+const RUST_FIRST: &str = "(identifier) @variable";
 
 const JAVASCRIPT_EXTRA: &str = r#"
 [(true) (false)] @boolean
+[
+  "if" "else" "switch" "case" "default" "for" "while" "do" "break" "continue" "return"
+  "try" "catch" "finally" "throw" "await" "import" "from"
+] @keyword.control
 "#;
 
 const JSON_EXTRA: &str = r#"
@@ -103,6 +112,7 @@ const BASH_EXTRA: &str = r#"
 (special_variable_name) @constant
 (test_operator) @constant
 [(ansi_c_string) (translated_string)] @string
+["if" "then" "else" "elif" "fi" "case" "esac" "for" "while" "in" "do" "done"] @keyword.control
 "#;
 
 // The bundled python query paints `True`, `False` and `None` as builtin constants: the booleans
@@ -111,6 +121,10 @@ const PYTHON_EXTRA: &str = r#"
 [(true) (false)] @boolean
 (decorator) @attribute
 (decorator (identifier) @attribute)
+[
+  "if" "elif" "else" "for" "while" "in" "break" "continue" "return" "try" "except" "finally"
+  "raise" "with" "match" "case" "await" "import" "from"
+] @keyword.control
 "#;
 
 // The bundled powershell query captures variables as `@variable`, which has no class, and
@@ -119,6 +133,10 @@ const POWERSHELL_EXTRA: &str = r#"
 (variable) @property
 ((variable) @boolean (#match? @boolean "^\\$(?i:true|false)$"))
 ((variable) @constant (#match? @constant "^\\$(?i:null)$"))
+[
+  "if" "elseif" "else" "switch" "foreach" "for" "while" "do" "break" "continue" "throw" "return"
+  "try" "catch" "finally"
+] @keyword.control
 "#;
 
 // The bundled css query leaves the plain values of a declaration (`block`, `red`) uncolored,
@@ -161,7 +179,10 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
         Language::Rust => (
             &RUST,
             tree_sitter_rust::LANGUAGE,
-            format!("{}\n{RUST_EXTRA}", tree_sitter_rust::HIGHLIGHTS_QUERY),
+            format!(
+                "{RUST_FIRST}\n{}\n{RUST_EXTRA}",
+                tree_sitter_rust::HIGHLIGHTS_QUERY
+            ),
         ),
         Language::JavaScript => (
             &JAVASCRIPT,

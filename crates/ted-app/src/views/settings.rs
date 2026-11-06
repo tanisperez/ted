@@ -25,7 +25,8 @@ use crate::state::launch::shorten_path;
 use crate::state::locale::{self, LANGUAGES, LanguageChoice};
 use crate::state::settings::{
     self, MONO_FONT_SIZE_RANGE, MONO_FONT_SIZE_STEP, Settings, SettingsCategory, Startup,
-    TAB_SIZES, ThemeChoice, UI_FONT_SIZE_RANGE, UI_FONT_SIZE_STEP, parse_excludes,
+    SyntaxThemeChoice, TAB_SIZES, ThemeChoice, UI_FONT_SIZE_RANGE, UI_FONT_SIZE_STEP,
+    parse_excludes,
 };
 use crate::theme::{self, Palette, PaletteExt};
 
@@ -243,6 +244,7 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
         SettingsCategory::Appearance => vec![
             language_section(weak.clone(), settings.language),
             theme_section(weak.clone(), settings.theme),
+            syntax_section(weak.clone(), settings.syntax_theme),
             interface_section(weak.clone(), &settings),
         ],
         SettingsCategory::Editor => vec![
@@ -448,6 +450,31 @@ fn theme_section(weak: WeakEntity<AppView>, current: ThemeChoice) -> AnyElement 
                 .description(t!("settings.theme.description")),
         )
         .child(h_flex().gap(px(12.0)).children(cards))
+        .into_any_element()
+}
+
+/// "Syntax colors": the syntax theme.
+fn syntax_section(weak: WeakEntity<AppView>, current: SyntaxThemeChoice) -> AnyElement {
+    let mut control = SegmentedControl::new("settings-syntax-theme");
+    for choice in SyntaxThemeChoice::ALL {
+        let weak = weak.clone();
+        control = control.item(
+            SegmentedItem::new(choice.label())
+                .selected(choice == current)
+                .on_click(move |window, cx| {
+                    let _ = weak.update(cx, |view, cx| {
+                        view.change(window, cx, |settings| settings.syntax_theme = choice)
+                    });
+                }),
+        );
+    }
+    v_flex()
+        .gap(px(14.0))
+        .child(
+            SectionHeading::new(t!("settings.syntax.title"))
+                .description(t!("settings.syntax.description")),
+        )
+        .child(LabeledRow::new(t!("settings.syntax.label"), control))
         .into_any_element()
 }
 

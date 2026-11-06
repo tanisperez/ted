@@ -1,5 +1,7 @@
-//! ted's syntax colors, the [`SyntaxTheme`] of each mode that [`super::install`] passes to
-//! telaio. Every color is one of the palette's (keep them in sync with
+//! The syntax themes, a [`SyntaxTheme`] per mode that [`super::install`] passes to telaio, as the
+//! setting `syntax_theme` chooses ([`themes`]).
+//!
+//! In ted's own theme every color is one of the palette's (keep them in sync with
 //! `docs/design-system.md`): comments in `fg_muted`, keywords in the PATCH purple, functions in
 //! `info`, keys and attributes in `accent_text`, strings in green, numbers and types in
 //! `warning`, booleans and constants in pink, XML tags in `danger`. Captures left out (variables,
@@ -9,16 +11,23 @@
 //! upright until it gets one.
 //!
 //! The editor paints `ted_syntax`'s classes with [`SyntaxColors`]: each class takes the color of
-//! one capture of the theme, and the log classes borrow theirs as the design says (dates and
-//! `DEBUG`/`TRACE` as comments, `ERROR` as tags, `WARN` as numbers, `INFO` as functions).
+//! one capture of the theme. The log classes mean a severity, not a kind of code, so they take
+//! the palette's colors in every theme (dates and `DEBUG`/`TRACE` `fg_muted`, `ERROR` `danger`,
+//! `WARN` `warning`, `INFO` `info`).
 
 use gpui_kit::Hsla;
 use gpui_kit::component::highlighter::HighlightTheme;
 use ted_syntax::Highlight;
-use telaio_ui::{SyntaxStyle, SyntaxTheme};
+use telaio_ui::{Palette, SyntaxStyle, SyntaxTheme};
+
+use crate::state::settings::SyntaxThemeChoice;
+
+/// The capture of [`Highlight::Control`]. gpui-kit's themes have a fixed list of names without a
+/// control keyword, and this one is what it uses for `keyword.control.import`.
+const CONTROL_CAPTURE: &str = "preproc";
 
 /// The captures the editor paints with, in the order of [`capture_index`].
-const CAPTURES: [&str; 11] = [
+const CAPTURES: [&str; 14] = [
     "comment",
     "keyword",
     "function",
@@ -30,36 +39,80 @@ const CAPTURES: [&str; 11] = [
     "boolean",
     "constant",
     "tag",
+    CONTROL_CAPTURE,
+    "variable",
+    "variable.special",
 ];
 
-/// The position in [`CAPTURES`] of the capture that colors `highlight`.
-fn capture_index(highlight: Highlight) -> usize {
-    match highlight {
-        Highlight::Comment | Highlight::LogDate | Highlight::LogDebug | Highlight::LogTrace => 0,
-        Highlight::Keyword => 1,
-        Highlight::Function | Highlight::LogInfo => 2,
+/// The position of the keyword capture, the color of [`Highlight::Control`] in a theme without one.
+const KEYWORD: usize = 1;
+
+/// The position in [`CAPTURES`] of the capture that colors `highlight`, `None` for the log classes.
+fn capture_index(highlight: Highlight) -> Option<usize> {
+    Some(match highlight {
+        Highlight::Comment => 0,
+        Highlight::Keyword => KEYWORD,
+        Highlight::Function => 2,
         Highlight::Property => 3,
         Highlight::Attribute => 4,
         Highlight::String => 5,
-        Highlight::Number | Highlight::LogWarn => 6,
+        Highlight::Number => 6,
         Highlight::Type => 7,
         Highlight::Boolean => 8,
         Highlight::Constant => 9,
-        Highlight::Tag | Highlight::LogError => 10,
-    }
+        Highlight::Tag => 10,
+        Highlight::Control => 11,
+        Highlight::Variable => 12,
+        Highlight::BuiltinVariable => 13,
+        Highlight::LogError
+        | Highlight::LogWarn
+        | Highlight::LogInfo
+        | Highlight::LogDebug
+        | Highlight::LogTrace
+        | Highlight::LogDate => return None,
+    })
 }
 
 /// The color of every class in the current theme, looked up once per frame.
-pub struct SyntaxColors([Option<Hsla>; CAPTURES.len()]);
+pub struct SyntaxColors {
+    captures: [Option<Hsla>; CAPTURES.len()],
+    log_error: Hsla,
+    log_warn: Hsla,
+    log_info: Hsla,
+    log_muted: Hsla,
+}
 
 impl SyntaxColors {
-    pub fn new(theme: &HighlightTheme) -> Self {
-        Self(CAPTURES.map(|name| theme.style(name).and_then(|style| style.color)))
+    pub fn new(theme: &HighlightTheme, palette: &Palette) -> Self {
+        Self {
+            captures: CAPTURES.map(|name| theme.style(name).and_then(|style| style.color)),
+            log_error: palette.danger,
+            log_warn: palette.warning,
+            log_info: palette.info,
+            log_muted: palette.fg_muted,
+        }
     }
 
     /// The color of `highlight`, `None` for the plain text color.
     pub fn get(&self, highlight: Highlight) -> Option<Hsla> {
-        self.0[capture_index(highlight)]
+        match highlight {
+            Highlight::LogError => Some(self.log_error),
+            Highlight::LogWarn => Some(self.log_warn),
+            Highlight::LogInfo => Some(self.log_info),
+            Highlight::LogDebug | Highlight::LogTrace | Highlight::LogDate => Some(self.log_muted),
+            Highlight::Control => {
+                self.captures[capture_index(highlight)?].or(self.captures[KEYWORD])
+            }
+            _ => self.captures[capture_index(highlight)?],
+        }
+    }
+}
+
+/// The light and the dark colors of a syntax theme.
+pub fn themes(choice: SyntaxThemeChoice) -> (SyntaxTheme, SyntaxTheme) {
+    match choice {
+        SyntaxThemeChoice::Ted => (LIGHT, DARK),
+        SyntaxThemeChoice::VsCode => (VSCODE_LIGHT, VSCODE_DARK),
     }
 }
 
@@ -93,25 +146,90 @@ pub const DARK: SyntaxTheme = SyntaxTheme(&[
     ("tag", SyntaxStyle::color("#f27171")),
 ]);
 
+/// Visual Studio Code's Light+: keywords in pure blue, flow keywords in magenta.
+const VSCODE_LIGHT: SyntaxTheme = SyntaxTheme(&[
+    ("comment", SyntaxStyle::color("#008000")),
+    ("keyword", SyntaxStyle::color("#0000ff")),
+    (CONTROL_CAPTURE, SyntaxStyle::color("#af00db")),
+    ("function", SyntaxStyle::color("#795e26")),
+    ("property", SyntaxStyle::color("#001080")),
+    ("attribute", SyntaxStyle::color("#e50000")),
+    ("string", SyntaxStyle::color("#a31515")),
+    ("number", SyntaxStyle::color("#098658")),
+    ("type", SyntaxStyle::color("#267f99")),
+    ("boolean", SyntaxStyle::color("#0000ff")),
+    ("constant", SyntaxStyle::color("#0070c1")),
+    ("tag", SyntaxStyle::color("#800000")),
+    ("variable", SyntaxStyle::color("#001080")),
+    ("variable.special", SyntaxStyle::color("#0000ff")),
+]);
+
+/// Visual Studio Code's Dark+: keywords in its blue, flow keywords in magenta, variables in light
+/// blue, functions in yellow, types in teal and strings in orange.
+const VSCODE_DARK: SyntaxTheme = SyntaxTheme(&[
+    ("comment", SyntaxStyle::color("#6a9955")),
+    ("keyword", SyntaxStyle::color("#569cd6")),
+    (CONTROL_CAPTURE, SyntaxStyle::color("#c586c0")),
+    ("function", SyntaxStyle::color("#dcdcaa")),
+    ("property", SyntaxStyle::color("#9cdcfe")),
+    ("attribute", SyntaxStyle::color("#9cdcfe")),
+    ("string", SyntaxStyle::color("#ce9178")),
+    ("number", SyntaxStyle::color("#b5cea8")),
+    ("type", SyntaxStyle::color("#4ec9b0")),
+    ("boolean", SyntaxStyle::color("#569cd6")),
+    ("constant", SyntaxStyle::color("#4fc1ff")),
+    ("tag", SyntaxStyle::color("#569cd6")),
+    ("variable", SyntaxStyle::color("#9cdcfe")),
+    ("variable.special", SyntaxStyle::color("#569cd6")),
+]);
+
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
-    use super::{DARK, LIGHT};
+    use super::{CONTROL_CAPTURE, DARK, LIGHT, SyntaxThemeChoice, themes};
     use pretty_assertions::assert_eq;
 
+    /// The captures a theme may leave out: they show as the keyword or in the text color.
+    const OPTIONAL: [&str; 3] = [CONTROL_CAPTURE, "variable", "variable.special"];
+
     #[test]
-    fn every_capture_the_editor_paints_has_a_color() {
-        for name in super::CAPTURES {
-            assert!(LIGHT.get(name).is_some(), "{name}");
-            assert!(DARK.get(name).is_some(), "{name}");
+    fn every_theme_colors_what_the_editor_paints() {
+        for choice in SyntaxThemeChoice::ALL {
+            let (light, dark) = themes(choice);
+            for name in super::CAPTURES.iter().filter(|n| !OPTIONAL.contains(n)) {
+                assert!(light.get(name).is_some(), "{choice:?} {name}");
+                assert!(dark.get(name).is_some(), "{choice:?} {name}");
+            }
         }
     }
 
     #[test]
-    fn both_modes_color_the_same_captures() {
+    fn both_modes_of_a_theme_color_the_same_captures() {
         let names = |theme: telaio_ui::SyntaxTheme| {
             theme.0.iter().map(|(name, _)| *name).collect::<Vec<_>>()
         };
-        assert_eq!(names(LIGHT), names(DARK));
+        for choice in SyntaxThemeChoice::ALL {
+            let (light, dark) = themes(choice);
+            assert_eq!(names(light), names(dark), "{choice:?}");
+        }
+    }
+
+    #[test]
+    fn the_capture_names_are_the_ones_gpui_kit_knows() {
+        // A name gpui-kit does not know would be dropped from the theme without an error.
+        for choice in SyntaxThemeChoice::ALL {
+            let (_, dark) = themes(choice);
+            let entries = dark.0.iter().map(|(name, style)| {
+                let value = serde_json::json!({ "color": style.color });
+                ((*name).to_string(), value)
+            });
+            let json = serde_json::Value::Object(entries.collect());
+            let parsed: gpui_kit::component::highlighter::SyntaxColors =
+                serde_json::from_value(json).unwrap();
+            for (name, _) in dark.0 {
+                assert!(parsed.style(name).is_some(), "{choice:?} {name}");
+            }
+        }
     }
 
     #[test]

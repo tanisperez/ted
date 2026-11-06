@@ -122,6 +122,31 @@ Notes:
   functions (`wildcard`, `shell`) as `function`, variables as `property`, automatic variables
   (`$@`) and special targets (`.PHONY`) as `constant`, and leaves the recipes plain.
 
+### Syntax themes
+
+The setting `syntax_theme` picks the colors above (`ted`, the default) or those of Visual Studio
+Code (`vscode`: Dark+ in dark mode, Light+ in light mode). Only the code changes: the window keeps
+ted's tokens, its background included. A theme has a light and a dark table in
+`theme/syntax.rs` and an entry in `SyntaxThemeChoice`.
+
+| Class | Dark+ | Light+ | Examples |
+| --- | --- | --- | --- |
+| `comment` | `#6a9955` | `#008000` | |
+| `keyword`, `boolean`, `self` | `#569cd6` | `#0000ff` | `fn`, `let`, `true`, `this` |
+| control keyword | `#c586c0` | `#af00db` | `if`, `for`, `return`, `import` |
+| `function` | `#dcdcaa` | `#795e26` | |
+| `property`, variable | `#9cdcfe` | `#001080` | identifiers, JSON keys |
+| `attribute` | `#9cdcfe` | `#e50000` | |
+| `string` | `#ce9178` | `#a31515` | |
+| `number` | `#b5cea8` | `#098658` | |
+| `type` | `#4ec9b0` | `#267f99` | |
+| `constant` | `#4fc1ff` | `#0070c1` | `None`, `null` |
+| `tag` | `#569cd6` | `#800000` | HTML and XML tags |
+
+Control keywords and variables are classes of their own only for these colors: ted's theme paints
+them as `keyword` and `fg`. An identifier never paints over a class that encloses it. Log classes
+take `danger`, `warning`, `info` and `fg_muted` in every theme, since they mean a severity.
+
 ### Semantic mappings
 
 - Git status letters (explorer and Git panel): `A` and `U` `success`, `D` `danger`, `R` `info`,
@@ -423,7 +448,7 @@ once." and a Reset values button. The footer of the left column says where the f
 
 | Category | Settings |
 | --- | --- |
-| Appearance | Language (Auto, English, Spanish), theme cards (System, Light, Dark), UI font and size |
+| Appearance | Language (Auto, English, Spanish), theme cards (System, Light, Dark), syntax colors (ted, VS Code), UI font and size |
 | Editor | Editor font and size, line numbers, highlight current line, word wrap, tab size, insert spaces, markdown view on open and synchronized scroll |
 | Files | Autosave on tab or window change, trim trailing whitespace, final newline, encoding and line ending of new files, explorer exclude patterns (default `.git, target, node_modules`, `.gitignore` is honored too) |
 | Git | Auto fetch, confirm before discarding |

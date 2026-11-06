@@ -29,10 +29,11 @@ pub fn apply_settings(cx: &mut App, settings: &Settings) {
     telaio_ui::apply(cx, &theme_family(settings));
 }
 
-/// The theme family: telaio's default tokens, ted's [`syntax`] colors and the settings' fonts.
+/// The theme family: telaio's default tokens, the chosen [`syntax`] colors and the settings' fonts.
 fn theme_family(settings: &Settings) -> telaio_ui::ThemeFamily {
+    let (light, dark) = syntax::themes(settings.syntax_theme);
     telaio_ui::ThemeFamily::new("ted")
-        .syntax(syntax::LIGHT, syntax::DARK)
+        .syntax(light, dark)
         .fonts(telaio_ui::Fonts {
             ui_family: settings.ui_font.clone().into(),
             ui_size: settings.ui_font_size,

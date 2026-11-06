@@ -115,6 +115,41 @@ impl ThemeChoice {
     }
 }
 
+/// The colors of the highlighted text, chosen in Settings, "Appearance". Each theme has a light and
+/// a dark version, which follow the theme mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SyntaxThemeChoice {
+    /// ted's own colors, from the palette of the design.
+    #[default]
+    Ted,
+    /// The colors of Visual Studio Code: Dark+ in dark mode, Light+ in light mode.
+    VsCode,
+}
+
+impl SyntaxThemeChoice {
+    /// Every theme, in the order of the selector.
+    pub const ALL: [SyntaxThemeChoice; 2] = [SyntaxThemeChoice::Ted, SyntaxThemeChoice::VsCode];
+
+    /// Parses a name as read from the settings file, case-insensitive. Returns `None` for anything
+    /// else, so the caller can fall back to the default.
+    fn parse(text: &str) -> Option<Self> {
+        match text.to_ascii_lowercase().as_str() {
+            "ted" => Some(SyntaxThemeChoice::Ted),
+            "vscode" => Some(SyntaxThemeChoice::VsCode),
+            _ => None,
+        }
+    }
+
+    /// The name in the selector. A proper name, the same in every language.
+    pub fn label(self) -> &'static str {
+        match self {
+            SyntaxThemeChoice::Ted => "ted",
+            SyntaxThemeChoice::VsCode => "VS Code",
+        }
+    }
+}
+
 /// What Ctrl+Enter does in the commit message, chosen in Settings, "Git". Stored in
 /// `settings.toml` as `git_commit_action = "commit" | "commit_and_push"`, as in Postino.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
@@ -190,6 +225,8 @@ pub struct Settings {
     pub language: LanguageChoice,
     /// The theme mode: system, light or dark.
     pub theme: ThemeChoice,
+    /// The colors of the highlighted text.
+    pub syntax_theme: SyntaxThemeChoice,
     /// The UI font family name.
     pub ui_font: String,
     /// The UI font size, in points, clamped to [`UI_FONT_SIZE_RANGE`].
@@ -256,6 +293,7 @@ impl Default for Settings {
         Settings {
             language: LanguageChoice::default(),
             theme: ThemeChoice::default(),
+            syntax_theme: SyntaxThemeChoice::default(),
             ui_font: "Geist".to_string(),
             ui_font_size: 13.0,
             mono_font: "Geist Mono".to_string(),
@@ -348,6 +386,9 @@ fn parse_settings(content: &str) -> Settings {
     }
     if let Some(value) = text("theme").and_then(ThemeChoice::parse) {
         settings.theme = value;
+    }
+    if let Some(value) = text("syntax_theme").and_then(SyntaxThemeChoice::parse) {
+        settings.syntax_theme = value;
     }
     if let Some(value) = text("ui_font").filter(|name| !name.trim().is_empty()) {
         settings.ui_font = value.to_string();
@@ -450,6 +491,18 @@ fn as_f32(value: &toml::Value) -> Option<f32> {
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn the_syntax_theme_is_read_and_falls_back_to_the_default() {
+        let parsed = |text| parse_settings(text).syntax_theme;
+        assert_eq!(parsed(""), SyntaxThemeChoice::Ted);
+        assert_eq!(
+            parsed("syntax_theme = \"VSCode\""),
+            SyntaxThemeChoice::VsCode
+        );
+        assert_eq!(parsed("syntax_theme = \"ted\""), SyntaxThemeChoice::Ted);
+        assert_eq!(parsed("syntax_theme = \"neon\""), SyntaxThemeChoice::Ted);
+    }
 
     #[test]
     fn a_missing_file_gives_the_defaults() {

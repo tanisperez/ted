@@ -307,6 +307,26 @@ mod tests {
     }
 
     #[test]
+    fn identifiers_and_flow_keywords_have_their_own_classes() {
+        let src = "fn f(&self, a: u8) { let b = a; if b > 0 { return b; } }";
+        has(Language::Rust, src, "fn", Keyword);
+        has(Language::Rust, src, "let", Keyword);
+        has(Language::Rust, src, "if", Control);
+        has(Language::Rust, src, "return", Control);
+        has(Language::Rust, src, "b", Variable);
+        has(Language::Rust, src, "self", BuiltinVariable);
+        has(Language::Rust, src, "f", Function);
+    }
+
+    #[test]
+    fn an_identifier_never_paints_over_what_encloses_it() {
+        let src = "#[derive(Debug)]\nstruct A;\n";
+        has(Language::Rust, src, "#[derive(", Attribute);
+        let got = spans(Language::Rust, src);
+        assert!(!got.iter().any(|(_, h)| *h == Variable), "{got:?}");
+    }
+
+    #[test]
     fn yaml_highlights() {
         let src = "# c\nname: ted\nn: 3\nok: true\nz: null\nbase: &b \"s\"\nuse: *b\n";
         has(Language::Yaml, src, "# c", Comment);
@@ -370,12 +390,12 @@ mod tests {
         has(Language::Shell, src, "# setup", Comment);
         has(Language::Shell, src, "local", Keyword);
         has(Language::Shell, src, "n", Property);
-        has(Language::Shell, src, "if", Keyword);
+        has(Language::Shell, src, "if", Control);
         has(Language::Shell, src, "-f", Constant);
         has(Language::Shell, src, "echo", Function);
         has(Language::Shell, src, "?", Constant);
         has(Language::Shell, src, "'done'", String);
-        has(Language::Shell, src, "fi", Keyword);
+        has(Language::Shell, src, "fi", Control);
         has(Language::Shell, src, "greet", Function);
     }
 
@@ -403,7 +423,7 @@ mod tests {
         has(Language::PowerShell, src, "Get-Area", Function);
         has(Language::PowerShell, src, "int", Type);
         has(Language::PowerShell, src, "$r", Property);
-        has(Language::PowerShell, src, "if", Keyword);
+        has(Language::PowerShell, src, "if", Control);
         has(Language::PowerShell, src, "$null", Constant);
         has(Language::PowerShell, src, "$False", Boolean);
         has(Language::PowerShell, src, "Write-Host", Function);

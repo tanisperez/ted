@@ -45,6 +45,15 @@ _version: 2
 "settings.theme.description":
   en: "The colors of the whole window. System follows the light or dark mode of the desktop."
   es: "Los colores de toda la ventana. Sistema sigue el modo claro u oscuro del escritorio."
+"settings.syntax.title":
+  en: "Syntax colors"
+  es: "Colores de sintaxis"
+"settings.syntax.description":
+  en: "The colors of the code in the editor. Each set has a light and a dark version, which follow the theme."
+  es: "Los colores del código en el editor. Cada juego tiene una versión clara y otra oscura, que siguen al tema."
+"settings.syntax.label":
+  en: "Colors"
+  es: "Colores"
 "settings.interface.title":
   en: "Interface"
   es: "Interfaz"

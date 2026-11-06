@@ -9,6 +9,8 @@ use std::ops::Range;
 pub enum Highlight {
     Comment,
     Keyword,
+    /// A keyword that changes the flow of the program (`if`, `for`, `return`).
+    Control,
     Function,
     Property,
     Attribute,
@@ -18,6 +20,10 @@ pub enum Highlight {
     Boolean,
     Constant,
     Tag,
+    /// An identifier. Never paints over a class that encloses it (see [`resolve`]).
+    Variable,
+    /// `self`, `this`.
+    BuiltinVariable,
     LogError,
     LogWarn,
     LogInfo,
@@ -28,7 +34,7 @@ pub enum Highlight {
 
 impl Highlight {
     /// The class of a tree-sitter capture name (`function.macro`, `string.special.key`, ...), or
-    /// `None` for captures ted paints as plain text (punctuation, variables, operators).
+    /// `None` for captures ted paints as plain text (punctuation, operators).
     /// The most specific names are checked first; a dotted name with no entry of its own takes
     /// its first part's class.
     pub(crate) fn from_capture(name: &str) -> Option<Highlight> {
@@ -37,6 +43,8 @@ impl Highlight {
                 return Some(Highlight::Property);
             }
             "constant.builtin" => return Some(Highlight::Constant),
+            "keyword.control" => return Some(Highlight::Control),
+            "variable.builtin" => return Some(Highlight::BuiltinVariable),
             "text.title" => return Some(Highlight::Keyword),
             "text.literal" | "escape" => return Some(Highlight::String),
             "tag.error" | "none" | "embedded" => return None,
@@ -55,6 +63,7 @@ impl Highlight {
             "boolean" => Highlight::Boolean,
             "constant" => Highlight::Constant,
             "tag" => Highlight::Tag,
+            "variable" => Highlight::Variable,
             _ => return None,
         })
     }
@@ -115,6 +124,10 @@ pub(crate) fn resolve(
             continue;
         }
         flush(&mut stack, &mut pos, start, &mut out);
+        // The words of an attribute or a string keep its color.
+        if highlight == Highlight::Variable && !stack.is_empty() {
+            continue;
+        }
         if stack.is_empty() {
             pos = start;
         }

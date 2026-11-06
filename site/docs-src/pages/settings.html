@@ -15,6 +15,7 @@ description: Every setting of ted, its default, and the settings.toml file.
     <tbody>
         <tr><td>Interface language</td><td>Automatic</td><td>English or Spanish. Automatic follows your system, English when it is neither.</td></tr>
         <tr><td>Theme</td><td>System</td><td>Light, Dark, or System, which follows the light or dark mode of your desktop.</td></tr>
+        <tr><td>Syntax colors</td><td>ted</td><td>The colors of the code in the editor: <strong>ted</strong>, or <strong>VS Code</strong>, the colors of Visual Studio Code (Dark+ in dark mode, Light+ in light mode). In the file, <code>ted</code> or <code>vscode</code>. They follow the theme, and logs keep their severity colors with both.</td></tr>
         <tr><td>Font size (Interface)</td><td>13 px</td><td>The size of the interface text, 11 to 16.</td></tr>
     </tbody>
 </table></div>
@@ -67,6 +68,7 @@ description: Every setting of ted, its default, and the settings.toml file.
 ```toml title="settings.toml"
 language = "auto"
 theme = "system"
+syntax_theme = "ted"
 ui_font_size = 13.0
 mono_font_size = 12.5
 line_numbers = true

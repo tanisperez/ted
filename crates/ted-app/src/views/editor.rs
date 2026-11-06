@@ -1107,7 +1107,7 @@ impl Element for EditorElement {
             char_width: f32::from(char_width),
         };
         let focused = self.editor.read(cx).focus_handle.is_focused(window);
-        let colors = SyntaxColors::new(&cx.theme().highlight_theme);
+        let colors = SyntaxColors::new(&cx.theme().highlight_theme, &cx.palette());
 
         self.editor.update(cx, |editor, cx| {
             let state = &mut editor.state;
