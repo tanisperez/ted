@@ -25,7 +25,7 @@ ted is written in Rust on gpui, the GPU accelerated UI framework of the Zed edit
 - [Keyboard shortcuts](https://ted.tanis.codes/docs/keyboard-shortcuts.html): Every keyboard shortcut of ted on Windows, Linux and macOS.
 - [Settings](https://ted.tanis.codes/docs/settings.html): Every setting of ted, its default, and the settings.toml file.
 - [Command line](https://ted.tanis.codes/docs/command-line.html): Running ted from a terminal: opening files and folders, options and environment variables.
-- [Files and folders](https://ted.tanis.codes/docs/files-and-folders.html): Where ted keeps its settings, its recent files list and its log file on each system.
+- [Files and folders](https://ted.tanis.codes/docs/files-and-folders.html): Where ted keeps its settings, its recent files list, its window size and its log file on each system.
 - [Troubleshooting](https://ted.tanis.codes/docs/troubleshooting.html): What to do when ted does not start, a file does not open, or something looks wrong.
 
 ## Project
