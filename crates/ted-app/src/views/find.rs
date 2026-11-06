@@ -3,8 +3,9 @@
 //! (`Alt+C`, `Alt+W`, `Alt+X`); then the match counter, previous and next, find in selection and
 //! close. The chevron on the left, `Ctrl+R` or `Ctrl+H` show the replace row: its field, with the
 //! preserve case toggle, Replace and Replace all. Enter and `F3` go to the next match,
-//! Shift+Enter and `Shift+F3` to the previous one, Escape closes the bar and gives the focus back
-//! to the text. The matches are marked on the scrollbar track (`views/editor.rs`).
+//! Shift+Enter and `Shift+F3` to the previous one, Escape closes the bar, from its field or from
+//! the text, and gives the focus back to the text. The matches are marked on the scrollbar track
+//! (`views/editor.rs`).
 //!
 //! The bar is a sibling of the editor's key context, not inside it, so keys typed in its field
 //! never reach the editor's bindings (Tab, the arrows). The state and the counting rules live in
@@ -340,7 +341,7 @@ impl EditorView {
     }
 
     /// Closes the bar and gives the focus back to the text.
-    fn close_find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn close_find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.find_open = false;
         self.find.scope = None;
         // Stops a running search: its next step sees another generation.
@@ -631,6 +632,9 @@ impl EditorView {
         v_flex()
             .id("find-bar")
             .key_context(FIND_CONTEXT)
+            // A click on the bar keeps the focus where it is, in its field or the text: otherwise
+            // it moves to the root of the window, where neither typing nor Escape reach the bar.
+            .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default())
             .flex_none()
             .w_full()
             .gap(px(6.0))

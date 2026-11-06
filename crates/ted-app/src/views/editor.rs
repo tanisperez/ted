@@ -749,9 +749,11 @@ impl Render for EditorView {
             .on_action(cx.listener(|this, _: &MoveLineDown, _, cx| {
                 this.edit(cx, |state| state.move_lines(false))
             }))
-            .on_action(cx.listener(|this, _: &CollapseCursors, _, cx| {
+            .on_action(cx.listener(|this, _: &CollapseCursors, window, cx| {
                 if this.state.collapse_cursors() {
                     cx.notify();
+                } else if this.find_open {
+                    this.close_find(window, cx);
                 } else {
                     cx.propagate();
                 }
