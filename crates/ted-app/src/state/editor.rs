@@ -422,9 +422,14 @@ impl EditorState {
 
     /// Scrolls `dy` pixels of rows while lines wrap, walking only the lines it passes.
     fn wrap_scroll_by(&mut self, dy: f32) {
+        let (line, into) = self.wrap_top();
+        self.wrap_scroll_from(line, into, dy);
+    }
+
+    /// Sets the top of the viewport `dy` pixels of rows from `into` pixels into the rows of `line`.
+    fn wrap_scroll_from(&mut self, mut line: usize, mut into: f32, dy: f32) {
         let line_height = self.viewport.line_height.max(1.0);
         let last = self.buffer.line_count() - 1;
-        let (mut line, mut into) = self.wrap_top();
         into += dy;
         loop {
             if into < 0.0 && line > 0 {
@@ -511,8 +516,7 @@ impl EditorState {
         }
         if line < cursor.line {
             // Far below: put its row at the bottom.
-            self.set_wrap_top(cursor.line, cursor_into);
-            self.wrap_scroll_by(line_height - height);
+            self.wrap_scroll_from(cursor.line, cursor_into, line_height - height);
             return;
         }
         y += cursor_into;
@@ -2679,6 +2683,18 @@ mod tests {
         let mut plain = editor(&text);
         plain.scroll_by(0.0, 1e6);
         assert!((state.scroll_y - plain.scroll_y).abs() < 0.01);
+    }
+
+    #[test]
+    fn a_far_cursor_at_the_end_of_a_wrapped_document_shows_at_the_bottom() {
+        let mut state = wrapped(&"a\n".repeat(99));
+        at(&mut state, 99, 0);
+        state.scroll_to_cursor();
+        let (rows, first_y) = state.visible_rows();
+        let index = rows.iter().position(|row| row.line == 99);
+        assert_eq!(index, Some(rows.len() - 1), "the cursor's row shows, last");
+        // Its row ends at the bottom of the screen, as without wrapping.
+        assert_eq!(first_y + rows.len() as f32 * 20.0, 60.0);
     }
 
     #[test]
