@@ -26,7 +26,7 @@ description: Where ted keeps its settings, its recent files list, its window siz
 <ul>
     <li>Saving writes a temporary file next to the original and renames it over it. Where a share does not allow that, ted writes into the file directly instead.</li>
     <li>Some shares, and WSL, do not report changes made by other programs. ted then checks the open file when its window gets the focus back.</li>
-    <li>Git may refuse a repository on a share or in WSL as unsafe (<code>safe.directory</code>); the Git panel shows git's own message.</li>
+    <li>Git may refuse a repository on a share as unsafe (<code>safe.directory</code>); the Git panel offers to <a href="git.html#trust">trust it</a>. A folder inside WSL uses the git of its distribution, see <a href="git.html#wsl">Projects inside WSL</a>.</li>
     <li>A Linux path such as <code>/home/me/app.log</code>, typed in a WSL terminal for the Windows <code>ted.exe</code>, is not translated: use <code>ted.exe "$(wslpath -w app.log)"</code>.</li>
 </ul>
 

@@ -70,8 +70,8 @@ _version: 2
   en: "Git does not trust this folder"
   es: "Git no confía en esta carpeta"
 "git.empty.untrusted_text":
-  en: "Another user owns this repository, as happens with every folder of WSL opened from Windows, so Git refuses to work in it. Trust it only if it is yours: ted adds it to safe.directory in your Git configuration (%{directory})."
-  es: "Este repositorio es de otro usuario, como pasa con cualquier carpeta de WSL abierta desde Windows, así que Git se niega a trabajar en él. Confía en él solo si es tuyo: ted lo añade a safe.directory en tu configuración de Git (%{directory})."
+  en: "Another user owns this repository, as happens with a folder of WSL opened with Git for Windows, so Git refuses to work in it. Trust it only if it is yours: ted adds it to safe.directory in your Git configuration (%{directory})."
+  es: "Este repositorio es de otro usuario, como pasa con una carpeta de WSL abierta con Git para Windows, así que Git se niega a trabajar en él. Confía en él solo si es tuyo: ted lo añade a safe.directory en tu configuración de Git (%{directory})."
 "git.empty.trust":
   en: "Trust this folder"
   es: "Confiar en esta carpeta"

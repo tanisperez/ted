@@ -159,6 +159,9 @@ _version: 2
 "settings.git.found":
   en: "git %{version} found at %{path}."
   es: "git %{version} encontrado en %{path}."
+"settings.git.found_wsl":
+  en: "git %{version} found at %{path} (WSL: %{distro})."
+  es: "git %{version} encontrado en %{path} (WSL: %{distro})."
 "settings.git.not_found":
   en: "Git was not found. Install it or pick the executable."
   es: "No se encontró Git. Instálalo o elige el ejecutable."

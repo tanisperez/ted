@@ -2,13 +2,17 @@
 //! the opened folder's repository and reading its status, always on the background executor. The
 //! results land in [`AppView::git`] (`state::git`), which render reads.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use telaio_git::{DiffSource, Executable};
 
-use crate::state::git::{GitAvailability, RepoState, change_rows, explorer_marks, staged_outside};
+use crate::state::git::{
+    GitAvailability, RepoState, change_rows, explorer_marks, needs_detection, staged_outside,
+    wsl_distro_of,
+};
 use crate::state::git_sync::CommitStats;
 use crate::state::launch::Target;
 
@@ -56,19 +60,41 @@ impl AppView {
         }
     }
 
+    /// The folder open in the explorer, `None` in file mode.
+    fn git_folder(&self) -> Option<&Path> {
+        match &self.target {
+            Some(Target::Folder(root)) if self.explorer.is_some() => Some(root),
+            _ => None,
+        }
+    }
+
     /// Detects git again (at startup and when its setting changes), then discovers the open
     /// folder's repository.
     pub(crate) fn detect_git(&mut self, cx: &mut Context<Self>) {
         let executable = self.git_executable();
+        // A folder inside WSL uses the git of its distribution (`needs_detection`).
+        let folder = self.git_folder().map(Path::to_path_buf);
+        self.git.detected_for = wsl_distro_of(folder.as_deref());
         self.git.availability = GitAvailability::Detecting;
         self.git_tasks.detect = Some(cx.spawn(async move |this, cx| {
             let result = cx
-                .background_spawn(async move { telaio_git::detect(&executable) })
+                .background_spawn(
+                    async move { telaio_git::detect_for(&executable, folder.as_deref()) },
+                )
                 .await;
             let _ = this.update(cx, |view, cx| {
                 view.git.availability = match result {
                     Ok(git) => {
-                        log::info!("git {} at {}", git.version(), git.path().display());
+                        match git.wsl_distro() {
+                            Some(distro) => log::info!(
+                                "git {} at {} in WSL {distro}",
+                                git.version(),
+                                git.path().display()
+                            ),
+                            None => {
+                                log::info!("git {} at {}", git.version(), git.path().display())
+                            }
+                        }
                         GitAvailability::Ready(git)
                     }
                     Err(error) => {
@@ -83,8 +109,18 @@ impl AppView {
     }
 
     /// Finds the repository of the open folder, then reads its status. Called when a folder
-    /// opens or closes and after git is detected again.
+    /// opens or closes and after git is detected again. Detects git first when the folder needs
+    /// another one (a folder in another WSL distribution).
     pub(crate) fn discover_git_repo(&mut self, cx: &mut Context<Self>) {
+        if needs_detection(
+            self.settings.git_executable.is_none(),
+            matches!(self.git.availability, GitAvailability::Detecting),
+            self.git.detected_for.as_deref(),
+            self.git_folder(),
+        ) {
+            // Clears the old repository below; the detection discovers the new one when it ends.
+            self.detect_git(cx);
+        }
         self.git.repo = RepoState::Unknown;
         self.git.branches = None;
         // A new explorer starts without marks.
@@ -94,12 +130,9 @@ impl AppView {
         self.git.sync.last_fetch = None;
         self.git_tasks.watcher = None;
         self.rebuild_git_rows(cx);
-        let root = match &self.target {
-            Some(Target::Folder(root)) if self.explorer.is_some() => root.clone(),
-            _ => {
-                self.git_tasks.discover = None;
-                return;
-            }
+        let Some(root) = self.git_folder().map(Path::to_path_buf) else {
+            self.git_tasks.discover = None;
+            return;
         };
         let Some(git) = self.git.availability.git().cloned() else {
             self.git_tasks.discover = None;

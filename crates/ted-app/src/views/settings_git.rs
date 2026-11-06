@@ -238,11 +238,19 @@ fn executable_section(
         GitAvailability::Ready(git) => (
             IconName::CircleCheck,
             palette.success,
-            t!(
-                "settings.git.found",
-                version = git.version().to_string(),
-                path = git.path().display().to_string()
-            )
+            match git.wsl_distro() {
+                Some(distro) => t!(
+                    "settings.git.found_wsl",
+                    version = git.version().to_string(),
+                    path = git.path().display().to_string(),
+                    distro = distro
+                ),
+                None => t!(
+                    "settings.git.found",
+                    version = git.version().to_string(),
+                    path = git.path().display().to_string()
+                ),
+            }
             .into_owned(),
         ),
         GitAvailability::Missing(error) => (

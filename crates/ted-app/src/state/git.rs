@@ -5,6 +5,7 @@
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::path::Path;
 use std::sync::Arc;
 
 use ted_workspace::natural_cmp;
@@ -32,6 +33,27 @@ impl GitAvailability {
     }
 }
 
+/// The WSL distribution `folder` is in, from its Windows path
+/// (`\\wsl.localhost\Ubuntu-24.04\...`).
+pub fn wsl_distro_of(folder: Option<&Path>) -> Option<String> {
+    folder
+        .and_then(telaio_git::wsl_location)
+        .map(|location| location.distro)
+}
+
+/// Whether git must be detected again before discovering the repository of `folder`: with the
+/// automatic executable, the git of a folder inside WSL is the git of its distribution
+/// (`telaio_git::detect_for`), so opening a folder in another distribution, or moving between WSL
+/// and Windows, changes it. Never while a detection is running, it discovers when it ends.
+pub fn needs_detection(
+    auto: bool,
+    detecting: bool,
+    detected_for: Option<&str>,
+    folder: Option<&Path>,
+) -> bool {
+    auto && !detecting && wsl_distro_of(folder).as_deref() != detected_for
+}
+
 /// The repository of the open folder.
 #[derive(Debug, Clone, Default)]
 pub enum RepoState {
@@ -50,8 +72,8 @@ pub enum RepoState {
     },
     /// Discovery or status failed. The message is git's own, shown verbatim.
     Error(String),
-    /// Git refused the repository because another user owns it (every repository of WSL opened
-    /// from Windows). The value is what to add to `safe.directory` to trust it, once the user
+    /// Git refused the repository because another user owns it (a repository of WSL opened with
+    /// Git for Windows). The value is what to add to `safe.directory` to trust it, once the user
     /// agrees.
     Untrusted(String),
 }
@@ -72,6 +94,9 @@ impl RepoState {
 pub struct GitState {
     /// Whether git can be used.
     pub availability: GitAvailability,
+    /// The WSL distribution of the folder the last detection was made for, `None` for a folder
+    /// outside WSL or none open. See [`needs_detection`].
+    pub detected_for: Option<String>,
     /// The open folder's repository.
     pub repo: RepoState,
     /// The panel's collapsed groups and folders, by [`ChangeRow::key`].
@@ -649,5 +674,37 @@ mod tests {
         let rows = change_rows(&status, "", &HashSet::new(), false);
         assert_eq!(rows[1].label, "v2");
         assert_eq!(rows[3].label, "v10");
+    }
+
+    #[test]
+    fn a_folder_in_another_wsl_distribution_detects_git_again() {
+        let ubuntu = Path::new(r"\\wsl.localhost\Ubuntu-24.04\home\me\api");
+        let windows = Path::new(r"C:\work\api");
+        assert_eq!(wsl_distro_of(Some(ubuntu)).as_deref(), Some("Ubuntu-24.04"));
+        assert_eq!(wsl_distro_of(Some(windows)), None);
+        assert_eq!(wsl_distro_of(None), None);
+
+        // Detected without a folder (at startup), then a WSL one opens.
+        assert!(needs_detection(true, false, None, Some(ubuntu)));
+        // Already detected for it, or a folder outside WSL as before.
+        assert!(!needs_detection(
+            true,
+            false,
+            Some("Ubuntu-24.04"),
+            Some(ubuntu)
+        ));
+        assert!(!needs_detection(true, false, None, Some(windows)));
+        assert!(!needs_detection(true, false, None, None));
+        // From WSL back to Windows, or to another distribution.
+        assert!(needs_detection(
+            true,
+            false,
+            Some("Ubuntu-24.04"),
+            Some(windows)
+        ));
+        assert!(needs_detection(true, false, Some("Debian"), Some(ubuntu)));
+        // A detection running discovers when it ends, and a chosen executable never changes.
+        assert!(!needs_detection(true, true, None, Some(ubuntu)));
+        assert!(!needs_detection(false, false, None, Some(ubuntu)));
     }
 }
