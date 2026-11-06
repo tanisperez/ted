@@ -1714,7 +1714,8 @@ impl EditorElement {
         let editor = self.editor.clone();
         let wheel_hitbox = hitbox.clone();
         window.on_mouse_event(move |event: &ScrollWheelEvent, phase, window, cx| {
-            if !phase.bubble() || !wheel_hitbox.is_hovered(window) {
+            // Not `is_hovered`, which is false from a key press until the mouse moves.
+            if !phase.bubble() || !wheel_hitbox.should_handle_scroll(window) {
                 return;
             }
             let delta = event.delta.pixel_delta(line_height);
