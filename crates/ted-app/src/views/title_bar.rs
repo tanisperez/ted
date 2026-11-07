@@ -286,7 +286,8 @@ fn render_search_trigger(
     mono_font: SharedString,
     cx: &mut Context<AppView>,
 ) -> impl IntoElement {
-    let border_strong = palette.border_strong;
+    let accent = palette.accent;
+    let accent_text = palette.accent_text;
     let fg_muted = palette.fg_muted;
     h_flex()
         .id("title-bar-search")
@@ -302,8 +303,24 @@ fn render_search_trigger(
         .border_1()
         .border_color(palette.border)
         .text_color(palette.fg_subtle)
-        .hover(move |style| style.border_color(border_strong).text_color(fg_muted))
-        .child(Icon::new(IconName::Search).small())
+        // As the design: an accent border, a soft glow and a 3 px ring.
+        .hover(move |style| {
+            style.border_color(accent).text_color(fg_muted).shadow(vec![
+                BoxShadow::new(px(0.0), px(2.0), accent.opacity(0.22)).blur_radius(px(8.0)),
+                BoxShadow::new(px(0.0), px(0.0), accent.opacity(0.16)).spread_radius(px(3.0)),
+            ])
+        })
+        // An `svg`, not an `Icon`: an `Icon` takes its color when built, so a hover never reaches it.
+        .child(
+            svg()
+                .path(IconName::Search.path())
+                .flex_none()
+                .size_3p5()
+                .text_color(palette.fg_subtle)
+                .group_hover(SEARCH_TRIGGER_GROUP, move |style| {
+                    style.text_color(accent_text)
+                }),
+        )
         .child(div().flex_1().truncate().child(t!("search.hint")))
         .child(
             div()
@@ -312,7 +329,7 @@ fn render_search_trigger(
                 .border_1()
                 .border_color(palette.border)
                 .group_hover(SEARCH_TRIGGER_GROUP, move |style| {
-                    style.border_color(border_strong)
+                    style.border_color(accent).text_color(accent_text)
                 })
                 .rounded(px(4.0))
                 .px(px(4.0))
