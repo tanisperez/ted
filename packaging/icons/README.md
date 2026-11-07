@@ -1,7 +1,7 @@
 # ted icon
 
 `ted.svg` is the master: the indigo square with braces and a cursor of the 0.5.0 design
-(`design_system/packaging/icons/ted.svg`, variant 1e, without its metadata). It is the same file
+(variant 1e of the design's `ted icono app` page, without its metadata). It is the same file
 as `crates/ted-app/assets/ted.svg`, which the title bar, the empty state and About paint, and as
 `site/img/logo.svg`.
 
@@ -19,7 +19,7 @@ The macOS `.icns` is built from these PNGs at bundle time (`iconutil`, see `pack
 ## Document icons
 
 `documents/` holds the icons of the files ted opens when the user makes it their default app:
-variant 2a of `design_system/DocIcon.dc.html`, a white page with the ted icon and the type under
+variant 2a of the design's `ted document icon` page, a white page with the ted icon and the type under
 it (`MD`, `TXT`, `LOG`, ...), without the type below 40 px. One `<type>.svg` master, one `.ico`
 (Windows) and one `.icns` (macOS) per type, all generated and committed:
 

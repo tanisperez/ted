@@ -61,9 +61,10 @@ Expo/React Native conventions here.
   `PATH` where the platform allows it. See `docs/releasing.md`.
 - Settings: `settings.toml` under the config dir (`~/.config/ted/settings.toml` on Linux), plain
   text, applied at once, as in the design.
-- Design: the Claude Design prototype is in `design_system/` (`ted v3.dc.html`, open it in a
-  browser; `github.md` maps each screen to the Postino and telaio files it came from). It is the
-  source of truth until `docs/design-system.md` is written from it (rule 1.3).
+- Design: the prototype lives in a claude.ai Artifact, https://claude.ai/artifact/SVu8wEYoZsz3RLP9AxPUkr (pages `Ted Design`, `ted búsqueda`,
+  `ted icono app`, `ted document icon`). UI changes are designed there first; read its pages with
+  the Artifact tool, never a local copy. There is no local `design_system/` folder any more
+  (removed on 2026-11-07).
 
 ## Pending decisions (ask before choosing)
 

@@ -1,8 +1,7 @@
 # ted design system
 
 Reference for anyone (human or agent) touching the UI. It is written from the Claude Design
-prototype in `design_system/` (`ted v3.dc.html`, the latest one, which replaces `ted v2.dc.html`;
-`ted-lang.js`, `ted-data.js`), as the shared rules
+prototype, now a claude.ai Artifact (https://claude.ai/artifact/SVu8wEYoZsz3RLP9AxPUkr, page `Ted Design`), as the shared rules
 ask (1.3). Once the UI is implemented the code is the source of truth and this file its readable
 summary: if they disagree, the code wins; fix this file.
 
@@ -19,7 +18,7 @@ adds only the syntax colors and the metrics of its own layout.
 - Panels are flat (border only). Inputs and cards use `raised` plus a border. Menus, popovers and
   modals use `overlay` plus the shadow token. The explorer never has a shadow.
 - The app icon is the indigo square with braces and a cursor of the 0.5.0 design
-  (`design_system/packaging/icons/ted.svg`, copied without its metadata to `crates/ted-app/assets/ted.svg`). It is painted as an image
+  (`packaging/icons/ted.svg` from the design's `ted icono app` page, copied without its metadata to `crates/ted-app/assets/ted.svg`). It is painted as an image
   (`views/logo.rs`), not a gpui `svg`, which would draw it in one color.
 - Icons are Lucide, through `gpui_kit::assets::IconName`. The app must keep
   `.with_assets(gpui_kit::assets::AllAssets)` or icons render empty.

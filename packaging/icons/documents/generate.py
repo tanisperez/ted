@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generates the document icons of ted: one per file type, variant 2a of
-design_system/DocIcon.dc.html (a white page with the ted icon in the middle and the type below),
+the `ted document icon` page of the design (a white page with the ted icon in the middle and the type below),
 with the app icon of packaging/icons/ted.svg.
 
 For every type it writes <name>.svg (the master), <name>.ico (Windows) and <name>.icns (macOS)
