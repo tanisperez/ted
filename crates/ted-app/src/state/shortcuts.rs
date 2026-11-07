@@ -84,6 +84,7 @@ pub fn groups() -> Vec<ShortcutGroup> {
                 row("shortcuts.action.indent_line", &[modifier, "]"]),
                 row("shortcuts.action.outdent_line", &[modifier, "["]),
                 row("shortcuts.action.toggle_wrap", &["Alt", "Z"]),
+                row("shortcuts.action.change_language", &["Alt", "L"]),
             ],
         },
         ShortcutGroup {

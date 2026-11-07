@@ -63,6 +63,9 @@ _version: 2
 "search.action.toggle_wrap":
   en: "Wrap long lines on or off"
   es: "Ajustar las líneas largas o no"
+"search.action.change_language":
+  en: "Change the highlighting language"
+  es: "Cambiar el lenguaje del resaltado"
 "search.action.zoom_in":
   en: "Bigger editor font"
   es: "Letra del editor más grande"

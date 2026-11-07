@@ -23,8 +23,9 @@ use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
 use telaio_ui::components::{EmptyState, open_shortcuts_dialog};
 
 use crate::actions::{
-    CloseTab, NewFile, NewWindow, NextTab, OpenFile, OpenFolder, OpenSearch, OpenSettings,
-    OpenShortcuts, PreviousTab, Save, ToggleExplorer, ToggleGit, ZoomIn, ZoomOut, ZoomReset,
+    ChangeLanguage, CloseTab, NewFile, NewWindow, NextTab, OpenFile, OpenFolder, OpenSearch,
+    OpenSettings, OpenShortcuts, PreviousTab, Save, ToggleExplorer, ToggleGit, ZoomIn, ZoomOut,
+    ZoomReset,
 };
 use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::git::GitState;
@@ -954,6 +955,9 @@ impl Render for AppView {
                 cx.listener(|this, _: &OpenShortcuts, window, cx| this.open_shortcuts(window, cx)),
             )
             .on_action(cx.listener(|this, _: &OpenSearch, window, cx| this.open_search(window, cx)))
+            .on_action(cx.listener(|this, _: &ChangeLanguage, window, cx| {
+                this.open_language_menu(window, cx)
+            }))
             .on_action(cx.listener(|this, _: &OpenFindInFiles, window, cx| {
                 this.open_find_in_files(false, window, cx)
             }))

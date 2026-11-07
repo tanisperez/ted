@@ -341,6 +341,7 @@ fn boxed_action(action: ActionId) -> Option<Box<dyn Action>> {
         Replace => Box::new(super::find::OpenReplace),
         GoToLine => Box::new(super::goto::OpenGoto),
         ToggleWrap => Box::new(super::editor::ToggleWrap),
+        ChangeLanguage => Box::new(actions::ChangeLanguage),
     })
 }
 
@@ -644,6 +645,7 @@ fn action_icon(action: ActionId) -> Lucide {
         Find | Replace => Lucide::Search,
         GoToLine => Lucide::ArrowDownToLine,
         ToggleWrap => Lucide::TextWrap,
+        ChangeLanguage => Lucide::Code,
         ZoomIn => Lucide::ZoomIn,
         ZoomOut => Lucide::ZoomOut,
         ZoomReset => Lucide::RotateCcw,

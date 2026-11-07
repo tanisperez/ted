@@ -114,6 +114,9 @@ _version: 2
 "shortcuts.action.toggle_wrap":
   en: "Wrap long lines on or off"
   es: "Ajustar las líneas largas o no"
+"shortcuts.action.change_language":
+  en: "Change the highlighting language"
+  es: "Cambiar el lenguaje del resaltado"
 "shortcuts.action.add_cursor":
   en: "Add or remove a cursor"
   es: "Añadir o quitar un cursor"

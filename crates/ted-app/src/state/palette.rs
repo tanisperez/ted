@@ -30,6 +30,7 @@ pub enum ActionId {
     Replace,
     GoToLine,
     ToggleWrap,
+    ChangeLanguage,
     ZoomIn,
     ZoomOut,
     ZoomReset,
@@ -44,7 +45,7 @@ pub struct Context {
     pub folder: bool,
     /// A document is shown: Save and Close.
     pub document: bool,
-    /// The document shown is in an editor: Find, Go to line and Wrap.
+    /// The document shown is in an editor: Find, Go to line, Wrap and its language.
     pub editor: bool,
 }
 
@@ -57,7 +58,7 @@ impl ActionId {
             actions.extend([Save, CloseTab]);
         }
         if context.editor {
-            actions.extend([Find, Replace, GoToLine, ToggleWrap]);
+            actions.extend([Find, Replace, GoToLine, ToggleWrap, ChangeLanguage]);
         }
         if context.folder {
             actions.extend([ToggleExplorer, ToggleGit]);
@@ -87,6 +88,7 @@ impl ActionId {
             Replace => "search.action.replace",
             GoToLine => "search.action.goto",
             ToggleWrap => "search.action.toggle_wrap",
+            ChangeLanguage => "search.action.change_language",
             ZoomIn => "search.action.zoom_in",
             ZoomOut => "search.action.zoom_out",
             ZoomReset => "search.action.zoom_reset",
@@ -408,7 +410,7 @@ mod tests {
             document: true,
             editor: true,
         });
-        assert_eq!(all.len(), 19);
+        assert_eq!(all.len(), 20);
     }
 
     #[test]

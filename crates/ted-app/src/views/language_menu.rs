@@ -71,6 +71,8 @@ pub(crate) struct LanguageMenu {
     scroll: ScrollHandle,
     /// A row to scroll into view once the list has its layout (just opened).
     reveal: Option<usize>,
+    /// What had the focus when the menu opened, focused again when it closes.
+    previous_focus: Option<FocusHandle>,
     open: bool,
     _input_subscription: Subscription,
 }
@@ -99,6 +101,7 @@ impl LanguageMenu {
             highlight: 0,
             scroll: ScrollHandle::new(),
             reveal: None,
+            previous_focus: None,
             open: false,
             _input_subscription: subscription,
         }
@@ -115,6 +118,7 @@ impl LanguageMenu {
             .map(|language| Choice::new(language, language_label(language)))
             .collect();
         self.current = current;
+        self.previous_focus = window.focused(cx);
         let placeholder = t!("status.language_search");
         self.input.update(cx, |input, cx| {
             input.set_placeholder(placeholder, window, cx);
@@ -137,9 +141,13 @@ impl LanguageMenu {
         cx.notify();
     }
 
-    fn close(&mut self, cx: &mut Context<Self>) {
+    /// Closes the menu and gives the focus back to what had it before (the editor).
+    fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.open {
             self.open = false;
+            if let Some(previous) = self.previous_focus.take() {
+                previous.focus(window, cx);
+            }
             cx.emit(LanguageMenuEvent::Toggled);
             cx.notify();
         }
@@ -153,7 +161,7 @@ impl LanguageMenu {
         }
     }
 
-    fn choose(&mut self, row: usize, cx: &mut Context<Self>) {
+    fn choose(&mut self, row: usize, window: &mut Window, cx: &mut Context<Self>) {
         let Some(language) = self
             .found
             .get(row)
@@ -161,7 +169,7 @@ impl LanguageMenu {
         else {
             return;
         };
-        self.close(cx);
+        self.close(window, cx);
         cx.emit(LanguageMenuEvent::Choose(language));
     }
 
@@ -179,12 +187,12 @@ impl LanguageMenu {
             "enter" => {
                 cx.stop_propagation();
                 window.prevent_default();
-                self.choose(self.highlight, cx);
+                self.choose(self.highlight, window, cx);
                 return;
             }
             "escape" => {
                 cx.stop_propagation();
-                self.close(cx);
+                self.close(window, cx);
                 return;
             }
             _ => return,
@@ -338,7 +346,7 @@ impl LanguageMenu {
                     cx.notify();
                 }
             }))
-            .on_click(cx.listener(move |menu, _, _, cx| menu.choose(row, cx)))
+            .on_click(cx.listener(move |menu, _, window, cx| menu.choose(row, window, cx)))
             .child(div().w(px(ICON_SIZE)).flex_none().when(checked, |this| {
                 this.child(
                     Icon::new(IconName::Check)
@@ -429,7 +437,7 @@ pub(crate) fn language_menu_popover(
                 if *open {
                     menu.open(current, window, cx);
                 } else {
-                    menu.close(cx);
+                    menu.close(window, cx);
                 }
             });
         })
@@ -455,6 +463,26 @@ pub(crate) fn new_language_menu(
 }
 
 impl AppView {
+    /// Opens the language menu, as a click on the language of the status bar does (`Alt+L`).
+    /// Only with a document in an editor, the one whose language the status bar shows, and
+    /// never over a dialog.
+    pub(crate) fn open_language_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if window.has_active_dialog(cx) {
+            return;
+        }
+        let Some(current) = self
+            .editor()
+            .map(|editor| editor.read(cx).state.syntax.language)
+        else {
+            return;
+        };
+        self.language_menu.update(cx, |menu, cx| {
+            if !menu.is_open() {
+                menu.open(Some(current), window, cx);
+            }
+        });
+    }
+
     /// Highlights the active document as `language`.
     fn set_document_language(&mut self, language: Language, cx: &mut Context<Self>) {
         if let Some(editor) = self.editor() {

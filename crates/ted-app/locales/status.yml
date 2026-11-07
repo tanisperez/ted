@@ -43,5 +43,5 @@ _version: 2
   en: "close"
   es: "cerrar"
 "status.language_tooltip":
-  en: "Highlight as another language"
-  es: "Resaltar como otro lenguaje"
+  en: "Highlight as another language (Alt+L)"
+  es: "Resaltar como otro lenguaje (Alt+L)"
