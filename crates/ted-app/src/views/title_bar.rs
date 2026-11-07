@@ -1,7 +1,7 @@
 //! The title bar: the app icon, "ted" and the switcher with what is open (the folder or the file),
 //! whose menu starts with its path (Copy path, Show in file manager), then lists the recent
-//! folders and files and the two Open actions. In folder mode the search box of the global search
-//! sits in the middle of the window. At the right, the settings gear, then the window controls
+//! folders and files and the two Open actions. With a folder or a file open, the search box of the
+//! global search sits in the middle of the window. At the right, the settings gear, then the window controls
 //! drawn by gpui-kit's `TitleBar`.
 
 use gpui_kit::assets::IconName;
@@ -53,7 +53,8 @@ impl AppView {
                 .child(div().flex_1())
                 .child(no_drag(render_settings_gear(&palette, cx))),
         );
-        if !matches!(self.target, Some(Target::Folder(_))) {
+        // Not in the empty state, which lists the recents itself.
+        if self.target.is_none() && self.documents.active().is_none() {
             return bar.into_any_element();
         }
         // Centered on the whole window, as in Postino: the bar lays the window controls out

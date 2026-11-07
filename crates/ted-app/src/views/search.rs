@@ -1,5 +1,6 @@
-//! The global search (`Ctrl+K`, and the title bar's search box in folder mode): a palette at the
-//! top of the window that finds the folder's files and the app's actions as the user types.
+//! The global search (`Ctrl+K`, and the title bar's search box): a palette at the
+//! top of the window that finds the folder's files (the recent ones without a folder) and the app's
+//! actions as the user types.
 //!
 //! Built on gpui-kit's `Command`, as Postino's command palette, with its own matching turned off
 //! (`filterable(false)`): the rows it gets are already ranked by `state::palette`. The palette
@@ -373,6 +374,18 @@ fn render_palette(
                 positions: found.positions.clone(),
             })
             .collect(),
+        // Without a folder (file mode), the recent files are the ones searched.
+        (None, false) if !state.indexing => palette::rank_paths(
+            &state.query,
+            recent.iter().map(|row| row.shown.as_str()),
+            MAX_FILE_RESULTS,
+        )
+        .into_iter()
+        .map(|found| FileRow {
+            positions: found.positions,
+            ..recent[found.index].clone()
+        })
+        .collect(),
         (None, false) => Vec::new(),
     };
     let labels: Vec<String> = actions.iter().map(|row| row.label.clone()).collect();

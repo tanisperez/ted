@@ -276,7 +276,7 @@ count and the measured advance of Geist Mono, not from the 0.62 constant.
 
 1. **Title bar** (`surface`, bottom border): logo, "ted", separator, workspace switcher (folder
    icon, folder name, chevron; opens the recents menu), a centered 360 px search trigger
-   ("Search files and actions", `Ctrl+K` hint; folder mode only), the settings gear (`Ctrl+,`)
+   ("Search files and actions", `Ctrl+K` hint; folder and file mode, not the empty state), the settings gear (`Ctrl+,`)
    and the three window controls at the right (close turns `danger` on hover). The window uses client decorations on Linux.
 2. **Side panel** (`surface`, right border): Explorer or Git, one at a time, resizable.
 3. **Tab bar** (folder mode only).
@@ -400,12 +400,13 @@ Not in the prototype; ted builds it from the design's floating toolbar (`views/f
 The design shows only its trigger in the title bar; the palette follows Postino's command palette
 (`views/search.rs`).
 
-- `Ctrl+K` (`Cmd+K` on macOS), or a click on the title bar's search box (folder mode), opens a
+- `Ctrl+K` (`Cmd+K` on macOS), or a click on the title bar's search box, opens a
   560 px card a seventh of the window down (telaio's `framed_dialog`, `ModalPlacement::Top`): a
   36 px search row with the search icon and a borderless field, then the list, up to 440 px.
 - Two groups, each with its heading. **Files**: every file of the folder (the
   `.gitignore` files and the exclude patterns apply, `.git` never shows), as the file icon, the
   name and the folder in 12 px `fg_subtle`. With an empty query the group is **Recent files**.
+  Without a folder (file mode) the files searched are the recent ones.
   **Actions**: the app actions that do something right now, an icon (14, `fg_muted`), the label
   and the shortcut in Geist Mono 11 `fg_subtle`, read from the key bindings.
 - Matched characters are `accent_text`. The group with the best match goes first, so `go line`
