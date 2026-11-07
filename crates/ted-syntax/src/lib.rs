@@ -22,6 +22,7 @@ mod grammar;
 mod highlight;
 mod language;
 mod log;
+mod properties;
 mod tree;
 
 pub use batch::highlight_batch_line;
@@ -30,4 +31,5 @@ pub use gitignore::highlight_gitignore_line;
 pub use highlight::{Highlight, HighlightSpan};
 pub use language::{Comment, Language};
 pub use log::highlight_log_line;
+pub use properties::{highlight_env_line, highlight_properties_line};
 pub use tree::SyntaxTree;

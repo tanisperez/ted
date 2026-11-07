@@ -211,6 +211,22 @@ const KOTLIN_QUERY: &str = r#"
 (annotation (constructor_invocation (user_type (type_identifier) @attribute)))
 "#;
 
+// TypeScript reuses the javascript query, as the grammar extends it, then its own. The bundled
+// typescript query paints every capitalized identifier as a type, so `MAX_SIZE` is a constant again.
+const TYPESCRIPT_EXTRA: &str = r#"
+((identifier) @constant (#match? @constant "^_*[A-Z][A-Z\\d_]+$"))
+(type_identifier) @type
+"#;
+
+// The bundled SQL query uses captures ted has no class for (`@conditional`, `@float`, `@field`,
+// `@parameter`) and its number patterns never match, so these take their place.
+const SQL_EXTRA: &str = r#"
+[(keyword_case) (keyword_when) (keyword_then) (keyword_else)] @keyword.control
+(field name: (identifier) @property)
+(parameter) @variable
+((literal) @number (#match? @number "^[-+]?[0-9]+(\\.[0-9]*)?$"))
+"#;
+
 /// The grammar of a language, `None` for those without one (or if its query failed to compile,
 /// which the tests rule out).
 pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
@@ -229,6 +245,9 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
     static DOCKERFILE: OnceLock<Option<Grammar>> = OnceLock::new();
     static JAVA: OnceLock<Option<Grammar>> = OnceLock::new();
     static KOTLIN: OnceLock<Option<Grammar>> = OnceLock::new();
+    static TYPESCRIPT: OnceLock<Option<Grammar>> = OnceLock::new();
+    static TSX: OnceLock<Option<Grammar>> = OnceLock::new();
+    static SQL: OnceLock<Option<Grammar>> = OnceLock::new();
 
     let (cell, ts_language, query) = match language {
         Language::Rust => (
@@ -314,10 +333,36 @@ pub(crate) fn grammar(language: Language) -> Option<&'static Grammar> {
             tree_sitter_kotlin_sg::LANGUAGE,
             KOTLIN_QUERY.to_string(),
         ),
+        Language::TypeScript => (
+            &TYPESCRIPT,
+            tree_sitter_typescript::LANGUAGE_TYPESCRIPT,
+            format!(
+                "{}\n{}\n{JAVASCRIPT_EXTRA}\n{TYPESCRIPT_EXTRA}",
+                tree_sitter_javascript::HIGHLIGHT_QUERY,
+                tree_sitter_typescript::HIGHLIGHTS_QUERY
+            ),
+        ),
+        Language::Tsx => (
+            &TSX,
+            tree_sitter_typescript::LANGUAGE_TSX,
+            format!(
+                "{}\n{}\n{}\n{JAVASCRIPT_EXTRA}\n{TYPESCRIPT_EXTRA}",
+                tree_sitter_javascript::HIGHLIGHT_QUERY,
+                tree_sitter_javascript::JSX_HIGHLIGHT_QUERY,
+                tree_sitter_typescript::HIGHLIGHTS_QUERY
+            ),
+        ),
+        Language::Sql => (
+            &SQL,
+            tree_sitter_sequel::LANGUAGE,
+            format!("{}\n{SQL_EXTRA}", tree_sitter_sequel::HIGHLIGHTS_QUERY),
+        ),
         Language::Log
         | Language::Batch
         | Language::EditorConfig
         | Language::GitIgnore
+        | Language::Properties
+        | Language::Env
         | Language::PlainText => return None,
     };
 
@@ -363,6 +408,11 @@ mod tests {
             Dockerfile,
             Java,
             Kotlin,
+            TypeScript,
+            Tsx,
+            Sql,
+            Properties,
+            Env,
             EditorConfig,
             GitIgnore,
             Log,

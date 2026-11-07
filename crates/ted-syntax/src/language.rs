@@ -33,6 +33,11 @@ pub enum Language {
     Dockerfile,
     Java,
     Kotlin,
+    TypeScript,
+    Tsx,
+    Sql,
+    Properties,
+    Env,
     EditorConfig,
     GitIgnore,
     Log,
@@ -42,12 +47,13 @@ pub enum Language {
 impl Language {
     /// Every language, in the order the language menu of the status bar lists them: plain text
     /// first, then by name.
-    pub const ALL: [Language; 21] = [
+    pub const ALL: [Language; 26] = [
         Language::PlainText,
         Language::Batch,
         Language::Css,
         Language::Dockerfile,
         Language::EditorConfig,
+        Language::Env,
         Language::GitIgnore,
         Language::Html,
         Language::Java,
@@ -58,10 +64,14 @@ impl Language {
         Language::Make,
         Language::Markdown,
         Language::PowerShell,
+        Language::Properties,
         Language::Python,
         Language::Rust,
         Language::Shell,
+        Language::Sql,
         Language::Toml,
+        Language::Tsx,
+        Language::TypeScript,
         Language::Xml,
         Language::Yaml,
     ];
@@ -78,8 +88,13 @@ impl Language {
             "PKGBUILD" => return Language::Shell,
             ".babelrc" | ".prettierrc" | ".eslintrc" | "composer.lock" => return Language::Json,
             ".editorconfig" => return Language::EditorConfig,
-            ".gitignore" => return Language::GitIgnore,
+            // The other ignore files use the `.gitignore` syntax.
+            ".gitignore" | ".dockerignore" | ".npmignore" | ".prettierignore" | ".eslintignore"
+            | ".ignore" => return Language::GitIgnore,
             _ => {}
+        }
+        if is_env_name(name) {
+            return Language::Env;
         }
         if is_shell_config_name(name) {
             return Language::Shell;
@@ -108,6 +123,10 @@ impl Language {
             "yaml" | "yml" => Language::Yaml,
             "java" => Language::Java,
             "kt" | "kts" => Language::Kotlin,
+            "ts" | "mts" | "cts" => Language::TypeScript,
+            "tsx" => Language::Tsx,
+            "sql" => Language::Sql,
+            "properties" => Language::Properties,
             "dockerfile" | "containerfile" => Language::Dockerfile,
             "log" => Language::Log,
             _ => Language::PlainText,
@@ -144,6 +163,8 @@ impl Language {
             Language::Batch => Some(crate::highlight_batch_line),
             Language::EditorConfig => Some(crate::highlight_editorconfig_line),
             Language::GitIgnore => Some(crate::highlight_gitignore_line),
+            Language::Properties => Some(crate::highlight_properties_line),
+            Language::Env => Some(crate::highlight_env_line),
             _ => None,
         }
     }
@@ -152,9 +173,13 @@ impl Language {
     /// plain text).
     pub fn comment(self) -> Option<Comment> {
         match self {
-            Language::Rust | Language::JavaScript | Language::Java | Language::Kotlin => {
-                Some(Comment::Line("//"))
-            }
+            Language::Rust
+            | Language::JavaScript
+            | Language::Java
+            | Language::Kotlin
+            | Language::TypeScript
+            | Language::Tsx => Some(Comment::Line("//")),
+            Language::Sql => Some(Comment::Line("--")),
             Language::Toml
             | Language::Make
             | Language::Shell
@@ -163,7 +188,9 @@ impl Language {
             | Language::Yaml
             | Language::Dockerfile
             | Language::EditorConfig
-            | Language::GitIgnore => Some(Comment::Line("#")),
+            | Language::GitIgnore
+            | Language::Properties
+            | Language::Env => Some(Comment::Line("#")),
             Language::Batch => Some(Comment::Line("REM")),
             Language::Markdown | Language::Xml | Language::Html => {
                 Some(Comment::Block("<!--", "-->"))
@@ -194,6 +221,11 @@ impl Language {
             Language::Dockerfile => &["Dockerfile"],
             Language::Java => &[".java"],
             Language::Kotlin => &[".kt", ".kts"],
+            Language::TypeScript => &[".ts", ".mts", ".cts"],
+            Language::Tsx => &[".tsx"],
+            Language::Sql => &[".sql"],
+            Language::Properties => &[".properties"],
+            Language::Env => &[".env", ".env.local"],
             Language::EditorConfig => &[".editorconfig"],
             Language::GitIgnore => &[".gitignore"],
             Language::Log => &[".log"],
@@ -221,6 +253,11 @@ impl Language {
             Language::Dockerfile => "Dockerfile",
             Language::Java => "Java",
             Language::Kotlin => "Kotlin",
+            Language::TypeScript => "TypeScript",
+            Language::Tsx => "TSX",
+            Language::Sql => "SQL",
+            Language::Properties => "Properties",
+            Language::Env => "Env",
             Language::EditorConfig => "EditorConfig",
             Language::GitIgnore => "Gitignore",
             Language::Log => "Log",
@@ -244,6 +281,11 @@ fn is_shell_config_name(name: &str) -> bool {
             | "zlogin"
             | "zlogout"
     ) || name == ".profile"
+}
+
+/// An env file: `.env`, `.env.local` and the other `.env.<variant>`, or `<name>.env`.
+fn is_env_name(name: &str) -> bool {
+    name == ".env" || name.starts_with(".env.") || (name.ends_with(".env") && name.len() > 4)
 }
 
 /// `Dockerfile` or `Containerfile`, alone or followed by a variant (`Dockerfile.dev`), in any case.
@@ -303,6 +345,11 @@ mod tests {
                 | Language::Dockerfile
                 | Language::Java
                 | Language::Kotlin
+                | Language::TypeScript
+                | Language::Tsx
+                | Language::Sql
+                | Language::Properties
+                | Language::Env
                 | Language::EditorConfig
                 | Language::GitIgnore
                 | Language::Log

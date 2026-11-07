@@ -2,7 +2,7 @@ title: Syntax highlighting
 description: The languages ted highlights, how it detects them, how to change one, and how it handles logs and big files.
 ---
 <h1>Syntax highlighting</h1>
-<p class="lead">ted colors code with tree-sitter, in the background, and keeps the colors in step as you type. Logs, batch files, <code>.editorconfig</code> and <code>.gitignore</code> get a highlighter of their own, fast at any size.</p>
+<p class="lead">ted colors code with tree-sitter, in the background, and keeps the colors in step as you type. Logs, batch files, <code>.editorconfig</code>, <code>.gitignore</code>, <code>.properties</code> and env files get a highlighter of their own, fast at any size.</p>
 
 <h2>Languages</h2>
 <p>The language comes from the file name and its extension, and shows at the right of the status bar. A file whose name says nothing, such as a script without an extension, takes its language from its first line when it is a shebang (<code>#!/bin/sh</code>, <code>#!/usr/bin/env python3</code>).</p>
@@ -11,6 +11,8 @@ description: The languages ted highlights, how it detects them, how to change on
     <tbody>
         <tr><td>Rust</td><td><code>.rs</code></td></tr>
         <tr><td>JavaScript</td><td><code>.js</code>, <code>.mjs</code>, <code>.cjs</code>, <code>.jsx</code></td></tr>
+        <tr><td>TypeScript</td><td><code>.ts</code>, <code>.mts</code>, <code>.cts</code></td></tr>
+        <tr><td>TSX</td><td><code>.tsx</code> (React components are colored as types, as in VS Code)</td></tr>
         <tr><td>Java</td><td><code>.java</code></td></tr>
         <tr><td>Kotlin</td><td><code>.kt</code>, <code>.kts</code></td></tr>
         <tr><td>JSON</td><td><code>.json</code>, <code>.jsonc</code>, <code>.geojson</code>, <code>.webmanifest</code>, <code>.babelrc</code>, <code>.prettierrc</code>, <code>.eslintrc</code>, <code>composer.lock</code></td></tr>
@@ -26,8 +28,11 @@ description: The languages ted highlights, how it detects them, how to change on
         <tr><td>PowerShell</td><td><code>.ps1</code>, <code>.psm1</code>, <code>.psd1</code></td></tr>
         <tr><td>Batch</td><td><code>.bat</code>, <code>.cmd</code></td></tr>
         <tr><td>CSS</td><td><code>.css</code></td></tr>
+        <tr><td>SQL</td><td><code>.sql</code></td></tr>
+        <tr><td>Properties</td><td><code>.properties</code>, such as <code>gradle.properties</code></td></tr>
+        <tr><td>Env</td><td><code>.env</code>, <code>.env.local</code> and any other <code>.env.*</code>, <code>*.env</code></td></tr>
         <tr><td>EditorConfig</td><td><code>.editorconfig</code></td></tr>
-        <tr><td>Gitignore</td><td><code>.gitignore</code></td></tr>
+        <tr><td>Gitignore</td><td><code>.gitignore</code>, and the files with its syntax: <code>.dockerignore</code>, <code>.npmignore</code>, <code>.prettierignore</code>, <code>.eslintignore</code>, <code>.ignore</code></td></tr>
         <tr><td>Log</td><td><code>.log</code></td></tr>
     </tbody>
 </table></div>

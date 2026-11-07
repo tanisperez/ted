@@ -208,6 +208,9 @@ mod tests {
             Language::Dockerfile,
             Language::Java,
             Language::Kotlin,
+            Language::TypeScript,
+            Language::Tsx,
+            Language::Sql,
         ] {
             assert!(grammar(l).is_some(), "{l:?}");
         }
@@ -257,6 +260,17 @@ mod tests {
         assert_eq!(d("src/Main.java"), Language::Java);
         assert_eq!(d("src/Main.kt"), Language::Kotlin);
         assert_eq!(d("build.gradle.kts"), Language::Kotlin);
+        assert_eq!(d("src/app.ts"), Language::TypeScript);
+        assert_eq!(d("vite.config.mts"), Language::TypeScript);
+        assert_eq!(d("App.tsx"), Language::Tsx);
+        assert_eq!(d("schema.SQL"), Language::Sql);
+        assert_eq!(d("gradle.properties"), Language::Properties);
+        assert_eq!(d(".env"), Language::Env);
+        assert_eq!(d(".env.local"), Language::Env);
+        assert_eq!(d("prod.env"), Language::Env);
+        assert_eq!(d(".environment"), Language::PlainText);
+        assert_eq!(d(".prettierignore"), Language::GitIgnore);
+        assert_eq!(d(".dockerignore"), Language::GitIgnore);
         assert_eq!(Language::Rust.name(), "Rust");
         let s = Language::from_shebang;
         assert_eq!(s("#!/bin/sh"), Some(Language::Shell));
@@ -329,6 +343,54 @@ mod tests {
         has(Language::Rust, src, "#[derive(", Attribute);
         let got = spans(Language::Rust, src);
         assert!(!got.iter().any(|(_, h)| *h == Variable), "{got:?}");
+    }
+
+    #[test]
+    fn typescript_highlights() {
+        let src = "// c\nimport { a } from \"./a\";\nexport interface Props { name: string; count?: number }\nconst MAX_SIZE = 10;\ntype Id = string | null;\nexport function run(p: Props): boolean {\n  if (p.count > 1.5) { return true; }\n  return this.ok;\n}\n";
+        let ts = Language::TypeScript;
+        has(ts, src, "// c", Comment);
+        has(ts, src, "import", Control);
+        has(ts, src, "\"./a\"", String);
+        has(ts, src, "export", Keyword);
+        has(ts, src, "interface", Keyword);
+        has(ts, src, "Props", Type);
+        has(ts, src, "string", Type);
+        has(ts, src, "name", Property);
+        has(ts, src, "MAX_SIZE", Constant);
+        has(ts, src, "10", Number);
+        has(ts, src, "type", Keyword);
+        has(ts, src, "run", Function);
+        has(ts, src, "if", Control);
+        has(ts, src, "return", Control);
+        has(ts, src, "true", Boolean);
+        has(ts, src, "this", BuiltinVariable);
+    }
+
+    #[test]
+    fn tsx_highlights() {
+        let src = "export const App = ({ title }: { title: string }) => (\n  <View style={styles.box}>\n    <div>{title}</div>\n  </View>\n);\n";
+        // A component is a type, as in VS Code; an element of the page is a tag.
+        has(Language::Tsx, src, "View", Type);
+        has(Language::Tsx, src, "div", Tag);
+        has(Language::Tsx, src, "style", Attribute);
+        has(Language::Tsx, src, "string", Type);
+        has(Language::Tsx, src, "const", Keyword);
+    }
+
+    #[test]
+    fn sql_highlights() {
+        let src = "-- users\nSELECT u.name, COUNT(*) AS total\nFROM users u\nWHERE u.age > 18 AND u.active = TRUE\nGROUP BY u.name;\nSELECT CASE WHEN 1 THEN 'a' ELSE 'b' END;\n";
+        has(Language::Sql, src, "-- users", Comment);
+        has(Language::Sql, src, "SELECT", Keyword);
+        has(Language::Sql, src, "FROM", Keyword);
+        has(Language::Sql, src, "users", Type);
+        has(Language::Sql, src, "COUNT", Function);
+        has(Language::Sql, src, "18", Number);
+        has(Language::Sql, src, "TRUE", Boolean);
+        has(Language::Sql, src, "'a'", String);
+        has(Language::Sql, src, "CASE", Control);
+        has(Language::Sql, src, "name", Property);
     }
 
     #[test]
