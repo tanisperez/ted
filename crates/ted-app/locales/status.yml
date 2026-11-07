@@ -27,15 +27,21 @@ _version: 2
 "status.wrap_off":
   en: "Long lines do not wrap (Alt+Z)"
   es: "Las líneas largas no se ajustan (Alt+Z)"
-"status.languages":
-  en: "Languages"
-  es: "Lenguajes"
 "status.language_search":
-  en: "Search languages"
-  es: "Buscar lenguajes"
+  en: "Search language…"
+  es: "Buscar lenguaje…"
 "status.language_empty":
-  en: "No language matches"
-  es: "Ningún lenguaje coincide"
+  en: "No results for “%{query}”"
+  es: "Sin resultados para «%{query}»"
+"status.language_hint_move":
+  en: "move"
+  es: "mover"
+"status.language_hint_choose":
+  en: "choose"
+  es: "elegir"
+"status.language_hint_close":
+  en: "close"
+  es: "cerrar"
 "status.language_tooltip":
   en: "Highlight as another language"
   es: "Resaltar como otro lenguaje"

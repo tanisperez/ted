@@ -22,6 +22,7 @@ use crate::theme::metrics::{
 };
 use crate::theme::{Palette, PaletteExt};
 
+use super::language_menu::language_menu_popover;
 use super::root::{AppView, SidePanel};
 
 impl AppView {
@@ -31,6 +32,10 @@ impl AppView {
         let status = self
             .editor()
             .map(|editor| DocumentStatus::of(&editor.read(cx).state));
+        let language = self
+            .editor()
+            .map(|editor| editor.read(cx).state.syntax.language);
+        let language_menu_open = self.language_menu.read(cx).is_open();
         let folder = match &self.target {
             Some(Target::Folder(root)) => Some(root.clone()),
             _ => None,
@@ -111,22 +116,25 @@ impl AppView {
                     .children(status.indent)
                     .child(status.encoding)
                     .child(status.line_ending)
-                    .child(
-                        SearchableMenu::new("status-language-menu", &self.language_menu)
-                            .anchor(Anchor::BottomRight)
-                            .trigger(
-                                Button::new("status-language")
-                                    .neutral_ghost(cx, palette.fg_subtle)
-                                    .compact()
-                                    .h(px(22.0))
-                                    .px(px(6.0))
-                                    .mx(px(-6.0))
-                                    .rounded(px(RADIUS_MD - 2.0))
-                                    .text_size(px(11.5))
-                                    .tooltip(t!("status.language_tooltip"))
-                                    .child(status.language),
-                            ),
-                    )
+                    .child(language_menu_popover(
+                        &self.language_menu,
+                        language,
+                        Button::new("status-language")
+                            .neutral_ghost(cx, palette.fg_subtle)
+                            .compact()
+                            .h(px(22.0))
+                            .px(px(6.0))
+                            .mx(px(-6.0))
+                            .rounded(px(RADIUS_MD - 2.0))
+                            .text_size(px(11.5))
+                            // The open menu keeps the button lit, as in the design.
+                            .when(language_menu_open, |button| {
+                                button.bg(palette.hover).text_color(palette.fg)
+                            })
+                            .tooltip(t!("status.language_tooltip"))
+                            .child(status.language),
+                        cx,
+                    ))
             }))
             .child(self.render_shortcuts_button(&palette, cx))
             .into_any_element()

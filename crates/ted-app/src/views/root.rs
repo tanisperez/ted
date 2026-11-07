@@ -176,9 +176,8 @@ pub struct AppView {
     pub(crate) find_files_open: bool,
     /// A match to select in a file once it has loaded (Find in files).
     pub(crate) pending_reveal: Option<(PathBuf, std::ops::Range<usize>)>,
-    /// The language menu of the status bar, and whether it was open at the last change.
-    pub(crate) language_menu: Entity<telaio_ui::components::SearchableMenuState>,
-    pub(crate) language_menu_open: bool,
+    /// The language menu of the status bar.
+    pub(crate) language_menu: Entity<super::language_menu::LanguageMenu>,
     /// The choice of the checkout dialog while it is open.
     pub(crate) checkout_choice: CheckoutChoice,
     /// ted's icon on the files it opens by default (Linux).
@@ -249,7 +248,6 @@ impl AppView {
             branch_menu,
             branch_menu_context,
             language_menu,
-            language_menu_open: false,
             find_files: None,
             find_files_open: false,
             pending_reveal: None,

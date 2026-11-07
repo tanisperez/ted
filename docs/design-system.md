@@ -116,6 +116,15 @@ Notes:
   color `[context]` yet.
 - The status bar shows the language at its right: `Rust`, `JavaScript`, `JSON`, `TOML`,
   `Markdown`, `XML`, `HTML`, `Makefile`, `Log` or "Plain text".
+- A click on it opens the language menu (page `ted lenguajes` of the design,
+  `views/language_menu.rs`): a 288 px popover 8 px above the button, aligned to its right edge
+  (`overlay`, `border`, radius 10, the shadow token), while the button keeps the `hover`
+  background. A 32 px search field (`raised`, radius 7, `accent` border while focused), a 232 px
+  list of 28 px rows in the UI font (a 14 px check in `accent_text` on the current language, the
+  name with the matched part in `accent_text` weight 600, the extensions at the right in 11.5 px
+  `fg_muted`, the highlighted row in `accent_subtle`), and a 30 px footer with key chips (↑ ↓
+  move, ↵ choose, Esc close). Names that start with the query come first, then names that contain
+  it, then the languages whose extensions contain it.
 - Makefiles (`Makefile`, `makefile`, `GNUmakefile`, `*.mk`, `*.mak`) are not in the prototype.
   ted colors directives (`ifdef`, `include`, `define`) as `keyword`, rule targets and make
   functions (`wildcard`, `shell`) as `function`, variables as `property`, automatic variables

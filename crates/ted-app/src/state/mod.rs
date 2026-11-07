@@ -11,6 +11,7 @@ pub mod git_branches;
 pub mod git_gutter;
 pub mod git_sync;
 pub mod goto;
+pub mod language_picker;
 pub mod launch;
 pub mod locale;
 pub mod minimap;

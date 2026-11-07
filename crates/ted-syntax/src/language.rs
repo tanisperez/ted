@@ -173,6 +173,34 @@ impl Language {
         }
     }
 
+    /// The usual extensions (`.rs`) or file names (`Dockerfile`) of a language, as the language
+    /// menu shows them. A short list, not every one [`Language::detect`] knows.
+    pub fn extensions(self) -> &'static [&'static str] {
+        match self {
+            Language::Rust => &[".rs"],
+            Language::JavaScript => &[".js", ".mjs", ".cjs", ".jsx"],
+            Language::Json => &[".json"],
+            Language::Toml => &[".toml"],
+            Language::Markdown => &[".md"],
+            Language::Xml => &[".xml", ".svg"],
+            Language::Html => &[".html", ".htm"],
+            Language::Make => &["Makefile", ".mk"],
+            Language::Shell => &[".sh", ".bash", ".zsh"],
+            Language::Python => &[".py"],
+            Language::PowerShell => &[".ps1"],
+            Language::Batch => &[".bat", ".cmd"],
+            Language::Css => &[".css"],
+            Language::Yaml => &[".yml", ".yaml"],
+            Language::Dockerfile => &["Dockerfile"],
+            Language::Java => &[".java"],
+            Language::Kotlin => &[".kt", ".kts"],
+            Language::EditorConfig => &[".editorconfig"],
+            Language::GitIgnore => &[".gitignore"],
+            Language::Log => &[".log"],
+            Language::PlainText => &[".txt"],
+        }
+    }
+
     /// The label of the status bar.
     pub fn name(self) -> &'static str {
         match self {
@@ -227,6 +255,22 @@ fn is_dockerfile_name(name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_listed_extension_is_detected_as_its_language() {
+        for language in Language::ALL {
+            assert!(!language.extensions().is_empty(), "{language:?}");
+            for listed in language.extensions() {
+                // `.rs` is an extension, `.gitignore` and `Dockerfile` whole names.
+                let as_name = Language::detect(Path::new(listed));
+                let as_extension = Language::detect(Path::new(&format!("file{listed}")));
+                assert!(
+                    as_name == language || as_extension == language,
+                    "{listed} is not detected as {language:?}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn all_lists_every_language_once() {
