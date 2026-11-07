@@ -498,13 +498,39 @@ staged count with `+n` in `success` and `-n` in `danger`, and the Commit (`accen
 and push..." buttons (30 px). Its toggle sits next to Files in the status bar, with the change count
 in Geist Mono 11/500 beside the icon (`Alt+2`, `Ctrl+2` on macOS, as Postino).
 
-### Markdown preview (later milestone)
+### Markdown preview
 
-Not in 0.1.0. A `.md` file gets a floating toolbar (top 10, right 22, `overlay`, radius 8) with
-Editor, Split and Preview buttons and "open preview in a tab"; `Ctrl+Shift+V` cycles the views.
-Split view uses synchronized scroll (setting). The preview is a 720 px column with the typography
-above; code blocks use `raised`, a `border` border, radius 8 and the same syntax colors. A preview
-tab shows an eye icon and the "Preview" detail in its label.
+`views/markdown.rs` and `views/markdown_preview.rs`, the blocks from
+`ted_syntax::parse_markdown`. A Markdown file gets a floating toolbar (top 10, right 22,
+`overlay`, a `border` border, radius 8, padding 3, a soft shadow) with three 26x24 buttons, Editor
+only (`Code`), Editor and preview (`Columns2`) and Preview only (`Eye`), the selected one in
+`accent_subtle` with `accent_text`, a 1x16 separator and "Open the preview in a tab"
+(`SquareArrowOutUpRight`). `Ctrl+Shift+V` cycles the views; a file opens with the `markdown_view`
+setting (Split by default). In the split view the editor and the preview share the width, the
+preview with a `border` line at its left, and the preview follows the editor's top line
+(`markdown_sync_scroll`).
+
+The preview is a column of at most 720 px, centered, padded 36 above, 40 at the sides and 80
+below, on `bg`:
+
+- H1 26 px semibold with a `border` line under it (10 below the text, 14 margin), H2 19 px (28
+  above, 10 below), H3 and deeper 15 px (22 above, 8 below), line height 1.3.
+- Paragraphs, lists and quotes 14 px, line height 1.65, 14 below. Lists indent 22 px with `•` or
+  the number in `fg_muted`; a task shows a 14 px `Square` or `SquareCheck` (`accent_text`).
+  Quotes have a 3 px `border_strong` bar, 14 px padding and `fg_muted` text.
+- Inline code in the mono font on `raised`; links in `accent_text`, web links open in the
+  browser; strikethrough; images show their alternative text in `fg_muted`; raw HTML shows
+  nothing. Geist has no italic, so emphasis shows only where the font synthesizes it.
+- Code blocks: `raised`, a `border` border, radius 8, padding 12/14, mono 12.5, line height 1.6,
+  no wrapping (they scroll sideways), highlighted with the editor's syntax colors by the fence
+  language.
+- Tables: a `border` border, radius 8, header on `surface` in 12.5 `fg_muted` medium, cells 13 px
+  with 7/12 padding and a `border` line between rows, columns of equal width.
+- Rules: a 1 px `border` line with 24 above and below.
+
+A preview tab shows the `Eye` icon and the "Preview" detail, follows the edits and closes with
+its file. The status bar shows the words of a Markdown file before the cursor position, and hides
+the position while only the preview shows.
 
 ## Usage rules
 

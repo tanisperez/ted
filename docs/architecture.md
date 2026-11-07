@@ -31,7 +31,7 @@ ted-app ──> ted-workspace ──> ted-core
 | Crate | Responsibility | gpui |
 | --- | --- | --- |
 | `ted-core` | The text buffer (rope), positions, selections, edits, undo history, line endings, indentation detection. No IO. | no |
-| `ted-syntax` | Language detection by extension and name, tree-sitter highlighting computed incrementally and off the main thread, the log highlighter (levels and dates, no tree-sitter). | no |
+| `ted-syntax` | Language detection by extension and name, tree-sitter highlighting computed incrementally and off the main thread, the log highlighter (levels and dates, no tree-sitter), and the blocks of the Markdown preview (`parse_markdown`). | no |
 | `ted-workspace` | Filesystem access. Reads files in the background, lists one folder at a time (lazily, honoring `.gitignore` and the exclude patterns), watches for changes, saves atomically (write a temporary file, then rename). | no |
 | `ted-cli` | `-h/--help`, `-V/--version` and the path argument, `IDENTITY` (the `telaio_app::AppIdentity` of ted), `build.rs` with the commit, as `postino-cli`. | no |
 | `ted-app` | The gpui binary (`ted`). Views, the editor element and glue. | yes |

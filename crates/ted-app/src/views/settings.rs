@@ -23,6 +23,7 @@ use telaio_ui::components::{
 use crate::state::editor::set_indentation;
 use crate::state::launch::shorten_path;
 use crate::state::locale::{self, LANGUAGES, LanguageChoice};
+use crate::state::markdown_view::MarkdownView;
 use crate::state::settings::{
     self, MONO_FONT_SIZE_RANGE, MONO_FONT_SIZE_STEP, Settings, SettingsCategory, Startup,
     SyntaxThemeChoice, TAB_SIZES, ThemeChoice, UI_FONT_SIZE_RANGE, UI_FONT_SIZE_STEP,
@@ -101,6 +102,7 @@ impl AppView {
         log::info!("settings changed: {settings:?}");
         settings::save_settings(settings);
         self.follow_document_icons(cx);
+        self.apply_markdown_settings(cx);
         cx.refresh_windows();
         cx.notify();
     }
@@ -250,6 +252,7 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
         SettingsCategory::Editor => vec![
             text_section(weak.clone(), &palette, &settings),
             indentation_section(weak.clone(), &palette, &settings),
+            markdown_section(weak.clone(), &palette, &settings),
         ],
         SettingsCategory::Files => {
             let mut sections = vec![
@@ -558,6 +561,45 @@ fn text_section(weak: WeakEntity<AppView>, palette: &Palette, settings: &Setting
                 ),
             )
             .description(t!("settings.text.word_wrap_description")),
+        )
+        .into_any_element()
+}
+
+/// "Markdown": the view a Markdown file opens with and whether the preview follows the editor.
+fn markdown_section(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    settings: &Settings,
+) -> AnyElement {
+    let mut views = SegmentedControl::new("settings-markdown-view");
+    for view in MarkdownView::ALL {
+        let weak = weak.clone();
+        views = views.item(
+            SegmentedItem::new(view.label())
+                .selected(view == settings.markdown_view)
+                .on_click(move |window, cx| {
+                    let _ = weak.update(cx, |app, cx| {
+                        app.change(window, cx, |settings| settings.markdown_view = view)
+                    });
+                }),
+        );
+    }
+    v_flex()
+        .gap(px(14.0))
+        .child(SectionHeading::new("Markdown"))
+        .child(LabeledRow::new(t!("settings.markdown.view"), views))
+        .child(
+            LabeledRow::new(
+                t!("settings.markdown.sync_scroll"),
+                toggle(
+                    "settings-markdown-sync",
+                    weak,
+                    palette,
+                    settings.markdown_sync_scroll,
+                    |settings, on| settings.markdown_sync_scroll = on,
+                ),
+            )
+            .description(t!("settings.markdown.sync_scroll_description")),
         )
         .into_any_element()
 }

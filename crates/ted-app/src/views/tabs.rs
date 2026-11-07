@@ -57,11 +57,15 @@ impl AppView {
                 DocumentView::Diff(_) => IconName::GitCompare,
                 DocumentView::History(_) => IconName::GitGraph,
                 DocumentView::FindResults(_) => IconName::Search,
+                DocumentView::Preview(_) => IconName::Eye,
                 _ => IconName::File,
             };
+            let mut tab = DocumentTab::new(name);
+            if matches!(document.view, DocumentView::Preview(_)) {
+                tab = tab.detail(t!("markdown.tab_detail"));
+            }
             tabs = tabs.item(
-                DocumentTab::new(name)
-                    .icon(icon)
+                tab.icon(icon)
                     .dirty(dirty)
                     .selected(active == Some(index))
                     .tooltip(tooltip)

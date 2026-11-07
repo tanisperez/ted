@@ -22,6 +22,7 @@ mod grammar;
 mod highlight;
 mod language;
 mod log;
+mod markdown;
 mod properties;
 mod tree;
 
@@ -31,5 +32,9 @@ pub use gitignore::highlight_gitignore_line;
 pub use highlight::{Highlight, HighlightSpan};
 pub use language::{Comment, Language};
 pub use log::highlight_log_line;
+pub use markdown::{
+    Block, BlockKind, Inline, InlineSpan, InlineStyle, List, ListItem, MarkdownDocument, Table,
+    parse_markdown, word_count,
+};
 pub use properties::{highlight_env_line, highlight_properties_line};
 pub use tree::SyntaxTree;

@@ -62,6 +62,9 @@ tree-sitter-kotlin-sg = "=0.4.0"
 # and `tree-sitter-sql` features.
 tree-sitter-typescript = "=0.23.2"
 tree-sitter-sequel = "=0.3.8"
+# The Markdown parser of the preview. Not gpui-component's `markdown` 1.0.0: it does not scale
+# with the size of the file (see crates/ted-syntax/src/markdown.rs).
+pulldown-cmark = { version = "=0.13.0", default-features = false }
 # Dockerfile: not in gpui-component. tree-sitter-dockerfile needs tree-sitter 0.20, this one only
 # tree-sitter-language.
 tree-sitter-containerfile = "=0.9.2"

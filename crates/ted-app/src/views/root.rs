@@ -23,9 +23,9 @@ use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
 use telaio_ui::components::{EmptyState, open_shortcuts_dialog};
 
 use crate::actions::{
-    ChangeLanguage, CloseTab, NewFile, NewWindow, NextTab, OpenFile, OpenFolder, OpenSearch,
-    OpenSettings, OpenShortcuts, PreviousTab, Save, ToggleExplorer, ToggleGit, ZoomIn, ZoomOut,
-    ZoomReset,
+    ChangeLanguage, CloseTab, CycleMarkdownView, NewFile, NewWindow, NextTab, OpenFile, OpenFolder,
+    OpenMarkdownPreview, OpenSearch, OpenSettings, OpenShortcuts, PreviousTab, Save,
+    ToggleExplorer, ToggleGit, ZoomIn, ZoomOut, ZoomReset,
 };
 use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::git::GitState;
@@ -86,6 +86,8 @@ pub(crate) enum DocumentView {
     History(Entity<super::git::HistoryView>),
     /// Results of Find in files left in a tab (`views/find_results.rs`).
     FindResults(Entity<super::find_results::FindResultsView>),
+    /// The Markdown preview of an editor in a tab of its own (`views/markdown_preview.rs`).
+    Preview(Entity<super::markdown_preview::MarkdownPreview>),
 }
 
 /// One open file: a tab in folder mode, the whole window in file mode.
@@ -101,6 +103,9 @@ pub(crate) struct Document {
     pub(crate) title: Option<String>,
     /// Keeps the window title in step with the editor (its dirty state).
     pub(crate) _subscription: Option<Subscription>,
+    /// The preview of a Markdown document and its view, made when it first shows
+    /// (`views/markdown.rs`).
+    pub(crate) markdown: Option<Entity<super::markdown_preview::MarkdownPreview>>,
 }
 
 impl Document {
@@ -467,6 +472,7 @@ impl AppView {
             view: DocumentView::Loading,
             title: None,
             _subscription: None,
+            markdown: None,
         });
         self.load(id, path, window, cx);
         self.document_shown(window, cx);
@@ -505,6 +511,7 @@ impl AppView {
             view: DocumentView::Editor(editor),
             title: None,
             _subscription: Some(subscription),
+            markdown: None,
         });
         self.document_shown(window, cx);
     }
@@ -527,6 +534,7 @@ impl AppView {
             view,
             title,
             _subscription: None,
+            markdown: None,
         });
         self.document_shown(window, cx);
     }
@@ -613,7 +621,11 @@ impl AppView {
                     return;
                 };
                 let was_active = this.documents.active_index() == Some(index);
-                this.documents.close(index);
+                let closed = this.documents.close(index);
+                // Its preview tabs go with it.
+                if let Some(editor) = closed.as_ref().and_then(Document::editor) {
+                    this.close_previews_of(editor, cx);
+                }
                 // File mode with nothing left to show: back to the welcome screen.
                 if this.explorer.is_none() && this.documents.is_empty() {
                     this.target = None;
@@ -878,9 +890,11 @@ impl Render for AppView {
             Content::Welcome => div().flex_1().min_h_0().child(self.render_welcome(cx)),
             Content::Message(title, detail) => self.render_message(title, detail.as_ref(), cx),
             Content::Documents => {
+                self.ensure_markdown_preview(cx);
                 let document = match self.documents.active().map(|document| &document.view) {
-                    Some(DocumentView::Editor(editor)) => {
-                        div().flex_1().min_h_0().child(editor.clone())
+                    Some(DocumentView::Editor(editor)) => self.render_editor_document(editor, cx),
+                    Some(DocumentView::Preview(preview)) => {
+                        div().flex_1().min_h_0().child(preview.clone())
                     }
                     Some(DocumentView::Loading) => div().flex_1(),
                     Some(DocumentView::Diff(diff)) => div().flex_1().min_h_0().child(diff.clone()),
@@ -957,6 +971,12 @@ impl Render for AppView {
             .on_action(cx.listener(|this, _: &OpenSearch, window, cx| this.open_search(window, cx)))
             .on_action(cx.listener(|this, _: &ChangeLanguage, window, cx| {
                 this.open_language_menu(window, cx)
+            }))
+            .on_action(cx.listener(|this, _: &CycleMarkdownView, window, cx| {
+                this.cycle_markdown_view(window, cx)
+            }))
+            .on_action(cx.listener(|this, _: &OpenMarkdownPreview, window, cx| {
+                this.open_markdown_preview_tab(window, cx)
             }))
             .on_action(cx.listener(|this, _: &OpenFindInFiles, window, cx| {
                 this.open_find_in_files(false, window, cx)

@@ -31,6 +31,8 @@ pub enum ActionId {
     GoToLine,
     ToggleWrap,
     ChangeLanguage,
+    CycleMarkdownView,
+    OpenMarkdownPreview,
     ZoomIn,
     ZoomOut,
     ZoomReset,
@@ -47,6 +49,8 @@ pub struct Context {
     pub document: bool,
     /// The document shown is in an editor: Find, Go to line, Wrap and its language.
     pub editor: bool,
+    /// The document shown is Markdown: its views and the preview tab.
+    pub markdown: bool,
 }
 
 impl ActionId {
@@ -59,6 +63,9 @@ impl ActionId {
         }
         if context.editor {
             actions.extend([Find, Replace, GoToLine, ToggleWrap, ChangeLanguage]);
+        }
+        if context.markdown {
+            actions.extend([CycleMarkdownView, OpenMarkdownPreview]);
         }
         if context.folder {
             actions.extend([ToggleExplorer, ToggleGit]);
@@ -89,6 +96,8 @@ impl ActionId {
             GoToLine => "search.action.goto",
             ToggleWrap => "search.action.toggle_wrap",
             ChangeLanguage => "search.action.change_language",
+            CycleMarkdownView => "search.action.markdown_view",
+            OpenMarkdownPreview => "search.action.markdown_preview_tab",
             ZoomIn => "search.action.zoom_in",
             ZoomOut => "search.action.zoom_out",
             ZoomReset => "search.action.zoom_reset",
@@ -409,8 +418,9 @@ mod tests {
             folder: true,
             document: true,
             editor: true,
+            markdown: true,
         });
-        assert_eq!(all.len(), 20);
+        assert_eq!(all.len(), 22);
     }
 
     #[test]
@@ -419,6 +429,7 @@ mod tests {
             folder: true,
             document: true,
             editor: true,
+            markdown: true,
         });
         for action in all {
             let label = action.label();

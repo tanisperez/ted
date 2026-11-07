@@ -27,6 +27,7 @@ tree-sitter-java.workspace = true
 tree-sitter-kotlin-sg.workspace = true
 tree-sitter-typescript.workspace = true
 tree-sitter-sequel.workspace = true
+pulldown-cmark.workspace = true
 tree-sitter-containerfile.workspace = true
 
 [dev-dependencies]

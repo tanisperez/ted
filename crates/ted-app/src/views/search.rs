@@ -169,6 +169,7 @@ impl AppView {
             folder: root.is_some(),
             document: self.documents.active().is_some(),
             editor: editor.is_some(),
+            markdown: self.active_markdown(cx).is_some(),
         };
         let actions: Vec<ActionRow> = ActionId::available(context)
             .into_iter()
@@ -342,6 +343,8 @@ fn boxed_action(action: ActionId) -> Option<Box<dyn Action>> {
         GoToLine => Box::new(super::goto::OpenGoto),
         ToggleWrap => Box::new(super::editor::ToggleWrap),
         ChangeLanguage => Box::new(actions::ChangeLanguage),
+        CycleMarkdownView => Box::new(actions::CycleMarkdownView),
+        OpenMarkdownPreview => Box::new(actions::OpenMarkdownPreview),
     })
 }
 
@@ -646,6 +649,8 @@ fn action_icon(action: ActionId) -> Lucide {
         GoToLine => Lucide::ArrowDownToLine,
         ToggleWrap => Lucide::TextWrap,
         ChangeLanguage => Lucide::Code,
+        CycleMarkdownView => Lucide::Columns2,
+        OpenMarkdownPreview => Lucide::Eye,
         ZoomIn => Lucide::ZoomIn,
         ZoomOut => Lucide::ZoomOut,
         ZoomReset => Lucide::RotateCcw,

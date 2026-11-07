@@ -36,6 +36,19 @@ impl AppView {
             .editor()
             .map(|editor| editor.read(cx).state.syntax.language);
         let language_menu_open = self.language_menu.read(cx).is_open();
+        // A Markdown document shows its words, and no cursor while only the preview shows.
+        let markdown = self
+            .active_markdown(cx)
+            .map(|preview| (preview.read(cx).words(), preview.read(cx).view()));
+        let words = markdown.map(|(words, _)| match words {
+            1 => t!("markdown.word").into_owned(),
+            count => t!(
+                "markdown.words",
+                count = telaio_app::number::format_integer(count as u64)
+            )
+            .into_owned(),
+        });
+        let shows_cursor = markdown.is_none_or(|(_, view)| view.shows_editor());
         let folder = match &self.target {
             Some(Target::Folder(root)) => Some(root.clone()),
             _ => None,
@@ -111,7 +124,8 @@ impl AppView {
             .children(status.map(|status| {
                 h_flex()
                     .gap(px(16.0))
-                    .child(status.position)
+                    .children(words)
+                    .when(shows_cursor, |row| row.child(status.position))
                     .child(self.render_wrap_toggle(status.wrap, &palette, cx))
                     .children(status.indent)
                     .child(status.encoding)

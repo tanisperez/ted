@@ -29,6 +29,8 @@ description: Every setting of ted, its default, and the settings.toml file.
         <tr><td>Highlight current line</td><td>On</td><td>Tints the line of the cursor.</td></tr>
         <tr><td>Minimap</td><td>On</td><td>Shows the <a href="interface.html#minimap">minimap</a> at the right of the text.</td></tr>
         <tr><td>Word wrap</td><td>Off</td><td>Whether code wraps long lines; see <a href="editing.html#word-wrap">Word wrap</a>. Markdown and plain text always wrap.</td></tr>
+        <tr><td>View when opening a .md</td><td>Split</td><td>What a Markdown file shows when it opens: the editor, the editor and the <a href="editing.html#markdown-preview">preview</a>, or the preview.</td></tr>
+        <tr><td>Synchronized scroll</td><td>On</td><td>Whether the preview follows the editor in the split view.</td></tr>
         <tr><td>Tab size</td><td>4</td><td>The columns a tab takes, 2, 4 or 8, and the width of an indentation level in spaces.</td></tr>
         <tr><td>Insert spaces</td><td>On</td><td>Whether <kbd>Tab</kbd> inserts spaces in a new or flat file. A file indented with tabs or spaces keeps its own style.</td></tr>
     </tbody>
@@ -75,6 +77,8 @@ line_numbers = true
 highlight_current_line = true
 minimap = true
 word_wrap = false
+markdown_view = "split"
+markdown_sync_scroll = true
 tab_size = 4
 insert_spaces = true
 startup = "welcome"

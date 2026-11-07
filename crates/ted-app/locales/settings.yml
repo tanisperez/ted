@@ -78,6 +78,15 @@ _version: 2
 "settings.text.word_wrap_description":
   en: "For code. Markdown and plain text always wrap, and Alt+Z changes it for the open file."
   es: "Para el código. Markdown y el texto plano siempre se ajustan, y Alt+Z lo cambia en el archivo abierto."
+"settings.markdown.view":
+  en: "View when opening a .md"
+  es: "Vista al abrir un .md"
+"settings.markdown.sync_scroll":
+  en: "Synchronized scroll"
+  es: "Scroll sincronizado"
+"settings.markdown.sync_scroll_description":
+  en: "The preview follows the editor in the split view."
+  es: "La vista previa sigue al editor en la vista dividida."
 "settings.indent.title":
   en: "Indentation"
   es: "Sangría"

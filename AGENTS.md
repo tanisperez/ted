@@ -96,8 +96,9 @@ ted-app ──> ted-workspace ──> ted-core
 - `ted-core`: the text buffer (rope), positions, selections, edits, undo history, line endings,
   indentation detection. No IO, no gpui.
 - `ted-syntax`: language detection by extension and name, tree-sitter highlighting computed
-  incrementally and off the main thread, the log highlighter (levels and dates, no tree-sitter).
-  No gpui.
+  incrementally and off the main thread, the log highlighter (levels and dates, no tree-sitter),
+  and the blocks of the Markdown preview (`parse_markdown`, with `pulldown-cmark`: the `markdown`
+  crate gpui-kit builds does not scale with the file size). No gpui.
 - `ted-workspace`: filesystem access. Reads files in the background, lists one folder at a time
   (lazily, honoring `.gitignore` and the exclude patterns), watches for changes, saves
   atomically (write a temporary file, then rename), and the disk side of Find in files (file

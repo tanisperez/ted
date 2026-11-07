@@ -15,6 +15,7 @@ use serde::Serialize;
 
 use super::config::config_dir;
 use super::locale::LanguageChoice;
+use super::markdown_view::MarkdownView;
 
 pub use telaio_app::logging::LogLevel;
 
@@ -244,6 +245,11 @@ pub struct Settings {
     /// Whether code wraps long lines into rows. Markdown and plain text always do; Alt+Z changes
     /// it for the open file.
     pub word_wrap: bool,
+    /// What a Markdown file shows when it opens: the editor, the editor and the preview, or the
+    /// preview.
+    pub markdown_view: MarkdownView,
+    /// Whether the preview follows the editor's scroll in the split view.
+    pub markdown_sync_scroll: bool,
     /// Columns a tab advances to, and the width of one indentation level in spaces.
     pub tab_size: usize,
     /// Whether Tab inserts spaces in a file whose indentation is not detected (a new or flat
@@ -302,6 +308,8 @@ impl Default for Settings {
             highlight_current_line: true,
             minimap: true,
             word_wrap: false,
+            markdown_view: MarkdownView::default(),
+            markdown_sync_scroll: true,
             tab_size: 4,
             insert_spaces: true,
             startup: Startup::default(),
@@ -416,6 +424,12 @@ fn parse_settings(content: &str) -> Settings {
     if let Some(value) = flag("word_wrap") {
         settings.word_wrap = value;
     }
+    if let Some(value) = text("markdown_view").and_then(MarkdownView::parse) {
+        settings.markdown_view = value;
+    }
+    if let Some(value) = flag("markdown_sync_scroll") {
+        settings.markdown_sync_scroll = value;
+    }
     if let Some(value) = table.get("tab_size").and_then(toml::Value::as_integer) {
         settings.tab_size = value.clamp(1, 16) as usize;
     }
@@ -524,6 +538,24 @@ mod tests {
         let dir = tempfile::tempdir().expect("temp dir");
         let settings = Settings {
             startup: Startup::NewFile,
+            ..Settings::default()
+        };
+        write_settings(dir.path(), &settings);
+        assert_eq!(read_settings(dir.path()), settings);
+    }
+
+    #[test]
+    fn the_markdown_settings_round_trip() {
+        assert_eq!(parse_settings("").markdown_view, MarkdownView::Split);
+        assert!(parse_settings("").markdown_sync_scroll);
+        assert_eq!(
+            parse_settings("markdown_view = \"bogus\"").markdown_view,
+            MarkdownView::Split
+        );
+        let dir = tempfile::tempdir().expect("temp dir");
+        let settings = Settings {
+            markdown_view: MarkdownView::Preview,
+            markdown_sync_scroll: false,
             ..Settings::default()
         };
         write_settings(dir.path(), &settings);

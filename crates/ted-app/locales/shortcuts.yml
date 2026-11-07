@@ -117,6 +117,9 @@ _version: 2
 "shortcuts.action.change_language":
   en: "Change the highlighting language"
   es: "Cambiar el lenguaje del resaltado"
+"shortcuts.action.markdown_view":
+  en: "Markdown: editor, split or preview"
+  es: "Markdown: editor, dividida o vista previa"
 "shortcuts.action.add_cursor":
   en: "Add or remove a cursor"
   es: "Añadir o quitar un cursor"

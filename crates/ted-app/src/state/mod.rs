@@ -14,6 +14,7 @@ pub mod goto;
 pub mod language_picker;
 pub mod launch;
 pub mod locale;
+pub mod markdown_view;
 pub mod minimap;
 pub mod open_queue;
 pub mod palette;

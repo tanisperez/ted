@@ -48,6 +48,10 @@ actions!(
         ZoomReset,
         /// Opens the language menu of the status bar (`Alt+L`), with a document in an editor.
         ChangeLanguage,
+        /// Shows the next view of a Markdown document: editor, split, preview (`Ctrl+Shift+V`).
+        CycleMarkdownView,
+        /// Opens the preview of a Markdown document in a tab of its own.
+        OpenMarkdownPreview,
         /// Shows the next tab, wrapping around (`Ctrl+Tab`).
         NextTab,
         /// Shows the previous tab, wrapping around (`Ctrl+Shift+Tab`).
@@ -101,6 +105,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd--", ZoomOut, None),
         KeyBinding::new("cmd-0", ZoomReset, None),
         KeyBinding::new("alt-l", ChangeLanguage, None),
+        KeyBinding::new("cmd-shift-v", CycleMarkdownView, None),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
@@ -122,6 +127,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl--", ZoomOut, None),
         KeyBinding::new("ctrl-0", ZoomReset, None),
         KeyBinding::new("alt-l", ChangeLanguage, None),
+        KeyBinding::new("ctrl-shift-v", CycleMarkdownView, None),
     ]);
     // Ctrl+Tab switches tabs on every platform, macOS included, as in Postino. The editor binds
     // only plain `tab` and `shift-tab`, so this still fires while it has the focus.

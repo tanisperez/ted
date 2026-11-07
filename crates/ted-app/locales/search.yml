@@ -66,6 +66,12 @@ _version: 2
 "search.action.change_language":
   en: "Change the highlighting language"
   es: "Cambiar el lenguaje del resaltado"
+"search.action.markdown_view":
+  en: "Switch the Markdown view: editor, split, preview"
+  es: "Cambiar la vista de Markdown: editor, dividida, vista previa"
+"search.action.markdown_preview_tab":
+  en: "Open the Markdown preview in a tab"
+  es: "Abrir la vista previa de Markdown en una pestaña"
 "search.action.zoom_in":
   en: "Bigger editor font"
   es: "Letra del editor más grande"

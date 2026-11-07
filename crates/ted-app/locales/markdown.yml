@@ -1,0 +1,32 @@
+# The Markdown preview: its toolbar, its tab and the views of a Markdown file.
+_version: 2
+"markdown.view_editor":
+  en: "Editor"
+  es: "Editor"
+"markdown.view_split":
+  en: "Split"
+  es: "Dividida"
+"markdown.view_preview":
+  en: "Preview"
+  es: "Vista previa"
+"markdown.only_editor":
+  en: "Editor only"
+  es: "Solo editor"
+"markdown.editor_and_preview":
+  en: "Editor and preview"
+  es: "Editor y vista previa"
+"markdown.only_preview":
+  en: "Preview only"
+  es: "Solo vista previa"
+"markdown.open_in_tab":
+  en: "Open the preview in a tab"
+  es: "Abrir la vista previa en una pestaña"
+"markdown.tab_detail":
+  en: "Preview"
+  es: "Vista previa"
+"markdown.words":
+  en: "%{count} words"
+  es: "%{count} palabras"
+"markdown.word":
+  en: "1 word"
+  es: "1 palabra"

@@ -15,6 +15,8 @@ mod goto;
 mod language_menu;
 mod location;
 mod logo;
+mod markdown;
+pub(crate) mod markdown_preview;
 mod root;
 mod search;
 mod settings;
