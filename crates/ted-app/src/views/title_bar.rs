@@ -116,10 +116,13 @@ impl AppView {
             .label(label)
             .dropdown_caret(true);
         let weak = cx.weak_entity();
+        let scroll = self.switcher_scroll.clone();
         Popover::new("switcher-popover")
             .w(px(MENU_WIDTH))
             .p(px(6.0))
             .trigger(trigger)
+            // It opens at the top, wherever it was left.
+            .on_open_change(move |_, _, _| scroll.set_offset(point(px(0.0), px(0.0))))
             .content(move |_, window, cx| render_switcher_menu(weak.clone(), window, cx))
     }
 
