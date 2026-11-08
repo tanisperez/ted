@@ -8,6 +8,7 @@
 use std::rc::Rc;
 
 use gpui_kit::assets::IconName;
+use gpui_kit::component::scroll::ScrollbarAxis;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -28,6 +29,7 @@ use crate::theme::metrics::{EXPLORER_HEADER_HEIGHT, EXPLORER_LIST_PADDING};
 use crate::theme::{Palette, PaletteExt};
 
 use super::super::root::AppView;
+use super::super::scrollbars::scrollbar_overlay;
 use super::super::settings_git::INSTALL_GIT_URL;
 
 /// What a click on a row's checkbox does.
@@ -251,19 +253,33 @@ impl AppView {
                         let rows = view.git.rows.clone();
                         range
                             .filter_map(|index| rows.get(index).map(|row| (index, row)))
-                            .map(|(index, row)| render_change_row(index, row, &palette, cx))
+                            // In a block, which takes the list's width: a row alone would only
+                            // be as wide as its content, with its status letter right after it.
+                            .map(|(index, row)| {
+                                div()
+                                    .w_full()
+                                    .child(render_change_row(index, row, &palette, cx))
+                                    .into_any_element()
+                            })
                             .collect()
                     }),
                 )
                 .track_scroll(&self.git_scroll)
-                .flex_1()
+                .size_full()
                 .px(px(EXPLORER_LIST_PADDING))
                 .pb_2();
                 v_flex()
                     .flex_1()
                     .min_h_0()
                     .children(self.render_outside_notice(palette, cx))
-                    .child(rows)
+                    .child(div().relative().flex_1().min_h_0().child(rows).child(
+                        scrollbar_overlay(
+                            &self.git_scroll,
+                            ScrollbarAxis::Vertical,
+                            "git-panel-scrollbar",
+                            palette,
+                        ),
+                    ))
                     .into_any_element()
             }
         }

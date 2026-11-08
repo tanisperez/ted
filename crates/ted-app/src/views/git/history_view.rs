@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::input::{InputEvent, InputState};
+use gpui_kit::component::scroll::ScrollbarAxis;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -23,6 +24,7 @@ use crate::state::git_branches::relative_time;
 use crate::state::locale::plural;
 use crate::theme::{Palette, PaletteExt};
 
+use super::super::scrollbars::scrollbar_overlay;
 use super::letter_color;
 
 /// How many commits one page of the log holds.
@@ -89,6 +91,8 @@ pub(crate) struct HistoryView {
     head: Option<String>,
     error: Option<String>,
     scroll: UniformListScrollHandle,
+    /// The scroll of the detail panel.
+    detail_scroll: ScrollHandle,
     _subscription: Subscription,
 }
 
@@ -123,6 +127,7 @@ impl HistoryView {
             head,
             error: None,
             scroll: UniformListScrollHandle::new(),
+            detail_scroll: ScrollHandle::new(),
             _subscription: subscription,
         };
         view.restart(cx);
@@ -349,16 +354,28 @@ impl HistoryView {
         };
         Some(
             div()
-                .id("history-detail")
+                .relative()
                 .flex_none()
                 .w(px(DETAIL_WIDTH))
                 .h_full()
-                .p(px(14.0))
-                .overflow_y_scroll()
                 .border_l_1()
                 .border_color(palette.border)
                 .bg(palette.surface)
-                .child(body)
+                .child(
+                    div()
+                        .id("history-detail")
+                        .size_full()
+                        .p(px(14.0))
+                        .overflow_y_scroll()
+                        .track_scroll(&self.detail_scroll)
+                        .child(body),
+                )
+                .child(scrollbar_overlay(
+                    &self.detail_scroll,
+                    ScrollbarAxis::Vertical,
+                    "history-detail-scrollbar",
+                    palette,
+                ))
                 .into_any_element(),
         )
     }
@@ -387,7 +404,7 @@ impl Render for HistoryView {
                 .child(EmptyState::new(title).icon(Icon::new(IconName::GitGraph)))
                 .into_any_element()
         } else {
-            uniform_list(
+            let rows = uniform_list(
                 "history-rows",
                 self.commits.len(),
                 cx.processor(|view, range: std::ops::Range<usize>, _window, cx| {
@@ -417,8 +434,19 @@ impl Render for HistoryView {
                 }),
             )
             .track_scroll(&self.scroll)
-            .flex_1()
-            .into_any_element()
+            .size_full();
+            div()
+                .relative()
+                .flex_1()
+                .min_h_0()
+                .child(rows)
+                .child(scrollbar_overlay(
+                    &self.scroll,
+                    ScrollbarAxis::Vertical,
+                    "history-scrollbar",
+                    &palette,
+                ))
+                .into_any_element()
         };
         v_flex()
             .id("history-view")

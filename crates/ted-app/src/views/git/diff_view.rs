@@ -3,12 +3,14 @@
 //! red, the changed words emphasized. Each block of changes has Stage (or Unstage) and Revert. The
 //! patch is read with the whole file as context and parsed (`telaio_git::parse_file_diff`) on the
 //! background executor; the rows are a `uniform_list`, so a long file costs only the rows on
-//! screen. There is one diff tab: opening another file's diff reuses it.
+//! screen. Long lines scroll sideways under the line numbers and the block's buttons, which stay
+//! in place. There is one diff tab: opening another file's diff reuses it.
 
 use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui_kit::assets::IconName;
+use gpui_kit::component::scroll::ScrollbarAxis;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -24,6 +26,7 @@ use crate::state::locale::plural;
 use crate::theme::{Palette, PaletteExt};
 
 use super::super::root::AppView;
+use super::super::scrollbars::scrollbar_overlay;
 use super::letter_color;
 
 /// Above this many change blocks the buttons are left out: checking each block against the index
@@ -31,6 +34,10 @@ use super::letter_color;
 const MAX_BLOCK_ACTIONS: usize = 200;
 /// Width of each line number column.
 const NUMBER_WIDTH: f32 = 52.0;
+/// Width of the column with the sign of a line.
+const SIGN_WIDTH: f32 = 16.0;
+/// Space after the end of the longest line when scrolled to the right.
+const END_PADDING: f32 = 24.0;
 /// Height of the header.
 const HEADER_HEIGHT: f32 = 40.0;
 
@@ -49,6 +56,8 @@ enum BlockStage {
 struct Loaded {
     diff: Arc<FileDiff>,
     patch: Arc<str>,
+    /// The columns of the longest line, as drawn (tabs are four columns).
+    longest: usize,
     /// Per change block, whether it is staged; `None` without buttons.
     stages: Vec<Option<BlockStage>>,
     additions: usize,
@@ -63,6 +72,17 @@ impl Loaded {
         let diff = parse_file_diff(&patch);
         let count = |kind: LineKind| diff.lines.iter().filter(|line| line.kind == kind).count();
         let (additions, deletions) = (count(LineKind::Added), count(LineKind::Removed));
+        let longest = diff
+            .lines
+            .iter()
+            .map(|line| {
+                line.text
+                    .chars()
+                    .map(|ch| if ch == '\t' { 4 } else { 1 })
+                    .sum()
+            })
+            .max()
+            .unwrap_or(0);
         let with_actions = diff.blocks.len() <= MAX_BLOCK_ACTIONS;
         let stages = (0..diff.blocks.len())
             .map(|index| {
@@ -75,6 +95,7 @@ impl Loaded {
         Ok(Loaded {
             diff: Arc::new(diff),
             patch: patch.into(),
+            longest,
             stages,
             additions,
             deletions,
@@ -114,6 +135,9 @@ pub(crate) struct DiffView {
     loaded: Option<Result<Loaded, String>>,
     task: Option<Task<()>>,
     scroll: UniformListScrollHandle,
+    /// The sideways scroll of the lines' text, kept by an empty element as wide as the longest
+    /// line, under the list.
+    text_scroll: ScrollHandle,
 }
 
 impl DiffView {
@@ -134,6 +158,7 @@ impl DiffView {
             loaded: None,
             task: None,
             scroll: UniformListScrollHandle::new(),
+            text_scroll: ScrollHandle::new(),
         };
         view.reload(cx);
         view
@@ -157,6 +182,7 @@ impl DiffView {
         if self.repo_path != repo_path {
             self.loaded = None;
             self.scroll = UniformListScrollHandle::new();
+            self.text_scroll.set_offset(point(px(0.0), px(0.0)));
         }
         (self.repo, self.repo_path, self.path, self.letter) = (repo, repo_path, path, letter);
         self.reload(cx);
@@ -319,7 +345,7 @@ impl DiffView {
 }
 
 impl Render for DiffView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let palette = cx.palette();
         let body = match &self.loaded {
             None => div().flex_1().into_any_element(),
@@ -344,7 +370,18 @@ impl Render for DiffView {
                 .into_any_element(),
             Some(Ok(loaded)) => {
                 let count = loaded.diff.lines.len();
-                uniform_list(
+                let theme = cx.theme();
+                let text_system = window.text_system();
+                let char_width = text_system
+                    .advance(
+                        text_system.resolve_font(&font(theme.mono_font_family.clone())),
+                        theme.mono_font_size,
+                        '0',
+                    )
+                    .map_or(theme.mono_font_size * 0.6, |advance| advance.width);
+                let text_width = char_width * loaded.longest as f32
+                    + px(NUMBER_WIDTH * 2.0 + SIGN_WIDTH + END_PADDING);
+                let mut lines = uniform_list(
                     "diff-lines",
                     count,
                     cx.processor(|view, range: std::ops::Range<usize>, _window, cx| {
@@ -368,14 +405,44 @@ impl Render for DiffView {
                                         .flatten()
                                         .map(|stage| render_block_actions(block, stage, cx))
                                 });
-                                render_line(index, line, actions, &palette, cx)
+                                let scroll_x = view.text_scroll.offset().x;
+                                render_line(index, line, actions, scroll_x, &palette, cx)
                             })
                             .collect()
                     }),
                 )
                 .track_scroll(&self.scroll)
-                .flex_1()
-                .into_any_element()
+                .size_full();
+                // A sideways wheel moves the text, not the lines.
+                lines.style().restrict_scroll_to_axis = Some(true);
+                div()
+                    .relative()
+                    .flex_1()
+                    .min_h_0()
+                    .child(
+                        div()
+                            .id("diff-text-scroll")
+                            .absolute()
+                            .inset_0()
+                            .overflow_x_scroll()
+                            .restrict_scroll_to_axis()
+                            .track_scroll(&self.text_scroll)
+                            .child(div().h_full().w(text_width)),
+                    )
+                    .child(lines)
+                    .child(scrollbar_overlay(
+                        &self.scroll,
+                        ScrollbarAxis::Vertical,
+                        "diff-vertical-scrollbar",
+                        &palette,
+                    ))
+                    .child(scrollbar_overlay(
+                        &self.text_scroll,
+                        ScrollbarAxis::Horizontal,
+                        "diff-horizontal-scrollbar",
+                        &palette,
+                    ))
+                    .into_any_element()
             }
         };
         v_flex()
@@ -417,6 +484,7 @@ fn render_line(
     index: usize,
     line: &telaio_git::DiffLine,
     actions: Option<AnyElement>,
+    scroll_x: Pixels,
     palette: &Palette,
     cx: &App,
 ) -> AnyElement {
@@ -480,7 +548,7 @@ fn render_line(
         .child(
             div()
                 .flex_none()
-                .w(px(16.0))
+                .w(px(SIGN_WIDTH))
                 .text_color(sign_color)
                 .child(sign),
         )
@@ -490,7 +558,11 @@ fn render_line(
                 .min_w_0()
                 .overflow_hidden()
                 .whitespace_nowrap()
-                .child(StyledText::new(text).with_highlights(highlights)),
+                .child(
+                    div()
+                        .ml(scroll_x)
+                        .child(StyledText::new(text).with_highlights(highlights)),
+                ),
         )
         .children(actions.map(|actions| {
             div()
