@@ -70,6 +70,15 @@ whole document.
 - `render` never costs in proportion to the document size. Derived data is computed when its
   source changes and cached under a cheap key (a document id and a generation counter).
 
+### Folding without a display map
+
+Folded blocks live in `state/fold.rs`, a short sorted list. With nothing folded, every line to row
+mapping is the identity at no cost; `scroll_y` counts the lines that are not hidden. A block comes
+from the indentation of the lines around it, so a visible line costs a look at the next line with
+text and only a fold reads the whole block. Markdown's sections come from a table built on the
+background executor, for files up to 4 MB. The buffer lists its line edits only while something is
+folded. An edit above a fold moves it, and one that touches its hidden lines unfolds it.
+
 ### Background loading with generation counters
 
 Nothing slow runs on the main thread: reading or writing a file, listing a folder, parsing or

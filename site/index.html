@@ -120,7 +120,7 @@
                 <div class="section-head">
                     <span class="kicker">Features</span>
                     <h2>Everything a text editor needs, and fast</h2>
-                    <p>Open a file on its own or a whole folder with its explorer and tabs. Code and logs are highlighted, and the minimap shows where you are.</p>
+                    <p>Open a file on its own or a whole folder with its explorer, tabs and Git. Code and logs are highlighted, Markdown has a preview, and the minimap shows where you are.</p>
                 </div>
 
                 <div class="features">
@@ -141,6 +141,46 @@
                                 alt="A 100 MB log open at line 314,446 with the find bar showing match 9,451 of 18,821 for ERROR, and the minimap on the right.">
                             <img class="dark" src="img/log-dark.webp" width="1800" height="1125" loading="lazy"
                                 alt="A 100 MB log open at line 314,446 with the find bar showing match 9,451 of 18,821 for ERROR, and the minimap on the right.">
+                        </div>
+                    </article>
+
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Markdown, written and read</h3>
+                            <div class="text">
+                                <p>Write on one side and read on the other, with the scroll in step. The preview updates a moment after you stop typing and lays out only what is on screen, so a long document stays fast.</p>
+                                <ul class="checks">
+                                    <li>Editor, side by side or preview, with <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>V</kbd></li>
+                                    <li>Tables, task lists and code blocks colored like the editor</li>
+                                    <li>Links show where they go, and a bare URL is a link too</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/markdown-light.webp" width="1800" height="1125" loading="lazy"
+                                alt="A README in the editor next to its preview: headings, a table, a task list, code blocks, and a tooltip with the target of a link.">
+                            <img class="dark" src="img/markdown-dark.webp" width="1800" height="1125" loading="lazy"
+                                alt="A README in the editor next to its preview: headings, a table, a task list, code blocks, and a tooltip with the target of a link.">
+                        </div>
+                    </article>
+
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Git, without leaving the editor</h3>
+                            <div class="text">
+                                <p>See what changed, stage it whole or a block at a time, and commit. The changes of a file open in a tab with the changed words marked, and the history shows the graph of the repository.</p>
+                                <ul class="checks">
+                                    <li>Stage and revert each block of changes from the diff</li>
+                                    <li>Commit, or commit and push, from the panel</li>
+                                    <li>Switch, create and rename branches, pull and push from the status bar</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/git-light.webp" width="1800" height="1125" loading="lazy"
+                                alt="The Git panel with its changes and commit box next to the diff of a file, with added and removed lines and Stage and Revert buttons.">
+                            <img class="dark" src="img/git-dark.webp" width="1800" height="1125" loading="lazy"
+                                alt="The Git panel with its changes and commit box next to the diff of a file, with added and removed lines and Stage and Revert buttons.">
                         </div>
                     </article>
 
@@ -195,9 +235,14 @@
                 </div>
                 <ul class="grid">
                     <li class="card">
-                        <span class="badge">Rust JSON TOML</span>
+                        <span class="badge">Rust TS Java SQL</span>
                         <h3>Syntax highlighting</h3>
-                        <p>Rust, JavaScript, JSON, TOML, Markdown, HTML, XML and Makefiles with tree-sitter, parsed in the background and kept in step as you type.</p>
+                        <p>Over twenty languages with tree-sitter, parsed in the background and kept in step as you type. Pick a syntax theme, Visual Studio Code's among them.</p>
+                    </li>
+                    <li class="card">
+                        <span class="badge">Ctrl Shift [</span>
+                        <h3>Fold what you are not reading</h3>
+                        <p>Chevrons next to the line numbers fold a block of code, a Markdown section or a code fence down to one line.</p>
                     </li>
                     <li class="card">
                         <span class="badge">.gitignore</span>

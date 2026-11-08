@@ -34,9 +34,18 @@ description: Moving, selecting, the clipboard, undo, indentation and line ending
 <p>A block of text can fold down to its first line. Move the pointer over the line numbers and a chevron shows next to each line where a block starts: click it to fold. A folded line keeps its chevron and ends in a marker, <code>⋯</code>, with the closing line when there is one (<code>⋯ }</code>). The chevron or the marker unfold it. <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>[</kbd> folds the block the cursor is in and <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>]</kbd> unfolds the one on its line (<kbd>Cmd</kbd> <kbd>Alt</kbd> <kbd>[</kbd> and <kbd>]</kbd> on macOS), and both are in the global search.</p>
 <p>A block is what the indentation says: the deeper lines after a line. In Markdown, also a heading with what follows up to the next heading of the same level or higher, and a fenced code block. Moving a cursor or going to a match on a hidden line unfolds it, and so does an edit that touches it. Folds are not saved: a file always opens unfolded.</p>
 
+<div class="shot">
+    <img class="light" src="../img/fold-light.webp" width="1800" height="1125" loading="lazy" alt="A Rust file with three folded blocks, each ending in a marker, and chevrons next to the line numbers.">
+    <img class="dark" src="../img/fold-dark.webp" width="1800" height="1125" loading="lazy" alt="A Rust file with three folded blocks, each ending in a marker, and chevrons next to the line numbers.">
+</div>
+
 <h2 id="markdown-preview">Markdown preview</h2>
 <p>A Markdown file can be read rendered: headings, lists and task lists, quotes, tables, links and code blocks colored like the editor. A toolbar at the top right switches between three views: <strong>Editor</strong>, <strong>Editor and preview</strong> side by side, and <strong>Preview</strong> alone. <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>V</kbd> goes from one to the next. A file opens with the view of the <a href="settings.html#editor">View when opening a .md</a> setting, the split one by default.</p>
 <p>In the split view the preview follows the editor as it scrolls, unless the <a href="settings.html#editor">Synchronized scroll</a> setting is off. The last button of the toolbar opens the preview in a tab of its own, marked <strong>Preview</strong>, which keeps up with the edits and closes with the file. The status bar counts the words of the file, code blocks left out.</p>
+<div class="shot">
+    <img class="light" src="../img/markdown-light.webp" width="1800" height="1125" loading="lazy" alt="A README in the editor next to its preview, with the target of a link in a tooltip.">
+    <img class="dark" src="../img/markdown-dark.webp" width="1800" height="1125" loading="lazy" alt="A README in the editor next to its preview, with the target of a link in a tooltip.">
+</div>
 <p>The preview updates a moment after you stop typing and only lays out what is on screen, so big files stay fast. Images show their text instead, raw HTML is left out, and web links open in the browser. Holding the pointer over a link shows where it goes, and a bare URL (<code>https://</code>, <code>http://</code> or <code>www.</code>) is a link too.</p>
 
 <h2>Indentation</h2>

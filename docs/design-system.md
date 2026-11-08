@@ -224,7 +224,7 @@ Shared sizes come from telaio's `metrics.rs`. ted's own layout sizes go in ted's
 | Explorer / Git panel | 260 default, resizable 200 to 480, 6 px drag handle on its right edge |
 | Search trigger | 360 |
 | Window control (minimize, maximize, close) | 40 |
-| Recents menu | 360 |
+| Switcher popover | 400 |
 | Settings modal | 800 x 720 (shrinks to the window with 16 px margin) |
 | Settings category column | 188 |
 | Select in settings | 220 |
@@ -328,12 +328,14 @@ secondary buttons.
 
 Right of the logo and the separator: a ghost button 26 px high (radius 6, `fg_muted`) with an
 icon and the name of what is open: folder icon and the folder name, file-text icon and the file
-name, or folder-clock and "Open recent" with nothing open. Its menu (360 px, scrolled when taller
-than the window less 56 px) starts with the location of what is open: a heading (FOLDER or FILE,
-11/600 `fg_subtle`) over the full path in Geist Mono 11.5 `fg_muted`, truncated, then Copy path
-(`Ctrl+Alt+C`) and Show in file manager (`Ctrl+Alt+R`) and a separator. Then the recent
-folders, a separator, the recent files (each with its `~` path at the right in 12 px `fg_subtle`
-and a check on the open one), a separator, and telaio's shortcut rows for Open file and Open
+name, or folder-clock and "Open recent" with nothing open. Its popover (400 px, padding 6, scrolled
+when taller than the viewport less 104 px) starts with the location of what is open: a heading
+(Folder or File, 11/600 `fg_subtle`) over the full path in Geist Mono 11.5 `fg_muted`, truncated,
+then Copy path (`Ctrl+Alt+C`) and Show in file manager (`Ctrl+Alt+R`) and a separator. Then the
+recent folders and the recent files, each group with its label and only when it has rows. A row is
+44 px: an icon, the name over the shortened path (Geist Mono 11 `fg_subtle`) and a 28 px X that takes
+it off the list, never off the disk. The open one has a check in `accent_text`, the `list_active`
+background and "Open" in place of the X. Then a separator and the 30 px rows of Open file and Open
 folder. The window title is `name · ted`, or `ted` alone.
 
 ### File mode
@@ -370,6 +372,16 @@ explorer" with the `Ctrl+O` hint.
   parent, Right expands or goes to the first child, Enter opens or toggles.
 - The file opened in the editor is revealed and selected. The status bar starts with the folder
   path (hard drive icon, `~` for the home folder); a click opens it in the file manager.
+
+### Folding
+
+A 12 px chevron centered in the gutter's 16 px right padding, `fg_muted`, `fg` over a `hover`
+background under the pointer: down on the lines where a block starts, only while the pointer is over
+the gutter; right on a folded block, always. The line numbers skip the hidden lines. A folded line
+ends, 6 px after its text, in a marker with the row's height, radius 4 and 5 px of side padding:
+`⋯` in the editor font, `fg_muted`, on `hover`, followed by the closing line when the block hides
+one (`⋯ }`); `accent_subtle` under the pointer. A click on the chevron or the marker acts on the
+mouse down. The minimap and the scrollbar leave the hidden lines out.
 
 ### Minimap
 
@@ -488,14 +500,16 @@ Postino's):
   are not in 0.1.0; the families can still be set in `settings.toml`.
 - `TED_OPEN=settings` or `settings-about` opens the modal at startup.
 
-### Git panel (later milestone)
+### Git panel
 
-Not in 0.1.0. Header `COMMIT` with Refresh, Discard all, List/tree toggle, History and More
+Header `COMMIT` with Refresh, Discard all, List/tree toggle, History and More
 buttons (22 px). Groups (Changes, Unversioned) of 26 px rows with a 16 px checkbox, file icon,
 name, directory detail in 11.5 px, count and status letter. At the bottom, a 10 px padded block
 with a 76 px message box (`raised`, radius 8, `accent` border on focus), an Amend checkbox, the
-staged count with `+n` in `success` and `-n` in `danger`, and the Commit (`accent`) and "Commit
-and push..." buttons (30 px). Its toggle sits next to Files in the status bar, with the change count
+staged count with `+n` in `success` and `-n` in `danger`, and the Commit (`accent`, git-commit icon)
+and "Commit and push…" (arrow-up icon) buttons (30 px), which take two lines in a narrow panel. The
+lists scroll with a scrollbar that is always shown, and the text of a diff scrolls sideways under its
+line numbers and block buttons. Its toggle sits next to Files in the status bar, with the change count
 in Geist Mono 11/500 beside the icon (`Alt+2`, `Ctrl+2` on macOS, as Postino).
 
 ### Markdown preview

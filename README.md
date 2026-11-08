@@ -7,8 +7,9 @@
 
 A fast, lightweight, native text editor. It opens a 100 MB log in under 100 ms and scrolls it at
 the display's refresh rate, browses folders of a hundred thousand files without waiting, and
-does no work while idle. Tabs, syntax highlighting for code and logs, find in file, a minimap
-and the settings in a plain text file. No accounts, no telemetry.
+does no work while idle. Tabs, syntax highlighting for code and logs, find and replace across a
+folder, a Markdown preview, Git, folding, a minimap and the settings in a plain text file. No
+accounts, no telemetry.
 
 [Website](https://ted.tanis.codes) · [Download](https://ted.tanis.codes/install.html) ·
 [Documentation](https://ted.tanis.codes/docs/)
@@ -16,6 +17,20 @@ and the settings in a plain text file. No accounts, no telemetry.
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="site/img/hero-dark.webp">
   <img src="site/img/hero-light.webp" alt="The ted window: the explorer of a Rust project, three tabs, highlighted code and the minimap.">
+</picture>
+
+Write Markdown next to its preview:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/img/markdown-dark.webp">
+  <img src="site/img/markdown-light.webp" alt="A README in the editor next to its preview, with a table, a task list and code blocks.">
+</picture>
+
+See and commit what changed, a block at a time:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/img/git-dark.webp">
+  <img src="site/img/git-light.webp" alt="The Git panel next to the diff of a file, with Stage and Revert on each block of changes.">
 </picture>
 
 ## Install
