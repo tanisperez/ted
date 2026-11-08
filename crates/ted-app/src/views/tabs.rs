@@ -58,6 +58,7 @@ impl AppView {
                 DocumentView::History(_) => IconName::GitGraph,
                 DocumentView::FindResults(_) => IconName::Search,
                 DocumentView::Preview(_) => IconName::Eye,
+                DocumentView::WhatsNew(_) => IconName::Sparkles,
                 _ => IconName::File,
             };
             let mut tab = DocumentTab::new(name);

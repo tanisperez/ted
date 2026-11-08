@@ -62,6 +62,22 @@ fn main() -> ExitCode {
         state::locale::system_locales().join(", "),
     );
 
+    // The What's new tab, once after an update. The version that ran is recorded here, before the
+    // window opens, so a crash or a second window never shows it twice.
+    let last_seen = state::config::last_seen_version();
+    let show_whats_new = state::whats_new::opens_at_startup(
+        state::whats_new::VERSION,
+        &last_seen,
+        settings.show_whats_new,
+        state::whats_new::NOTES.is_some(),
+    );
+    if state::whats_new::records(state::whats_new::VERSION) {
+        state::config::record_version(state::whats_new::VERSION);
+    }
+    if show_whats_new {
+        log::info!("updated since {last_seen:?}, opening what's new");
+    }
+
     let theme_choice = settings.theme;
 
     // Files the OS hands over while running (Finder's Open with, a drop on the Dock icon: macOS
@@ -97,7 +113,7 @@ fn main() -> ExitCode {
                 // changes it while ted is running; an explicit choice sets the mode once.
                 telaio_ui::ThemeChoice::from(theme_choice).apply(Some(window), cx);
 
-                let view = cx.new(|cx| AppView::new(settings, paths, window, cx));
+                let view = cx.new(|cx| AppView::new(settings, paths, show_whats_new, window, cx));
                 remember_window_size(saved_window, &view, window, cx);
 
                 // Opens the files the OS delivers. Sleeps on the queue, so an idle window does no

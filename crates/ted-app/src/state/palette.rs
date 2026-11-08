@@ -24,6 +24,7 @@ pub enum ActionId {
     CloseTab,
     OpenSettings,
     OpenShortcuts,
+    ShowWhatsNew,
     ToggleExplorer,
     ToggleGit,
     Find,
@@ -73,7 +74,14 @@ impl ActionId {
         if context.folder || context.document {
             actions.extend([CopyPath, Reveal]);
         }
-        actions.extend([ZoomIn, ZoomOut, ZoomReset, OpenSettings, OpenShortcuts]);
+        actions.extend([
+            ZoomIn,
+            ZoomOut,
+            ZoomReset,
+            OpenSettings,
+            OpenShortcuts,
+            ShowWhatsNew,
+        ]);
         actions
     }
 
@@ -89,6 +97,7 @@ impl ActionId {
             CloseTab => "search.action.close_tab",
             OpenSettings => "search.action.settings",
             OpenShortcuts => "search.action.shortcuts",
+            ShowWhatsNew => "whats_new.show",
             ToggleExplorer => "search.action.toggle_explorer",
             ToggleGit => "search.action.toggle_git",
             Find => "search.action.find",
@@ -420,7 +429,7 @@ mod tests {
             editor: true,
             markdown: true,
         });
-        assert_eq!(all.len(), 22);
+        assert_eq!(all.len(), 23);
     }
 
     #[test]

@@ -24,7 +24,7 @@ use telaio_ui::components::{EmptyState, open_shortcuts_dialog};
 
 use crate::actions::{
     ChangeLanguage, CloseTab, CycleMarkdownView, NewFile, NewWindow, NextTab, OpenFile, OpenFolder,
-    OpenMarkdownPreview, OpenSearch, OpenSettings, OpenShortcuts, PreviousTab, Save,
+    OpenMarkdownPreview, OpenSearch, OpenSettings, OpenShortcuts, PreviousTab, Save, ShowWhatsNew,
     ToggleExplorer, ToggleGit, ZoomIn, ZoomOut, ZoomReset,
 };
 use crate::state::editor::{EditorState, estimate_lines};
@@ -88,6 +88,8 @@ pub(crate) enum DocumentView {
     FindResults(Entity<super::find_results::FindResultsView>),
     /// The Markdown preview of an editor in a tab of its own (`views/markdown_preview.rs`).
     Preview(Entity<super::markdown_preview::MarkdownPreview>),
+    /// The release notes of this version (`views/whats_new.rs`). There is one.
+    WhatsNew(Entity<super::whats_new::WhatsNewView>),
 }
 
 /// One open file: a tab in folder mode, the whole window in file mode.
@@ -204,6 +206,7 @@ impl AppView {
     pub fn new(
         settings: Settings,
         paths: Vec<PathBuf>,
+        show_whats_new: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -273,6 +276,9 @@ impl AppView {
         view.open_paths(&paths, window, cx);
         if paths.is_empty() && view.settings.startup == Startup::NewFile {
             view.open_untitled(window, cx);
+        }
+        if show_whats_new {
+            view.open_whats_new(window, cx);
         }
         view.apply_debug_open(window, cx);
         view
@@ -899,6 +905,9 @@ impl Render for AppView {
                     Some(DocumentView::Preview(preview)) => {
                         div().flex_1().min_h_0().child(preview.clone())
                     }
+                    Some(DocumentView::WhatsNew(notes)) => {
+                        div().flex_1().min_h_0().child(notes.clone())
+                    }
                     Some(DocumentView::Loading) => div().flex_1(),
                     Some(DocumentView::Diff(diff)) => div().flex_1().min_h_0().child(diff.clone()),
                     Some(DocumentView::History(history)) => {
@@ -967,6 +976,9 @@ impl Render for AppView {
             }))
             .on_action(
                 cx.listener(|this, _: &OpenSettings, window, cx| this.open_settings(window, cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &ShowWhatsNew, window, cx| this.open_whats_new(window, cx)),
             )
             .on_action(
                 cx.listener(|this, _: &OpenShortcuts, window, cx| this.open_shortcuts(window, cx)),

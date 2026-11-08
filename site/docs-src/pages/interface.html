@@ -36,3 +36,13 @@ description: A tour of the ted window: title bar, explorer, tabs, editor, minima
 
 <h2>Status bar</h2>
 <p>In folder mode it starts with the <strong>Files</strong> toggle, which shows or hides the explorer (<kbd>Alt</kbd> <kbd>1</kbd>), and the <strong>Git</strong> toggle, which shows the <a href="git.html">Git panel</a> in its place (<kbd>Alt</kbd> <kbd>2</kbd>) with the number of changed files. Inside a git repository the branch follows, with the commits to push and to pull (click it for the <a href="git.html#branches">branch menu</a>), At the right: the words of a Markdown file, the cursor position (<code>Ln 12, Col 5</code>, hidden while only the <a href="editing.html#markdown-preview">preview</a> shows), the <strong>Wrap</strong> toggle (highlighted while long lines wrap; see <a href="editing.html#word-wrap">Word wrap</a>), the indentation of the file (<code>Spaces: 4</code> or <code>Tabs</code>), the encoding, the line ending (<code>LF</code> or <code>CRLF</code>), the language and the keyboard button, which lists every <a href="keyboard-shortcuts.html">keyboard shortcut</a> (<kbd>F1</kbd>).</p>
+
+<h2 id="whats-new">What's new tab</h2>
+<p>After an update, the first time the new version starts, ted opens a <strong>What's new</strong> tab with the release notes of that version. It opens once: the next start does not show it again. The notes are part of ted itself, so the tab works offline and ted makes no request to show it. They are in English, like the release on GitHub.</p>
+<ul>
+    <li>The title says <strong>What's new in ted <em>version</em></strong>. <strong>View on GitHub</strong> opens the release page of that version in your browser.</li>
+    <li>The notes list what changed. A number such as <strong>#92</strong> links to that issue on GitHub.</li>
+    <li>A checkbox, <strong>Show after an update</strong>. It is the same setting as <strong>What's new after an update</strong> in <a href="settings.html">Settings</a>, Files.</li>
+</ul>
+<p>It never opens by itself on the first install, nor with a pre-release (a version such as <code>0.6.0-rc.1</code>) or a development build. Open it at any time with <strong>Show what's new</strong> in the global search, or with the button of the same name in Settings, About. Close it like any tab.</p>
+<p>ted knows it was updated because it writes the version that ran to <code>last-version.txt</code> in its <a href="files-and-folders.html">config folder</a>. If you update from a version older than 0.6.0, which did not write that file, the tab opens too.</p>

@@ -256,7 +256,7 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
         ],
         SettingsCategory::Files => {
             let mut sections = vec![
-                startup_section(weak.clone(), settings.startup),
+                startup_section(weak.clone(), &palette, &settings),
                 saving_section(weak.clone(), &palette, &settings),
                 explorer_section(exclude_input.as_ref(), cx),
             ];
@@ -272,7 +272,10 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
             &view.git.availability,
             view.git_select.as_ref().map(|(select, _)| select),
         ),
-        SettingsCategory::About => vec![about_header(&palette, &mono_font)],
+        SettingsCategory::About => vec![
+            about_header(&palette, &mono_font),
+            about_whats_new(weak.clone()),
+        ],
     };
 
     let layout = SettingsLayout::new("settings")
@@ -307,6 +310,19 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
             )
             .into_any_element()
     }
+}
+
+/// The row of About that opens the What's new tab, closing Settings.
+fn about_whats_new(weak: WeakEntity<AppView>) -> AnyElement {
+    let button = SecondaryButton::new("about-whats-new", t!("whats_new.show"))
+        .icon(Icon::new(IconName::Sparkles))
+        .on_click(move |_, window, cx| {
+            window.close_dialog(cx);
+            let _ = weak.update(cx, |view, cx| view.open_whats_new(window, cx));
+        });
+    LabeledRow::new(t!("whats_new.tab"), button)
+        .description(t!("settings.about.whats_new_description"))
+        .into_any_element()
 }
 
 /// The About header: telaio's (`telaio_app::about::header`), with ted's icon in place of the
@@ -672,7 +688,19 @@ fn saving_section(weak: WeakEntity<AppView>, palette: &Palette, settings: &Setti
 }
 
 /// "Startup": what ted shows when it starts without a path.
-fn startup_section(weak: WeakEntity<AppView>, startup: Startup) -> AnyElement {
+fn startup_section(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    settings: &Settings,
+) -> AnyElement {
+    let startup = settings.startup;
+    let whats_new = toggle(
+        "settings-show-whats-new",
+        weak.clone(),
+        palette,
+        settings.show_whats_new,
+        |settings, on| settings.show_whats_new = on,
+    );
     let mut control = SegmentedControl::new("settings-startup");
     for choice in Startup::ALL {
         let weak = weak.clone();
@@ -693,6 +721,10 @@ fn startup_section(weak: WeakEntity<AppView>, startup: Startup) -> AnyElement {
         .child(
             LabeledRow::new(t!("settings.startup.label"), control)
                 .description(t!("settings.startup.description")),
+        )
+        .child(
+            LabeledRow::new(t!("settings.startup.whats_new"), whats_new)
+                .description(t!("settings.startup.whats_new_description")),
         )
         .into_any_element()
 }

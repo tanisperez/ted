@@ -29,8 +29,10 @@ The work of a version is tracked by its GitHub milestone (`gh issue list --miles
    `make test` pass on `main`.
 2. Optionally, run the workflow by hand on `main` first (`gh workflow run release.yml`): a dry
    run builds every package and keeps them as the run's artifacts, without touching any release.
-3. Set `version` in `Cargo.toml` to the release (drop `-dev`), run `cargo check` so `Cargo.lock`
-   follows, and commit.
+3. Finish `release-notes/X.Y.Z.md`, the release notes in English Markdown (what changes and which
+   milestone issues went in, as `#N`): they are embedded in the binary for the What's new tab.
+   Set `version` in `Cargo.toml` to the release (drop `-dev`), run `cargo check` so `Cargo.lock`
+   follows, and commit. From this point `make test` fails if the notes file is missing.
 4. Tag and push (ask before pushing):
 
    ```
@@ -38,17 +40,16 @@ The work of a version is tracked by its GitHub milestone (`gh issue list --miles
    git push origin main v0.1.0
    ```
 
-5. Create the release as a **draft**, with English Markdown notes (what changes and which
-   milestone issues went in, as `#N`):
+5. Create the release as a **draft**, with the notes file of step 3:
 
    ```
-   gh release create v0.1.0 --draft --verify-tag --title v0.1.0 --notes-file notes.md
+   gh release create v0.1.0 --draft --verify-tag --title v0.1.0 --notes-file release-notes/0.1.0.md
    ```
 
 6. Wait for the `Release` workflow (`gh run watch`). It checks that every package is there,
    writes `SHA256SUMS`, uploads everything to the draft and then publishes it. If the draft does
    not exist yet when the builds finish, the workflow creates one with placeholder notes; edit
-   them afterwards with `gh release edit v0.1.0 --notes-file notes.md`.
+   them afterwards with `gh release edit v0.1.0 --notes-file release-notes/0.1.0.md`.
 7. Bump `version` to the next `X.Y.Z-dev` and commit.
 
 ## Packages

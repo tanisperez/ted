@@ -257,6 +257,8 @@ pub struct Settings {
     pub insert_spaces: bool,
     /// What ted shows when it starts without a path.
     pub startup: Startup,
+    /// Whether the What's new tab opens once after an update (`state::whats_new`).
+    pub show_whats_new: bool,
     /// Whether saving removes the spaces and tabs at the end of every line.
     pub trim_trailing_whitespace: bool,
     /// Whether saving ends the file with a line break.
@@ -313,6 +315,7 @@ impl Default for Settings {
             tab_size: 4,
             insert_spaces: true,
             startup: Startup::default(),
+            show_whats_new: true,
             trim_trailing_whitespace: true,
             insert_final_newline: true,
             highlight_max_size_mb: 4,
@@ -439,6 +442,9 @@ fn parse_settings(content: &str) -> Settings {
     if let Some(value) = text("startup").and_then(Startup::parse) {
         settings.startup = value;
     }
+    if let Some(value) = flag("show_whats_new") {
+        settings.show_whats_new = value;
+    }
     if let Some(value) = flag("document_icons") {
         settings.document_icons = value;
     }
@@ -522,6 +528,13 @@ mod tests {
     fn a_missing_file_gives_the_defaults() {
         let dir = tempfile::tempdir().expect("temp dir");
         assert_eq!(read_settings(dir.path()), Settings::default());
+    }
+
+    #[test]
+    fn show_whats_new_defaults_to_on() {
+        assert!(parse_settings("").show_whats_new);
+        assert!(!parse_settings("show_whats_new = false").show_whats_new);
+        assert!(parse_settings("show_whats_new = 1").show_whats_new);
     }
 
     #[test]

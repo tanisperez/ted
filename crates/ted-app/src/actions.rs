@@ -30,6 +30,8 @@ actions!(
         Save,
         /// Opens the Settings modal (`Ctrl+,`).
         OpenSettings,
+        /// Opens the What's new tab.
+        ShowWhatsNew,
         /// Opens the global search, files and actions (`Ctrl+K`).
         OpenSearch,
         /// Opens the keyboard shortcuts cheat sheet (`F1`, `Cmd+Shift+/` on macOS).

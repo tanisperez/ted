@@ -24,5 +24,6 @@ pub mod shortcuts;
 pub mod status;
 pub mod syntax;
 pub mod tabs;
+pub mod whats_new;
 pub mod window;
 pub mod wrap;

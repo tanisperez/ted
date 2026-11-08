@@ -26,6 +26,7 @@ mod status_bar;
 mod tabs;
 mod title_bar;
 mod welcome;
+mod whats_new;
 
 pub use editor::bind_keys;
 pub use explorer::bind_keys as bind_explorer_keys;

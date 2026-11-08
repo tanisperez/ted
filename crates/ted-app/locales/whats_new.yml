@@ -1,0 +1,32 @@
+# The What's new tab.
+_version: 2
+"whats_new.tab":
+  en: "What's new"
+  es: "Novedades"
+"whats_new.title":
+  en: "What's new in ted %{version}"
+  es: "Novedades de ted %{version}"
+"whats_new.subtitle":
+  en: "The release notes of this version. They are in English, like the release on GitHub."
+  es: "Las notas de esta versión. Están en inglés, como la release en GitHub."
+"whats_new.release_page":
+  en: "View on GitHub"
+  es: "Ver en GitHub"
+"whats_new.no_notes":
+  en: "This build has no release notes yet."
+  es: "Esta compilación aún no tiene notas de la versión."
+"whats_new.show":
+  en: "Show what's new"
+  es: "Mostrar novedades"
+"whats_new.show_after_update":
+  en: "Show after an update"
+  es: "Mostrar tras actualizar"
+"settings.startup.whats_new":
+  en: "What's new after an update"
+  es: "Novedades tras actualizar"
+"settings.startup.whats_new_description":
+  en: "Opens the What's new tab once, the first time a new version starts."
+  es: "Abre la pestaña de novedades una vez, la primera vez que arranca una versión nueva."
+"settings.about.whats_new_description":
+  en: "The release notes of this version, in a tab."
+  es: "Las notas de esta versión, en una pestaña."
