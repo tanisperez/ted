@@ -61,8 +61,13 @@ Expo/React Native conventions here.
   `PATH` where the platform allows it. See `docs/releasing.md`.
 - Settings: `settings.toml` under the config dir (`~/.config/ted/settings.toml` on Linux), plain
   text, applied at once, as in the design.
+- Folding (decided on 2026-11-08): blocks come from the indentation, read only around the line,
+  plus heading sections and fenced code in Markdown (`state/fold.rs`), not from tree-sitter. Folds
+  are not saved.
+- What's new (decided on 2026-11-08): as Postino, from `release-notes/X.Y.Z.md`, embedded by
+  `crates/ted-app/build.rs`.
 - Design: the prototype lives in a claude.ai Artifact, https://claude.ai/artifact/SVu8wEYoZsz3RLP9AxPUkr (pages `Ted Design`, `ted búsqueda`,
-  `ted icono app`, `ted document icon`). UI changes are designed there first; read its pages with
+  `ted selector y plegado`, `ted icono app`, `ted document icon`). UI changes are designed there first; read its pages with
   the Artifact tool, never a local copy. There is no local `design_system/` folder any more
   (removed on 2026-11-07).
 
