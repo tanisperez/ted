@@ -195,6 +195,7 @@ impl Builder<'_> {
                     let mut inline = Inline::default();
                     self.inline_event(event, &mut Vec::new(), &mut inline);
                     let end = self.inline_run(&mut inline, range.end);
+                    linkify(&mut inline);
                     blocks.push(Block {
                         kind: BlockKind::Paragraph(inline),
                         lines: self.lines.lines(&(range.start..end)),
@@ -315,6 +316,7 @@ impl Builder<'_> {
             }
             self.inline_event(event, &mut styles, &mut inline);
         }
+        linkify(&mut inline);
         inline
     }
 
@@ -385,6 +387,121 @@ impl Builder<'_> {
             // Inline HTML, math and the rest show nothing.
             _ => {}
         }
+    }
+}
+
+/// Turns the bare URLs of `inline` into links, except inside code, images and links. It works on
+/// the finished text because the parser may cut a URL into several text events (at a `&` or a
+/// `_`, for example).
+fn linkify(inline: &mut Inline) {
+    let urls: Vec<(Range<usize>, String)> = bare_urls(&inline.text)
+        .into_iter()
+        .filter(|(range, _)| {
+            !inline.spans.iter().any(|span| {
+                span.range.start < range.end
+                    && range.start < span.range.end
+                    && (span.style.code || span.style.image || span.style.link.is_some())
+            })
+        })
+        .collect();
+    if urls.is_empty() {
+        return;
+    }
+    // The text is cut at every edge of a span or a URL: each piece has one style.
+    let mut edges: Vec<usize> = inline
+        .spans
+        .iter()
+        .flat_map(|span| [span.range.start, span.range.end])
+        .chain(urls.iter().flat_map(|(range, _)| [range.start, range.end]))
+        .collect();
+    edges.sort_unstable();
+    edges.dedup();
+    let mut spans: Vec<InlineSpan> = Vec::new();
+    for piece in edges.windows(2) {
+        let (start, end) = (piece[0], piece[1]);
+        let mut style = inline
+            .spans
+            .iter()
+            .find(|span| span.range.contains(&start))
+            .map(|span| span.style.clone())
+            .unwrap_or_default();
+        if let Some((_, url)) = urls.iter().find(|(range, _)| range.contains(&start)) {
+            style.link = Some(url.clone());
+        }
+        if style.is_plain() {
+            continue;
+        }
+        match spans.last_mut() {
+            Some(last) if last.range.end == start && last.style == style => last.range.end = end,
+            _ => spans.push(InlineSpan {
+                range: start..end,
+                style,
+            }),
+        }
+    }
+    inline.spans = spans;
+}
+
+/// The bare URLs of `text`, as in GitHub's autolinks: each one's range and where it points. A URL
+/// starts with `http://`, `https://` or `www.`, after anything but a letter or a digit, and ends
+/// at a space or a `<`. Closing punctuation is not part of it.
+fn bare_urls(text: &str) -> Vec<(Range<usize>, String)> {
+    let mut urls = Vec::new();
+    let mut at = 0;
+    while let Some(found) = text[at..].find(['h', 'H', 'w', 'W']) {
+        let start = at + found;
+        let rest = &text[start..];
+        let prefix = ["https://", "http://", "www."].into_iter().find(|prefix| {
+            rest.get(..prefix.len())
+                .is_some_and(|head| head.eq_ignore_ascii_case(prefix))
+        });
+        let boundary = !text[..start]
+            .chars()
+            .next_back()
+            .is_some_and(char::is_alphanumeric);
+        let url = prefix.filter(|_| boundary).and_then(|prefix| {
+            let len = rest
+                .find(|ch: char| ch.is_whitespace() || ch.is_control() || ch == '<')
+                .unwrap_or(rest.len());
+            let url = trim_url_end(&rest[..len]);
+            let host = url.get(prefix.len()..)?;
+            host.starts_with(char::is_alphanumeric)
+                .then_some((prefix, url))
+        });
+        match url {
+            Some((prefix, url)) => {
+                let target = match prefix {
+                    "www." => format!("https://{url}"),
+                    _ => url.to_string(),
+                };
+                urls.push((start..start + url.len(), target));
+                at = start + url.len();
+            }
+            // Past this letter, always one byte long.
+            None => at = start + 1,
+        }
+    }
+    urls
+}
+
+/// `url` without what closes the sentence around it: final punctuation and brackets opened
+/// before the URL. `https://en.wikipedia.org/wiki/Rust_(language)` keeps its parenthesis.
+fn trim_url_end(mut url: &str) -> &str {
+    loop {
+        let Some(last) = url.chars().next_back() else {
+            return url;
+        };
+        let surplus = match last {
+            '?' | '!' | '.' | ',' | ':' | ';' | '*' | '_' | '~' | '\'' | '"' => true,
+            ')' => url.matches(')').count() > url.matches('(').count(),
+            ']' => url.matches(']').count() > url.matches('[').count(),
+            '}' => url.matches('}').count() > url.matches('{').count(),
+            _ => false,
+        };
+        if !surplus {
+            return url;
+        }
+        url = &url[..url.len() - last.len_utf8()];
     }
 }
 
@@ -579,6 +696,114 @@ mod tests {
                 },
             ]
         );
+    }
+
+    /// The links of the first paragraph: each one's text and target.
+    fn links(source: &str) -> Vec<(String, String)> {
+        let document = parse_markdown(source);
+        let Some(BlockKind::Paragraph(inline)) = document.blocks.first().map(|b| &b.kind) else {
+            panic!("no paragraph in {source}");
+        };
+        inline
+            .spans
+            .iter()
+            .filter_map(|span| {
+                let url = span.style.link.clone()?;
+                Some((inline.text[span.range.clone()].to_string(), url))
+            })
+            .collect()
+    }
+
+    fn link(text: &str, url: &str) -> (String, String) {
+        (text.to_string(), url.to_string())
+    }
+
+    #[test]
+    fn bare_urls_become_links() {
+        assert_eq!(
+            links("See https://x.dev/a?b=1&c=2_d and http://y.dev too"),
+            [
+                link("https://x.dev/a?b=1&c=2_d", "https://x.dev/a?b=1&c=2_d"),
+                link("http://y.dev", "http://y.dev"),
+            ]
+        );
+        assert_eq!(
+            links("Go to www.x.dev."),
+            [link("www.x.dev", "https://www.x.dev")]
+        );
+    }
+
+    #[test]
+    fn bare_urls_leave_closing_punctuation_out() {
+        for source in [
+            "(https://x.dev)",
+            "https://x.dev.",
+            "https://x.dev, then",
+            "\"https://x.dev\"",
+            "[https://x.dev]",
+            "https://x.dev?!",
+        ] {
+            assert_eq!(
+                links(source),
+                [link("https://x.dev", "https://x.dev")],
+                "{source}"
+            );
+        }
+        let url = "https://x.dev/Rust_(language)";
+        assert_eq!(links(url), [link(url, url)]);
+    }
+
+    #[test]
+    fn what_is_not_a_bare_url_stays_text() {
+        for source in [
+            "`https://x.dev` is code",
+            "xhttps://x.dev",
+            "https:// nothing",
+            "www. nothing",
+            "where and what",
+        ] {
+            assert_eq!(links(source), [], "{source}");
+        }
+        // A real link keeps its own target.
+        assert_eq!(
+            links("[https://shown.dev](https://real.dev)"),
+            [link("https://shown.dev", "https://real.dev")]
+        );
+        assert_eq!(links("![https://x.dev](a.png)"), []);
+    }
+
+    #[test]
+    fn bare_urls_keep_the_styles_around_them() {
+        assert_eq!(
+            links("**bold https://x.dev bold**"),
+            [link("https://x.dev", "https://x.dev")]
+        );
+        let document = parse_markdown("**a https://x.dev b** ñ https://y.dev");
+        let Some(BlockKind::Paragraph(inline)) = document.blocks.first().map(|b| &b.kind) else {
+            panic!("no paragraph");
+        };
+        let strong = inline.spans.iter().filter(|span| span.style.strong).count();
+        assert_eq!(strong, 3);
+        assert_eq!(
+            inline
+                .spans
+                .iter()
+                .filter(|s| s.style.link.is_some())
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn bare_urls_in_tight_lists_headings_and_tables() {
+        let urls = |source: &str| {
+            format!("{:?}", parse_markdown(source).blocks)
+                .matches("link: Some")
+                .count()
+        };
+        assert_eq!(urls("- https://x.dev\n- other"), 1);
+        assert_eq!(urls("# https://x.dev"), 1);
+        assert_eq!(urls("| a |\n| - |\n| https://x.dev |"), 1);
     }
 
     #[test]

@@ -14,6 +14,7 @@ use std::time::Duration;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::scroll::{Scrollbar, ScrollbarMode};
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -539,8 +540,8 @@ fn render_list_block(
     }
 }
 
-/// Text with its styles: bold, italic, code, struck through, links (clickable) and the text of
-/// images.
+/// Text with its styles: bold, italic, code, struck through, links (clickable, with their target
+/// in a tooltip) and the text of images.
 fn render_inline(
     inline: &Inline,
     weight: FontWeight,
@@ -580,6 +581,7 @@ fn render_inline(
     if links.is_empty() {
         return text.into_any_element();
     }
+    let hints = links.clone();
     let (ranges, urls): (Vec<_>, Vec<_>) = links.into_iter().unzip();
     InteractiveText::new(next_id(item, ids), text)
         .on_click(ranges, move |index, _, cx| {
@@ -591,6 +593,10 @@ fn render_inline(
             {
                 cx.open_url(url);
             }
+        })
+        .tooltip(move |index, window, cx| {
+            let (_, url) = hints.iter().find(|(range, _)| range.contains(&index))?;
+            Some(Tooltip::new(SharedString::from(url.clone())).build(window, cx))
         })
         .into_any_element()
 }
