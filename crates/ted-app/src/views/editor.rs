@@ -1792,7 +1792,7 @@ impl Element for EditorElement {
                     let background = if marker.hitbox.is_hovered(window) {
                         palette.accent_subtle
                     } else {
-                        palette.raised
+                        palette.hover
                     };
                     window.paint_quad(fill(marker.bounds, background).corner_radii(px(4.0)));
                     let origin = marker.bounds.origin + point(px(FOLD_MARKER_PADDING), px(0.0));
