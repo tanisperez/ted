@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::menu::ContextMenuExt as _;
+use gpui_kit::component::scroll::ScrollbarAxis;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -24,6 +25,7 @@ use crate::theme::PaletteExt;
 use crate::theme::metrics::{EXPLORER_HEADER_HEIGHT, EXPLORER_LIST_PADDING};
 use crate::views::git::letter_color;
 use crate::views::location;
+use crate::views::scrollbars::scrollbar_overlay;
 
 actions!(
     explorer,
@@ -320,7 +322,7 @@ impl Render for ExplorerView {
             }),
         )
         .track_scroll(&self.scroll)
-        .flex_1()
+        .size_full()
         .px(px(EXPLORER_LIST_PADDING))
         .pb_2();
 
@@ -361,7 +363,19 @@ impl Render for ExplorerView {
                             .on_click(cx.listener(|view, _, _, cx| view.collapse_all(cx))),
                     ),
             )
-            .child(list)
+            .child(
+                div()
+                    .relative()
+                    .flex_1()
+                    .min_h_0()
+                    .child(list)
+                    .child(scrollbar_overlay(
+                        &self.scroll,
+                        ScrollbarAxis::Vertical,
+                        "explorer-scrollbar",
+                        &palette,
+                    )),
+            )
             // The empty area below the rows: the root folder's menu.
             .context_menu(move |menu, _, _| location::path_items(menu, &root_path, true, None))
     }

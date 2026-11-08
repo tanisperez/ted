@@ -32,6 +32,9 @@ use super::super::root::AppView;
 use super::super::scrollbars::scrollbar_overlay;
 use super::super::settings_git::INSTALL_GIT_URL;
 
+/// The narrowest the Commit button gets beside Commit and push.
+const COMMIT_BUTTON_MIN_WIDTH: f32 = 96.0;
+
 /// What a click on a row's checkbox does.
 #[derive(Clone, Copy)]
 pub(crate) enum IndexAction {
@@ -365,11 +368,13 @@ impl AppView {
                 telaio_app::number::format_integer(stats.deletions)
             )));
         let commit = PrimaryButton::new("git-commit", t!("git.commit.commit"))
+            .icon(Icon::new(IconName::GitCommitHorizontal))
             .full_width()
             .disabled(!enabled)
             .on_click(cx.listener(|view, _, window, cx| view.commit_from_box(false, window, cx)));
         let commit_and_push =
             SecondaryButton::new("git-commit-push", t!("git.commit.commit_and_push"))
+                .icon(Icon::new(IconName::ArrowUp))
                 .disabled(!enabled)
                 .on_click(
                     cx.listener(|view, _, window, cx| view.commit_from_box(true, window, cx)),
@@ -393,10 +398,17 @@ impl AppView {
                         .child(div().flex_1().child(amend_box))
                         .child(summary),
                 )
+                // In a narrow panel Commit and push goes to its own line, so no label is cut.
                 .child(
                     h_flex()
+                        .flex_wrap()
                         .gap(px(6.0))
-                        .child(div().flex_1().min_w_0().child(commit))
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w(px(COMMIT_BUTTON_MIN_WIDTH))
+                                .child(commit),
+                        )
                         .child(div().flex_none().child(commit_and_push)),
                 )
                 .into_any_element(),

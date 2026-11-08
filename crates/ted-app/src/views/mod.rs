@@ -18,7 +18,7 @@ mod logo;
 mod markdown;
 pub(crate) mod markdown_preview;
 mod root;
-mod scrollbars;
+pub(crate) mod scrollbars;
 mod search;
 mod settings;
 mod settings_git;
