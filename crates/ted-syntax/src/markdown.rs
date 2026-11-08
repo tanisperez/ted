@@ -181,7 +181,7 @@ impl Builder<'_> {
         while let Some((event, range)) = self.events.next() {
             match event {
                 Event::End(end) if Some(end) == container => break,
-                Event::Start(tag) => {
+                Event::Start(tag) if !is_inline_tag(&tag) => {
                     if let Some(block) = self.block(tag, range) {
                         blocks.push(block);
                     }
@@ -191,10 +191,11 @@ impl Builder<'_> {
                     lines: self.lines.lines(&range),
                 }),
                 // Text right inside a list item: the items of a tight list.
-                event if is_inline(&event) => {
+                event if is_inline(&event) || matches!(event, Event::Start(_)) => {
                     let mut inline = Inline::default();
-                    self.inline_event(event, &mut Vec::new(), &mut inline);
-                    let end = self.inline_run(&mut inline, range.end);
+                    let mut styles = Vec::new();
+                    self.inline_event(event, &mut styles, &mut inline);
+                    let end = self.inline_run(&mut styles, &mut inline, range.end);
                     linkify(&mut inline);
                     blocks.push(Block {
                         kind: BlockKind::Paragraph(inline),
@@ -322,8 +323,12 @@ impl Builder<'_> {
 
     /// More inline events right after the first one of a tight list item, up to the next block
     /// or the end of the item. Returns the end of the last one.
-    fn inline_run(&mut self, inline: &mut Inline, mut end: usize) -> usize {
-        let mut styles = Vec::new();
+    fn inline_run(
+        &mut self,
+        styles: &mut Vec<InlineStyle>,
+        inline: &mut Inline,
+        mut end: usize,
+    ) -> usize {
         while let Some((event, _)) = self.events.peek() {
             let opens_inline = matches!(event, Event::Start(tag) if is_inline_tag(tag));
             let closes_inline = matches!(event, Event::End(tag) if is_inline_tag_end(tag));
@@ -334,7 +339,7 @@ impl Builder<'_> {
                 break;
             };
             end = range.end;
-            self.inline_event(event, &mut styles, inline);
+            self.inline_event(event, styles, inline);
         }
         end
     }
@@ -804,6 +809,23 @@ mod tests {
         assert_eq!(urls("- https://x.dev\n- other"), 1);
         assert_eq!(urls("# https://x.dev"), 1);
         assert_eq!(urls("| a |\n| - |\n| https://x.dev |"), 1);
+    }
+
+    #[test]
+    fn tight_list_items_can_start_with_a_style() {
+        let document = parse_markdown("- [a](b.md) c\n- **d** e\n- `f`");
+        let Some(BlockKind::List(list)) = document.blocks.first().map(|b| &b.kind) else {
+            panic!("no list");
+        };
+        let texts: Vec<&str> = list
+            .items
+            .iter()
+            .filter_map(|item| match &item.blocks.first()?.kind {
+                BlockKind::Paragraph(inline) => Some(inline.text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(texts, ["a c", "d e", "f"]);
     }
 
     #[test]
