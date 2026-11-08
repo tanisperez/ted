@@ -1,24 +1,29 @@
 //! The title bar: the app icon, "ted" and the switcher with what is open (the folder or the file),
-//! whose menu starts with its path (Copy path, Show in file manager), then lists the recent
-//! folders and files and the two Open actions. With a folder or a file open, the search box of the
+//! whose popover starts with its path (Copy path, Show in file manager), then lists the recent
+//! folders and files, each with an X that takes it off the list, and the two Open actions. With a
+//! folder or a file open, the search box of the
 //! global search sits in the middle of the window. At the right, the settings gear, then the window controls
 //! drawn by gpui-kit's `TitleBar`.
 
+use std::path::Path;
+
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
-use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
+use gpui_kit::component::popover::{Popover, PopoverState};
+use gpui_kit::component::scroll::Scrollbar;
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
-use telaio_ui::components::{menu_shortcut_item, rich_menu_width};
+use telaio_ui::components::SectionLabel;
 
 use crate::actions::{OpenSettings, hints};
 use crate::state::launch::{Target, display_name, shorten_path};
+use crate::state::recents;
 use crate::theme::metrics::{
-    LOGO_SIZE, RADIUS_MD, RICH_MENU_ROW_HEIGHT, RICH_MENU_TEXT_SIZE, SEARCH_TRIGGER_HEIGHT,
-    SEARCH_TRIGGER_WIDTH, SETTINGS_GEAR_SIZE, TITLE_BAR_HEIGHT,
+    LOGO_SIZE, RADIUS_MD, SEARCH_TRIGGER_HEIGHT, SEARCH_TRIGGER_WIDTH, SETTINGS_GEAR_SIZE,
+    TITLE_BAR_HEIGHT,
 };
 use crate::theme::{Palette, PaletteExt};
 
@@ -26,10 +31,18 @@ use super::location;
 use super::logo::logo;
 use super::root::AppView;
 
-/// Width of the switcher's menu.
-const MENU_WIDTH: f32 = 360.0;
-/// Space the switcher's menu leaves between its bottom and the window's, at its tallest.
-const MENU_WINDOW_MARGIN: f32 = 56.0;
+/// Width of the switcher's popover.
+const MENU_WIDTH: f32 = 400.0;
+/// Height the switcher's popover leaves to the rest of the viewport at its tallest: the title bar,
+/// the popover's padding and border, and the shadow margins of a window with client decorations.
+/// With less, gpui moves the popover up over its button to make it fit.
+const MENU_WINDOW_MARGIN: f32 = 104.0;
+/// Height of a recent row: its name over its path.
+const RECENT_ROW_HEIGHT: f32 = 44.0;
+/// Side of the X that takes a row off the recents.
+const FORGET_SIZE: f32 = 28.0;
+/// Height of an action row of the popover.
+const ACTION_ROW_HEIGHT: f32 = 30.0;
 /// Height of the switcher button.
 const SWITCHER_HEIGHT: f32 = 26.0;
 
@@ -80,7 +93,9 @@ impl AppView {
             .into_any_element()
     }
 
-    /// The switcher: an icon and the name of what is open (or "Open recent"), and its menu.
+    /// The switcher: an icon and the name of what is open (or "Open recent"), and its popover.
+    /// The popover is rebuilt from the view's state on every render, so a recent taken off with
+    /// its X disappears while it stays open.
     fn render_switcher(&self, palette: &Palette, cx: &mut Context<Self>) -> impl IntoElement {
         let (icon, label) = match &self.target {
             Some(Target::Folder(path)) => (IconName::Folder, display_name(path)),
@@ -91,25 +106,7 @@ impl AppView {
                 None => (IconName::FolderClock, t!("open.recent").into_owned()),
             },
         };
-        let current = self
-            .target
-            .as_ref()
-            .map(|target| target.path().to_path_buf());
-        // The location block at the top: the folder in folder mode, the file shown otherwise.
-        let location = match &self.target {
-            Some(Target::Folder(root)) => Some((root.clone(), true)),
-            _ => self
-                .documents
-                .active()
-                .and_then(|document| document.path.clone())
-                .map(|path| (path, false)),
-        };
-        let folders = self.recents.folders.clone();
-        let files = self.recents.files.clone();
-        let weak = cx.weak_entity();
-        let home = std::env::home_dir();
-
-        Button::new("switcher")
+        let trigger = Button::new("switcher")
             .ghost()
             .h(px(SWITCHER_HEIGHT))
             .px_2()
@@ -117,137 +114,344 @@ impl AppView {
             .text_color(palette.fg_muted)
             .icon(Icon::new(icon).small())
             .label(label)
-            .dropdown_caret(true)
-            .dropdown_menu(move |menu, window, _| {
-                // It scrolls instead of running past the window, as the design's
-                // `max-height: calc(100vh - 56px)`.
-                let max_height = window.viewport_size().height - px(MENU_WINDOW_MARGIN);
-                let mut menu = rich_menu_width(menu, MENU_WIDTH)
-                    .scrollable(true)
-                    .max_h(max_height);
-                if let Some((path, folder)) = &location {
-                    menu = location::path_items(
-                        menu.item(location_heading(path, *folder)),
-                        path,
-                        *folder,
-                        None,
-                    )
-                    .separator();
-                }
-                for (group, paths) in [(IconName::Folder, &folders), (IconName::FileText, &files)] {
-                    if paths.is_empty() {
-                        continue;
-                    }
-                    for path in paths {
-                        let name = display_name(path);
-                        let detail = shorten_path(path, home.as_deref());
-                        let selected = current.as_deref() == Some(path.as_path());
-                        let target = path.clone();
-                        let weak = weak.clone();
-                        menu = menu.item(recent_item(group, name, detail, selected).on_click(
-                            move |_, window, cx| {
-                                let _ =
-                                    weak.update(cx, |view, cx| view.open_path(&target, window, cx));
-                            },
-                        ));
-                    }
-                    menu = menu.separator();
-                }
-                let open_file = weak.clone();
-                let open_folder = weak.clone();
-                menu.item(menu_shortcut_item(
-                    IconName::File,
-                    t!("welcome.open_file"),
-                    hints::OPEN_FILE,
-                    move |window, cx| {
-                        let _ =
-                            open_file.update(cx, |view, cx| view.prompt_open(false, window, cx));
-                    },
-                ))
-                .item(menu_shortcut_item(
-                    IconName::FolderOpen,
-                    t!("welcome.open_folder"),
-                    hints::OPEN_FOLDER,
-                    move |window, cx| {
-                        let _ =
-                            open_folder.update(cx, |view, cx| view.prompt_open(true, window, cx));
-                    },
-                ))
-            })
+            .dropdown_caret(true);
+        let weak = cx.weak_entity();
+        Popover::new("switcher-popover")
+            .w(px(MENU_WIDTH))
+            .p(px(6.0))
+            .trigger(trigger)
+            .content(move |_, window, cx| render_switcher_menu(weak.clone(), window, cx))
+    }
+
+    /// Takes `path` off the recents, never off the disk.
+    fn forget_recent(&mut self, path: &Path, cx: &mut Context<Self>) {
+        self.recents.remove(path);
+        recents::save(&self.recents);
+        log::debug!("removed an entry from the recents");
+        cx.notify();
     }
 }
 
-/// A recent folder or file in the switcher's menu: its icon, its name, the shortened path at the
-/// right and a check on the one that is open.
-fn recent_item(icon: IconName, name: String, detail: String, selected: bool) -> PopupMenuItem {
-    PopupMenuItem::element(move |_, cx| {
-        let palette = cx.palette();
-        h_flex()
-            .flex_1()
-            .min_w_0()
-            .overflow_hidden()
-            .h(px(RICH_MENU_ROW_HEIGHT))
-            .px(px(4.0))
-            .text_size(px(RICH_MENU_TEXT_SIZE))
-            .gap(px(8.0))
-            .items_center()
-            .child(Icon::new(icon).small().text_color(palette.fg_subtle))
+/// The switcher's popover: where what is open lives, the recent folders and files, and the two
+/// Open actions. It scrolls instead of running past the window, as the design's
+/// `max-height: calc(100vh - 56px)`.
+fn render_switcher_menu(
+    weak: WeakEntity<AppView>,
+    window: &mut Window,
+    cx: &mut Context<PopoverState>,
+) -> AnyElement {
+    let Some(view) = weak.upgrade() else {
+        return div().into_any_element();
+    };
+    let view = view.read(cx);
+    let current = view
+        .target
+        .as_ref()
+        .map(|target| target.path().to_path_buf());
+    // The location block at the top: the folder in folder mode, the file shown otherwise.
+    let location = match &view.target {
+        Some(Target::Folder(root)) => Some((root.clone(), true)),
+        _ => view
+            .documents
+            .active()
+            .and_then(|document| document.path.clone())
+            .map(|path| (path, false)),
+    };
+    let folders = view.recents.folders.clone();
+    let files = view.recents.files.clone();
+    let scroll = view.switcher_scroll.clone();
+    let home = std::env::home_dir();
+    let palette = cx.palette();
+    let mono_font = cx.theme().mono_font_family.clone();
+
+    let mut column = v_flex().text_sm();
+    if let Some((path, folder)) = location {
+        let (copy, reveal) = (path.display().to_string(), path.clone());
+        column = column
+            .child(location_heading(&path, folder, &palette, mono_font.clone()))
             .child(
-                div()
-                    .flex_none()
-                    .max_w(px(140.0))
-                    .truncate()
-                    .child(name.clone()),
+                action_row(
+                    "switcher-copy-path",
+                    IconName::Copy,
+                    t!("open.copy_path"),
+                    hints::COPY_PATH,
+                    &palette,
+                    mono_font.clone(),
+                )
+                .on_click(cx.listener(move |popover, _, window, cx| {
+                    popover.dismiss(window, cx);
+                    location::copy_path(copy.clone(), window, cx);
+                })),
             )
             .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .truncate()
-                    .text_size(px(12.0))
-                    .text_color(palette.fg_subtle)
-                    .child(detail.clone()),
+                action_row(
+                    "switcher-reveal",
+                    IconName::FolderSearch,
+                    t!("open.reveal"),
+                    hints::REVEAL,
+                    &palette,
+                    mono_font.clone(),
+                )
+                .on_click(cx.listener(move |popover, _, window, cx| {
+                    popover.dismiss(window, cx);
+                    location::reveal(&reveal, folder, cx);
+                })),
             )
-            .children(selected.then(|| {
-                Icon::new(IconName::Check)
-                    .small()
-                    .text_color(palette.accent_text)
-            }))
-    })
+            .child(separator(&palette));
+    }
+    for (folder, heading, paths) in [
+        (true, t!("welcome.recent_folders"), &folders),
+        (false, t!("welcome.recent_files"), &files),
+    ] {
+        if paths.is_empty() {
+            continue;
+        }
+        column = column.child(
+            div()
+                .px_2()
+                .pt(px(6.0))
+                .pb(px(4.0))
+                .child(SectionLabel::new(heading)),
+        );
+        for (index, path) in paths.iter().enumerate() {
+            let selected = current.as_deref() == Some(path.as_path());
+            let row = recent_row(
+                (folder, index),
+                path,
+                selected,
+                home.as_deref(),
+                weak.clone(),
+                &palette,
+                mono_font.clone(),
+                cx,
+            );
+            column = column.child(row);
+        }
+        column = column.child(separator(&palette));
+    }
+    let (open_file, open_folder) = (weak.clone(), weak);
+    column = column
+        .child(
+            action_row(
+                "switcher-open-file",
+                IconName::File,
+                t!("welcome.open_file"),
+                hints::OPEN_FILE,
+                &palette,
+                mono_font.clone(),
+            )
+            .on_click(cx.listener(move |popover, _, window, cx| {
+                popover.dismiss(window, cx);
+                let _ = open_file.update(cx, |view, cx| view.prompt_open(false, window, cx));
+            })),
+        )
+        .child(
+            action_row(
+                "switcher-open-folder",
+                IconName::FolderOpen,
+                t!("welcome.open_folder"),
+                hints::OPEN_FOLDER,
+                &palette,
+                mono_font,
+            )
+            .on_click(cx.listener(move |popover, _, window, cx| {
+                popover.dismiss(window, cx);
+                let _ = open_folder.update(cx, |view, cx| view.prompt_open(true, window, cx));
+            })),
+        );
+
+    div()
+        .relative()
+        .child(
+            div()
+                .id("switcher-menu")
+                .max_h(window.viewport_size().height - px(MENU_WINDOW_MARGIN))
+                .overflow_y_scroll()
+                .track_scroll(&scroll)
+                .child(column),
+        )
+        .child(
+            div()
+                .absolute()
+                .inset_0()
+                .child(Scrollbar::vertical(&scroll)),
+        )
+        .into_any_element()
 }
 
-/// The top of the switcher's menu: Folder or File and the full path in mono, truncated.
-fn location_heading(path: &std::path::Path, folder: bool) -> PopupMenuItem {
+/// A recent folder or file: its name over its path (the folder that holds it, for a file). The
+/// open one has a check and says so; any other opens on click and has the X that takes it off the
+/// list.
+#[allow(clippy::too_many_arguments)]
+fn recent_row(
+    (folder, index): (bool, usize),
+    path: &Path,
+    selected: bool,
+    home: Option<&Path>,
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    mono_font: SharedString,
+    cx: &mut Context<PopoverState>,
+) -> impl IntoElement + use<> {
+    let id = if folder { "folder" } else { "file" };
+    let (icon, location) = match folder {
+        true => (IconName::Folder, path),
+        false => (IconName::FileText, path.parent().unwrap_or(path)),
+    };
+    let leading = if selected {
+        Icon::new(IconName::Check)
+            .small()
+            .text_color(palette.accent_text)
+    } else {
+        Icon::new(icon).small().text_color(palette.fg_muted)
+    };
+    let trailing = if selected {
+        div()
+            .flex_none()
+            .px_2()
+            .text_size(px(11.0))
+            .text_color(palette.fg_subtle)
+            .child(t!("open.current"))
+            .into_any_element()
+    } else {
+        let (fg, hover, pressed) = (palette.fg, palette.hover, palette.pressed);
+        let tooltip = SharedString::from(t!("open.remove_recent").into_owned());
+        let (forget_weak, forget_path) = (weak.clone(), path.to_path_buf());
+        div()
+            .id(SharedString::from(format!("forget-{id}-{index}")))
+            .flex_none()
+            .size(px(FORGET_SIZE))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded(px(RADIUS_MD - 2.0))
+            .cursor_pointer()
+            .text_color(palette.fg_subtle)
+            .hover(move |style| style.bg(hover).text_color(fg))
+            .active(move |style| style.bg(pressed).text_color(fg))
+            .child(Icon::new(IconName::X).with_size(px(14.0)))
+            .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx))
+            .on_click(move |_, _, cx| {
+                // The row under the button opens the recent on click: keep it out.
+                cx.stop_propagation();
+                let _ = forget_weak.update(cx, |view, cx| view.forget_recent(&forget_path, cx));
+            })
+            .into_any_element()
+    };
+    let (hover, pressed) = (palette.hover, palette.pressed);
+    let target = path.to_path_buf();
+    h_flex()
+        .id(SharedString::from(format!("recent-{id}-{index}")))
+        .h(px(RECENT_ROW_HEIGHT))
+        .items_center()
+        .gap(px(10.0))
+        .pl_2()
+        .pr_1()
+        .rounded(px(RADIUS_MD - 2.0))
+        .cursor_pointer()
+        .when(selected, |row| row.bg(palette.list_active))
+        .when(!selected, |row| {
+            row.hover(move |style| style.bg(hover))
+                .active(move |style| style.bg(pressed))
+        })
+        .child(leading)
+        .child(
+            v_flex()
+                .flex_1()
+                .min_w_0()
+                .gap(px(2.0))
+                .child(
+                    div()
+                        .truncate()
+                        .text_color(palette.fg)
+                        .child(display_name(path)),
+                )
+                .child(
+                    div()
+                        .truncate()
+                        .font_family(mono_font)
+                        .text_size(px(11.0))
+                        .text_color(palette.fg_subtle)
+                        .child(shorten_path(location, home)),
+                ),
+        )
+        .child(trailing)
+        .on_click(cx.listener(move |popover, _, window, cx| {
+            popover.dismiss(window, cx);
+            if !selected {
+                let _ = weak.update(cx, |view, cx| view.open_path(&target, window, cx));
+            }
+        }))
+}
+
+/// A one-line action of the popover: an icon, its label and its shortcut.
+fn action_row(
+    id: &'static str,
+    icon: IconName,
+    label: impl Into<SharedString>,
+    hint: &'static str,
+    palette: &Palette,
+    mono_font: SharedString,
+) -> Stateful<Div> {
+    let (hover, pressed) = (palette.hover, palette.pressed);
+    h_flex()
+        .id(id)
+        .h(px(ACTION_ROW_HEIGHT))
+        .items_center()
+        .gap(px(10.0))
+        .px_2()
+        .rounded(px(RADIUS_MD - 2.0))
+        .cursor_pointer()
+        .text_color(palette.fg)
+        .hover(move |style| style.bg(hover))
+        .active(move |style| style.bg(pressed))
+        .child(Icon::new(icon).small().text_color(palette.fg_muted))
+        .child(div().flex_1().min_w_0().truncate().child(label.into()))
+        .child(
+            div()
+                .flex_none()
+                .font_family(mono_font)
+                .text_size(px(11.0))
+                .text_color(palette.fg_subtle)
+                .child(hint),
+        )
+}
+
+/// The line between the groups of the popover.
+fn separator(palette: &Palette) -> impl IntoElement + use<> {
+    div().h(px(1.0)).my(px(5.0)).mx(px(2.0)).bg(palette.border)
+}
+
+/// The top of the switcher's popover: Folder or File and the full path in mono, truncated.
+fn location_heading(
+    path: &Path,
+    folder: bool,
+    palette: &Palette,
+    mono_font: SharedString,
+) -> impl IntoElement + use<> {
     let heading = match folder {
         true => t!("open.location_folder"),
         false => t!("open.location_file"),
     };
-    let path = path.display().to_string();
-    PopupMenuItem::element(move |_, cx| {
-        let palette = cx.palette();
-        v_flex()
-            .flex_1()
-            .min_w_0()
-            .px(px(4.0))
-            .py(px(6.0))
-            .gap(px(3.0))
-            .child(
-                div()
-                    .text_size(px(11.0))
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .text_color(palette.fg_subtle)
-                    .child(heading.clone()),
-            )
-            .child(
-                div()
-                    .truncate()
-                    .font_family(cx.theme().mono_font_family.clone())
-                    .text_size(px(11.5))
-                    .text_color(palette.fg_muted)
-                    .child(path.clone()),
-            )
-    })
-    .disabled(true)
+    v_flex()
+        .px_2()
+        .py(px(6.0))
+        .gap(px(3.0))
+        .child(
+            div()
+                .text_size(px(11.0))
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_color(palette.fg_subtle)
+                .child(heading),
+        )
+        .child(
+            div()
+                .truncate()
+                .font_family(mono_font)
+                .text_size(px(11.5))
+                .text_color(palette.fg_muted)
+                .child(path.display().to_string()),
+        )
 }
 
 /// The settings gear: opens the Settings modal, as `Ctrl+,`.

@@ -135,6 +135,8 @@ pub struct AppView {
     pub settings: Settings,
     /// The recently opened folders and files.
     pub(crate) recents: Recents,
+    /// The scroll of the switcher's popover.
+    pub(crate) switcher_scroll: ScrollHandle,
     /// What is open: `None` in the empty state.
     pub(crate) target: Option<Target>,
     content: Content,
@@ -231,6 +233,7 @@ impl AppView {
         let mut view = Self {
             settings,
             recents: recents::load(),
+            switcher_scroll: ScrollHandle::new(),
             target: None,
             content: Content::Welcome,
             documents: Tabs::default(),

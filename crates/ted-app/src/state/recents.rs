@@ -37,7 +37,7 @@ impl Recents {
         list.truncate(MAX_RECENTS);
     }
 
-    /// Forgets `path` (it no longer exists).
+    /// Forgets `path`: it no longer exists, or the user took it off the list.
     pub fn remove(&mut self, path: &Path) {
         self.folders.retain(|existing| existing != path);
         self.files.retain(|existing| existing != path);

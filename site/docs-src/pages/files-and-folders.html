@@ -19,7 +19,7 @@ description: Where ted keeps its settings, its recent files list, its window siz
 <p>When the window closes, ted saves its size and whether it was maximized, and opens with them the next time, always centered. Deleting <code>window.toml</code> goes back to the default size.</p>
 
 <h2>Recent files</h2>
-<p>ted remembers the last ten folders and the last ten files you opened, most recent first. A recent entry that no longer exists leaves the list when you try to open it.</p>
+<p>ted remembers the last ten folders and the last ten files you opened, most recent first. A recent entry that no longer exists leaves the list when you try to open it, and the <strong>X</strong> next to an entry in the title bar's switcher takes it off the list by hand.</p>
 
 <h2 id="network">Network shares and WSL on Windows</h2>
 <p>On Windows, ted opens files and folders on network shares (<code>\\server\share\notes.md</code>, or a mapped drive such as <code>Z:\</code>) and inside WSL 2 distributions (<code>\\wsl.localhost\Ubuntu\home\me\app.log</code> or <code>\\wsl$\Ubuntu\...</code>), from the command line, <strong>Open file…</strong>, <strong>Open folder…</strong> and the recents.</p>
