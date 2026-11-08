@@ -12,7 +12,7 @@ mod history;
 mod search;
 mod words;
 
-pub use buffer::{Buffer, Position, TextChange};
+pub use buffer::{Buffer, LineEdit, Position, TextChange};
 pub use cleanup::cleanup_edits;
 pub use detect::{Indent, LineEnding, SAMPLE_LEN, detect_indent, detect_line_ending};
 pub use history::{Edit, EditKind, History, Selection};

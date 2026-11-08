@@ -315,7 +315,12 @@ fn shortcut_of(action: ActionId, window: &Window) -> Option<SharedString> {
 fn is_editor_action(action: ActionId) -> bool {
     matches!(
         action,
-        ActionId::Find | ActionId::Replace | ActionId::GoToLine | ActionId::ToggleWrap
+        ActionId::Find
+            | ActionId::Replace
+            | ActionId::GoToLine
+            | ActionId::ToggleWrap
+            | ActionId::FoldBlock
+            | ActionId::UnfoldBlock
     )
 }
 
@@ -343,6 +348,8 @@ fn boxed_action(action: ActionId) -> Option<Box<dyn Action>> {
         Replace => Box::new(super::find::OpenReplace),
         GoToLine => Box::new(super::goto::OpenGoto),
         ToggleWrap => Box::new(super::editor::ToggleWrap),
+        FoldBlock => Box::new(super::editor::FoldBlock),
+        UnfoldBlock => Box::new(super::editor::UnfoldBlock),
         ChangeLanguage => Box::new(actions::ChangeLanguage),
         CycleMarkdownView => Box::new(actions::CycleMarkdownView),
         OpenMarkdownPreview => Box::new(actions::OpenMarkdownPreview),
@@ -650,6 +657,8 @@ fn action_icon(action: ActionId) -> Lucide {
         Find | Replace => Lucide::Search,
         GoToLine => Lucide::ArrowDownToLine,
         ToggleWrap => Lucide::TextWrap,
+        FoldBlock => Lucide::ChevronRight,
+        UnfoldBlock => Lucide::ChevronDown,
         ChangeLanguage => Lucide::Code,
         CycleMarkdownView => Lucide::Columns2,
         OpenMarkdownPreview => Lucide::Eye,

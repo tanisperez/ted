@@ -777,6 +777,7 @@ impl AppView {
                 let editor = editor.clone();
                 editor.update(cx, |editor, cx| {
                     editor.state.buffer = buffer;
+                    editor.state.folds = Default::default();
                     editor.state.expected_lines = None;
                     editor.state.read_only = lossy;
                     editor.state.disk_modified = modified;

@@ -31,6 +31,8 @@ pub enum ActionId {
     Replace,
     GoToLine,
     ToggleWrap,
+    FoldBlock,
+    UnfoldBlock,
     ChangeLanguage,
     CycleMarkdownView,
     OpenMarkdownPreview,
@@ -63,7 +65,15 @@ impl ActionId {
             actions.extend([Save, CloseTab]);
         }
         if context.editor {
-            actions.extend([Find, Replace, GoToLine, ToggleWrap, ChangeLanguage]);
+            actions.extend([
+                Find,
+                Replace,
+                GoToLine,
+                ToggleWrap,
+                FoldBlock,
+                UnfoldBlock,
+                ChangeLanguage,
+            ]);
         }
         if context.markdown {
             actions.extend([CycleMarkdownView, OpenMarkdownPreview]);
@@ -104,6 +114,8 @@ impl ActionId {
             Replace => "search.action.replace",
             GoToLine => "search.action.goto",
             ToggleWrap => "search.action.toggle_wrap",
+            FoldBlock => "search.action.fold",
+            UnfoldBlock => "search.action.unfold",
             ChangeLanguage => "search.action.change_language",
             CycleMarkdownView => "search.action.markdown_view",
             OpenMarkdownPreview => "search.action.markdown_preview_tab",
@@ -429,7 +441,7 @@ mod tests {
             editor: true,
             markdown: true,
         });
-        assert_eq!(all.len(), 23);
+        assert_eq!(all.len(), 25);
     }
 
     #[test]

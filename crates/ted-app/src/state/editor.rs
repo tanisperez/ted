@@ -12,6 +12,8 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::SystemTime;
 
+use std::sync::Arc;
+
 use ted_core::{
     Buffer, Edit, EditKind, History, Indent, Position, Rope, SearchQuery, Selection, next_word_end,
     previous_word_start,
@@ -19,6 +21,7 @@ use ted_core::{
 
 use ted_syntax::Comment;
 
+use super::fold::{Block, FoldMap, MAX_ENCLOSING_SCAN, indented_block, starts_indented_block};
 use super::syntax::Syntax;
 use super::wrap::{LineRows, line_rows};
 
@@ -160,6 +163,10 @@ pub struct EditorState {
     /// The cursor was placed before the editor had a size (a match shown in a file that was
     /// still loading): center it once the viewport is known.
     pub center_on_layout: bool,
+    /// The folded blocks (`state::fold`). No cursor is ever on a hidden line.
+    pub folds: FoldMap,
+    /// The Markdown blocks found in the text, by line, and the version of the text they are for.
+    pub markdown_blocks: Option<(u64, Arc<[(usize, usize)]>)>,
 }
 
 /// The rows of the wrapped lines, valid for one buffer version and one width in columns.
@@ -193,6 +200,122 @@ impl EditorState {
         }
     }
 
+    /// How many lines are on screen when scrolling through the document: all but the hidden ones.
+    pub fn display_lines(&self) -> usize {
+        self.buffer.line_count() - self.folds.hidden_lines()
+    }
+
+    /// The last line that is not hidden.
+    fn last_visible_line(&self) -> usize {
+        self.folds.buffer_line(self.display_lines() - 1)
+    }
+
+    /// Follows the edits of the text in the folds and unfolds the ones that hide a cursor. Called
+    /// before anything reads them.
+    pub fn sync_folds(&mut self) {
+        if self.folds.is_empty() {
+            self.buffer.track_line_edits(false);
+            return;
+        }
+        for edit in self.buffer.take_line_edits() {
+            self.folds.apply(edit);
+        }
+        self.folds.reveal(self.cursor.line);
+        for caret in &self.others {
+            self.folds.reveal(caret.cursor.line);
+        }
+    }
+
+    /// Whether a block starts at `line`, cheap enough to ask for every visible line.
+    pub fn starts_block(&self, line: usize) -> bool {
+        self.markdown_block(line).is_some() || starts_indented_block(&self.buffer, line)
+    }
+
+    /// The block that starts at `line`.
+    pub fn block_at(&self, line: usize) -> Option<Block> {
+        match self.markdown_block(line) {
+            Some(last) => Some(Block {
+                last,
+                closes: false,
+            }),
+            None => indented_block(&self.buffer, line),
+        }
+    }
+
+    /// The last line of the Markdown section or code block that starts at `line`.
+    fn markdown_block(&self, line: usize) -> Option<usize> {
+        let (_, blocks) = self.markdown_blocks.as_ref()?;
+        let index = blocks.binary_search_by_key(&line, |block| block.0).ok()?;
+        blocks.get(index).map(|block| block.1)
+    }
+
+    /// Folds the block at `line`, or unfolds it. Returns whether anything changed.
+    pub fn toggle_fold(&mut self, line: usize) -> bool {
+        self.sync_folds();
+        if self.folds.unfold(line) {
+            return true;
+        }
+        let started = std::time::Instant::now();
+        match self.block_at(line) {
+            Some(block) => {
+                log::debug!(
+                    "found a block of {} lines in {:?}",
+                    block.last - line,
+                    started.elapsed()
+                );
+                self.fold(line, block);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// `Ctrl+Shift+[`: folds the block the cursor is in: the one that starts on its line, or the
+    /// nearest one above that reaches it.
+    pub fn fold_at_cursor(&mut self) {
+        self.sync_folds();
+        let line = self.cursor.line;
+        if self.folds.fold_at(line).is_some() {
+            return;
+        }
+        let top = line.saturating_sub(MAX_ENCLOSING_SCAN);
+        let found = (top..=line).rev().find_map(|header| {
+            self.block_at(header)
+                .filter(|block| block.last >= line)
+                .map(|block| (header, block))
+        });
+        if let Some((header, block)) = found {
+            self.fold(header, block);
+        }
+    }
+
+    /// `Ctrl+Shift+]`: unfolds the block whose first line has the cursor.
+    pub fn unfold_at_cursor(&mut self) {
+        self.sync_folds();
+        self.folds.unfold(self.cursor.line);
+        self.clamp_scroll();
+    }
+
+    /// Hides `block`, moving to its first line the cursors it would hide.
+    fn fold(&mut self, header: usize, block: Block) {
+        self.buffer.track_line_edits(true);
+        let hidden = header + 1..block.last + 1;
+        let end = Position::new(header, self.buffer.line_len(header));
+        if hidden.contains(&self.cursor.line) {
+            self.cursor = end;
+            self.anchor = None;
+            self.preferred_column = None;
+        }
+        for caret in &mut self.others {
+            if hidden.contains(&caret.cursor.line) {
+                *caret = Caret::at(end);
+            }
+        }
+        self.normalize();
+        self.folds.fold(header, block);
+        self.clamp_scroll();
+    }
+
     /// The number of lines the gutter makes room for.
     pub fn gutter_lines(&self) -> usize {
         self.buffer
@@ -213,9 +336,11 @@ impl EditorState {
     /// line of a big file on each frame is not an option: right for lines that fit a row and for
     /// long lines, somewhat short when lines take just over a row.
     fn rows_estimate(&self) -> f64 {
-        let lines = self.buffer.line_count() as f64;
+        let lines = self.display_lines() as f64;
         if self.wrap {
-            lines.max(self.buffer.len_chars() as f64 / self.wrap_columns() as f64)
+            // The hidden lines take their share of the characters.
+            let shown = lines / self.buffer.line_count() as f64;
+            lines.max(self.buffer.len_chars() as f64 * shown / self.wrap_columns() as f64)
         } else {
             lines
         }
@@ -364,9 +489,10 @@ impl EditorState {
         if top < 0.0 {
             return (0, top as f32);
         }
-        let last = self.buffer.line_count() - 1;
-        let line = ((top / line_height).floor() as usize).min(last);
-        let fraction = (top / line_height - line as f64).clamp(0.0, 1.0);
+        let last = self.display_lines() - 1;
+        let display = ((top / line_height).floor() as usize).min(last);
+        let fraction = (top / line_height - display as f64).clamp(0.0, 1.0);
+        let line = self.folds.buffer_line(display);
         let rows = self.line_rows(line).count() as f64;
         let into = (fraction * rows * line_height).min((rows - 1.0) * line_height);
         (line, into as f32)
@@ -381,7 +507,7 @@ impl EditorState {
         // As `content_height` computes the scroll past the end, so both modes agree.
         let shown = self.viewport.height - self.viewport.height * SCROLL_PAST_END;
         let mut below = 0.0;
-        let mut line = self.buffer.line_count() - 1;
+        let mut line = self.last_visible_line();
         loop {
             let height = self.line_rows(line).count() as f32 * line_height;
             if below + height >= shown {
@@ -392,7 +518,7 @@ impl EditorState {
             if line == 0 {
                 return (0, (height - (shown - below + height)).max(-PADDING_TOP));
             }
-            line -= 1;
+            line = self.folds.previous_visible(line);
         }
     }
 
@@ -412,11 +538,12 @@ impl EditorState {
     /// the rows of `line`. The inverse of [`Self::wrap_top`].
     fn wrap_offset(&mut self, line: usize, into: f32) -> f64 {
         let line_height = f64::from(self.viewport.line_height).max(1.0);
+        let display = self.folds.display_line(line) as f64;
         if into < 0.0 {
-            f64::from(PADDING_TOP) + f64::from(into) + line as f64 * line_height
+            f64::from(PADDING_TOP) + f64::from(into) + display * line_height
         } else {
             let rows = self.line_rows(line).count() as f64;
-            f64::from(PADDING_TOP) + line as f64 * line_height + f64::from(into) / rows
+            f64::from(PADDING_TOP) + display * line_height + f64::from(into) / rows
         }
     }
 
@@ -429,18 +556,18 @@ impl EditorState {
     /// Sets the top of the viewport `dy` pixels of rows from `into` pixels into the rows of `line`.
     fn wrap_scroll_from(&mut self, mut line: usize, mut into: f32, dy: f32) {
         let line_height = self.viewport.line_height.max(1.0);
-        let last = self.buffer.line_count() - 1;
+        let last = self.last_visible_line();
         into += dy;
         loop {
             if into < 0.0 && line > 0 {
-                line -= 1;
+                line = self.folds.previous_visible(line);
                 into += self.line_rows(line).count() as f32 * line_height;
                 continue;
             }
             let height = self.line_rows(line).count() as f32 * line_height;
             if into >= height && line < last {
                 into -= height;
-                line += 1;
+                line = self.folds.next_visible(line);
                 continue;
             }
             break;
@@ -488,7 +615,7 @@ impl EditorState {
                 y += line_height;
                 row += 1;
             }
-            line += 1;
+            line = self.folds.next_visible(line);
             row = 0;
         }
         (visible, first_y)
@@ -512,7 +639,7 @@ impl EditorState {
         let mut line = top_line;
         while line < cursor.line && y < height * 2.0 {
             y += self.line_rows(line).count() as f32 * line_height;
-            line += 1;
+            line = self.folds.next_visible(line);
         }
         if line < cursor.line {
             // Far below: put its row at the bottom.
@@ -528,7 +655,7 @@ impl EditorState {
     /// While lines wrap: the position `delta` rows below `from` (above when negative), at display
     /// column `x` of that row, and whether it is past the start (or the end) of the document.
     fn move_rows(&mut self, from: Position, delta: isize, x: usize) -> Position {
-        let last = self.buffer.line_count() - 1;
+        let last = self.last_visible_line();
         let mut line = from.line;
         let rows = self.line_rows(line);
         let mut row = self.row_at(line, &rows, from.column) as isize + delta;
@@ -536,7 +663,7 @@ impl EditorState {
             if line == 0 {
                 return Position::new(0, 0);
             }
-            line -= 1;
+            line = self.folds.previous_visible(line);
             row += self.line_rows(line).count() as isize;
         }
         loop {
@@ -548,7 +675,7 @@ impl EditorState {
                 return Position::new(last, self.buffer.line_len(last));
             }
             row -= count;
-            line += 1;
+            line = self.folds.next_visible(line);
         }
         let rows = self.line_rows(line);
         let range = self.row_range(line, &rows, row as usize);
@@ -574,8 +701,9 @@ impl EditorState {
         )
     }
 
-    /// The lines to paint (partly visible ones included) and the y of the first one relative to
-    /// the top of the viewport (zero or negative).
+    /// The lines on screen to paint (partly visible ones included), as places among the lines that
+    /// are not hidden (`FoldMap::buffer_line` gives their lines), and the y of the first one
+    /// relative to the top of the viewport (zero or negative).
     pub fn visible_lines(&self) -> (Range<usize>, f32) {
         let line_height = f64::from(self.viewport.line_height);
         if line_height <= 0.0 {
@@ -583,10 +711,10 @@ impl EditorState {
         }
         let top = self.scroll_y - f64::from(PADDING_TOP);
         let first = (top / line_height).floor().max(0.0) as usize;
-        let first = first.min(self.buffer.line_count());
+        let first = first.min(self.display_lines());
         let offset = (first as f64 * line_height - top) as f32;
         let count = (f64::from(self.viewport.height) / line_height).ceil() as usize + 1;
-        let end = (first + count).min(self.buffer.line_count());
+        let end = (first + count).min(self.display_lines());
         (first..end, offset)
     }
 
@@ -595,14 +723,16 @@ impl EditorState {
     pub fn line_at_y(&self, y: f32) -> usize {
         let line_height = f64::from(self.viewport.line_height).max(1.0);
         let document_y = self.scroll_y + f64::from(y) - f64::from(PADDING_TOP);
-        let line = (document_y / line_height).floor().max(0.0) as usize;
-        line.min(self.buffer.line_count() - 1)
+        let display = (document_y / line_height).floor().max(0.0) as usize;
+        self.folds
+            .buffer_line(display.min(self.display_lines() - 1))
     }
 
     /// Moves every cursor and scrolls the primary one into view. With `select`, the selections
     /// extend to the new places; without it, they collapse (to their start or end for Left and
     /// Right).
     pub fn move_cursor(&mut self, movement: Movement, select: bool) {
+        self.sync_folds();
         self.history.break_group();
         let others = std::mem::take(&mut self.others);
         if !others.is_empty() {
@@ -660,7 +790,8 @@ impl EditorState {
                 byte_for_display_column(&buffer.line(line).to_string(), column),
             )
         };
-        let last_line = buffer.line_count() - 1;
+        let last_line = self.last_visible_line();
+        let folds = &self.folds;
         let (position, keeps_column) = match movement {
             Movement::Left => {
                 if cursor.column > 0 {
@@ -668,7 +799,7 @@ impl EditorState {
                     let column = line.floor_char_boundary(cursor.column - 1);
                     (Position::new(cursor.line, column), false)
                 } else if cursor.line > 0 {
-                    let line = cursor.line - 1;
+                    let line = folds.previous_visible(cursor.line);
                     (Position::new(line, buffer.line_len(line)), false)
                 } else {
                     (cursor, false)
@@ -681,7 +812,7 @@ impl EditorState {
                     let column = line.ceil_char_boundary(cursor.column + 1);
                     (Position::new(cursor.line, column), false)
                 } else if cursor.line < last_line {
-                    (Position::new(cursor.line + 1, 0), false)
+                    (Position::new(folds.next_visible(cursor.line), 0), false)
                 } else {
                     (cursor, false)
                 }
@@ -689,13 +820,22 @@ impl EditorState {
             Movement::WordLeft => (word_left(buffer, cursor), false),
             Movement::WordRight => (word_right(buffer, cursor), false),
             Movement::Up if cursor.line == 0 => (Position::new(0, 0), false),
-            Movement::Up => (vertical(cursor.line - 1, self), true),
+            Movement::Up => (vertical(folds.previous_visible(cursor.line), self), true),
             Movement::Down if cursor.line == last_line => {
                 (Position::new(last_line, buffer.line_len(last_line)), false)
             }
-            Movement::Down => (vertical(cursor.line + 1, self), true),
-            Movement::PageUp => (vertical(cursor.line.saturating_sub(page), self), true),
-            Movement::PageDown => (vertical((cursor.line + page).min(last_line), self), true),
+            Movement::Down => (vertical(folds.next_visible(cursor.line), self), true),
+            Movement::PageUp => {
+                let place = folds.display_line(cursor.line).saturating_sub(page);
+                (vertical(folds.buffer_line(place), self), true)
+            }
+            Movement::PageDown => {
+                let place = folds.display_line(cursor.line) + page;
+                (
+                    vertical(folds.buffer_line(place).min(last_line), self),
+                    true,
+                )
+            }
             // Smart Home: the first character that is not indentation, then the line start.
             Movement::LineStart => {
                 let line = buffer.line(cursor.line).to_string();
@@ -722,6 +862,8 @@ impl EditorState {
         if self.anchor == Some(position) {
             self.anchor = None;
         }
+        // A word movement may land on a hidden line.
+        self.folds.reveal(position.line);
         if !primary {
             return;
         }
@@ -767,10 +909,12 @@ impl EditorState {
     /// Puts the cursor at `position` (a click), clamped to the text, and drops the other cursors.
     /// With `select` (a drag, or a Shift click), the selection extends to it.
     pub fn set_cursor(&mut self, position: Position, select: bool) {
+        self.sync_folds();
         self.history.break_group();
         self.others.clear();
         let offset = self.buffer.position_to_offset(position);
         let position = self.buffer.offset_to_position(offset);
+        self.folds.reveal(position.line);
         if select {
             self.anchor.get_or_insert(self.cursor);
         } else {
@@ -792,6 +936,7 @@ impl EditorState {
     pub fn set_selection(&mut self, selection: Selection) {
         self.others.clear();
         self.set_caret(self.caret_at(selection));
+        self.sync_folds();
     }
 
     /// Every selection as byte offsets, the primary one first, then the others in order.
@@ -813,6 +958,7 @@ impl EditorState {
             .map(|&selection| self.caret_at(selection))
             .collect();
         self.normalize();
+        self.sync_folds();
     }
 
     /// Escape: keeps only the primary cursor. Returns whether there were others.
@@ -1372,9 +1518,10 @@ impl EditorState {
             return;
         }
         let (visible, _) = self.visible_lines();
-        if !visible.contains(&line) || line + 1 >= visible.end {
+        let place = self.folds.display_line(line);
+        if !visible.contains(&place) || place + 1 >= visible.end {
             let line_height = f64::from(self.viewport.line_height);
-            let top = f64::from(PADDING_TOP) + line as f64 * line_height;
+            let top = f64::from(PADDING_TOP) + place as f64 * line_height;
             self.scroll_y = top - f64::from(self.viewport.height) / 2.0;
             self.clamp_scroll();
         }
@@ -1908,6 +2055,7 @@ impl EditorState {
     pub fn reload(&mut self, buffer: Buffer, modified: Option<SystemTime>) {
         let cursor = self.cursor;
         self.buffer = buffer;
+        self.folds = FoldMap::default();
         self.history = History::default();
         self.anchor = None;
         self.disk_modified = modified;
@@ -1937,7 +2085,8 @@ impl EditorState {
         }
         let viewport = self.viewport;
         let line_height = f64::from(viewport.line_height);
-        let top = f64::from(PADDING_TOP) + self.cursor.line as f64 * line_height;
+        let place = self.folds.display_line(self.cursor.line);
+        let top = f64::from(PADDING_TOP) + place as f64 * line_height;
         let bottom = top + line_height;
         if top - f64::from(PADDING_TOP) < self.scroll_y {
             self.scroll_y = top - f64::from(PADDING_TOP);
@@ -2292,6 +2441,93 @@ mod tests {
             char_width: 8.0,
         });
         state
+    }
+
+    /// Twenty blocks of a header, two lines inside and a closer: 80 lines.
+    fn blocks() -> EditorState {
+        let mut text = String::new();
+        for index in 0..20 {
+            text.push_str(&format!("fn f{index}() {{\n    a\n    b\n}}\n"));
+        }
+        editor(text.trim_end())
+    }
+
+    #[test]
+    fn folding_hides_lines_from_scrolling_and_hit_testing() {
+        let mut state = blocks();
+        assert!(state.toggle_fold(0));
+        assert!(state.toggle_fold(4));
+        assert_eq!(state.display_lines(), 74);
+        assert_eq!(state.visible_lines().0, 0..11);
+        // The rows go 0, 4, 8: each header right after the last one.
+        assert_eq!(state.line_at_y(2.0), 0);
+        assert_eq!(state.line_at_y(22.0), 4);
+        assert_eq!(state.line_at_y(42.0), 8);
+        let past_end = f64::from(200.0 * SCROLL_PAST_END);
+        assert_eq!(state.max_scroll_y(), 2.0 + 74.0 * 20.0 + past_end - 200.0);
+        assert!(state.toggle_fold(4));
+        assert_eq!(state.line_at_y(42.0), 5);
+    }
+
+    #[test]
+    fn vertical_moves_skip_a_fold_and_folding_moves_the_cursor_out() {
+        let mut state = blocks();
+        state.set_cursor(Position::new(2, 1), false);
+        state.fold_at_cursor();
+        assert_eq!(state.folds.fold_at(0).map(|fold| fold.last), Some(3));
+        assert_eq!(state.cursor, Position::new(0, 9));
+        state.move_cursor(Movement::Down, false);
+        assert_eq!(state.cursor.line, 4);
+        state.move_cursor(Movement::Up, false);
+        assert_eq!(state.cursor.line, 0);
+        state.move_cursor(Movement::LineEnd, false);
+        state.move_cursor(Movement::Right, false);
+        assert_eq!(state.cursor, Position::new(4, 0));
+        state.move_cursor(Movement::Left, false);
+        assert_eq!(state.cursor, Position::new(0, 9));
+    }
+
+    #[test]
+    fn going_to_a_hidden_line_unfolds_it() {
+        let mut state = blocks();
+        assert!(state.toggle_fold(0));
+        state.go_to(2, 0);
+        assert!(state.folds.is_empty());
+        assert_eq!(state.cursor.line, 2);
+    }
+
+    #[test]
+    fn folds_follow_the_edits_and_undo() {
+        let mut state = blocks();
+        state.toggle_fold(4);
+        state.set_cursor(Position::new(0, 0), false);
+        state.newline();
+        state.sync_folds();
+        assert_eq!(state.folds.fold_at(5).map(|fold| fold.last), Some(8));
+        state.undo();
+        state.sync_folds();
+        assert_eq!(state.folds.fold_at(4).map(|fold| fold.last), Some(7));
+        // Selecting across the fold and deleting takes it away.
+        state.set_cursor(Position::new(3, 0), false);
+        state.set_cursor(Position::new(8, 0), true);
+        state.backspace();
+        state.sync_folds();
+        assert!(state.folds.is_empty());
+    }
+
+    #[test]
+    fn folded_wrapped_text_walks_only_the_visible_lines() {
+        let mut state = blocks();
+        state.set_wrap(true);
+        assert!(state.toggle_fold(0));
+        let (rows, _) = state.visible_rows();
+        let lines: Vec<usize> = rows.iter().take(3).map(|row| row.line).collect();
+        assert_eq!(lines, [0, 4, 5]);
+        state.set_cursor(Position::new(0, 0), false);
+        state.move_cursor(Movement::Down, false);
+        assert_eq!(state.cursor.line, 4);
+        state.scroll_by(0.0, 30.0);
+        assert_eq!(state.visible_rows().0[0].line, 4);
     }
 
     #[test]

@@ -64,6 +64,15 @@ impl TextChange {
     }
 }
 
+/// One change of the text as lines: the line it starts on, the one it ended on before the change
+/// and the one it ends on after it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LineEdit {
+    pub start: usize,
+    pub old_end: usize,
+    pub new_end: usize,
+}
+
 /// Whether a buffer lists its changes.
 #[derive(Debug, Clone, Default)]
 enum Changes {
@@ -102,6 +111,8 @@ pub struct Buffer {
     line_ending: LineEnding,
     indent: Option<Indent>,
     changes: Changes,
+    /// The line edits since the last take, while listing them.
+    line_edits: Option<Vec<LineEdit>>,
 }
 
 impl Default for Buffer {
@@ -126,6 +137,7 @@ impl Buffer {
             rope,
             version: next_version(),
             changes: Changes::Off,
+            line_edits: None,
         }
     }
 
@@ -285,8 +297,45 @@ impl Buffer {
         }
     }
 
+    /// Starts or stops listing line edits, for [`Self::take_line_edits`].
+    pub fn track_line_edits(&mut self, on: bool) {
+        if on != self.line_edits.is_some() {
+            self.line_edits = on.then(Vec::new);
+        }
+    }
+
+    /// The line edits since the last take, in the order they happened.
+    pub fn take_line_edits(&mut self) -> Vec<LineEdit> {
+        match &mut self.line_edits {
+            Some(edits) => std::mem::take(edits),
+            None => Vec::new(),
+        }
+    }
+
     /// Lists the change about to replace `range` with `text`, when tracking.
     fn record(&mut self, range: Range<usize>, text: &str) {
+        if self.line_edits.is_some() {
+            let start = self.byte_to_line(range.start);
+            let old_end = self.byte_to_line(range.end);
+            let added = text.bytes().filter(|&byte| byte == b'\n').count();
+            if let Some(edits) = &mut self.line_edits {
+                // Past the limit, one edit over everything takes the place of the list.
+                if edits.len() >= MAX_CHANGES {
+                    edits.clear();
+                    edits.push(LineEdit {
+                        start: 0,
+                        old_end: usize::MAX,
+                        new_end: usize::MAX,
+                    });
+                } else {
+                    edits.push(LineEdit {
+                        start,
+                        old_end,
+                        new_end: start + added,
+                    });
+                }
+            }
+        }
         let Changes::On(changes) = &self.changes else {
             return;
         };
@@ -431,6 +480,24 @@ mod tests {
         let first = Buffer::from_text("same");
         let second = Buffer::from_text("same");
         assert_ne!(first.version(), second.version());
+    }
+
+    #[test]
+    fn line_edits_are_listed_only_when_tracked() {
+        let mut buffer = Buffer::from_text("one\ntwo\nthree\n");
+        buffer.insert(0, "x");
+        assert_eq!(buffer.take_line_edits(), []);
+        buffer.track_line_edits(true);
+        buffer.insert(0, "a\nb\n");
+        let start = buffer.line_to_byte(3);
+        buffer.remove(start..start + 4);
+        let edit = |start, old_end, new_end| LineEdit {
+            start,
+            old_end,
+            new_end,
+        };
+        assert_eq!(buffer.take_line_edits(), [edit(0, 0, 2), edit(3, 4, 3)]);
+        assert_eq!(buffer.take_line_edits(), []);
     }
 
     #[test]

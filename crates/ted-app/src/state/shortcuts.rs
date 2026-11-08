@@ -14,6 +14,12 @@ const ALT_OR_CTRL: &str = "Ctrl";
 #[cfg(not(target_os = "macos"))]
 const ALT_OR_CTRL: &str = "Alt";
 
+/// The key that goes with the modifier to fold and unfold.
+#[cfg(target_os = "macos")]
+const FOLD_KEY: &str = "Option";
+#[cfg(not(target_os = "macos"))]
+const FOLD_KEY: &str = "Shift";
+
 /// The Alt key as macOS names it.
 #[cfg(target_os = "macos")]
 const ALT: &str = "Option";
@@ -84,6 +90,8 @@ pub fn groups() -> Vec<ShortcutGroup> {
                 row("shortcuts.action.indent_line", &[modifier, "]"]),
                 row("shortcuts.action.outdent_line", &[modifier, "["]),
                 row("shortcuts.action.toggle_wrap", &["Alt", "Z"]),
+                row("shortcuts.action.fold", &[modifier, FOLD_KEY, "["]),
+                row("shortcuts.action.unfold", &[modifier, FOLD_KEY, "]"]),
                 row("shortcuts.action.change_language", &["Alt", "L"]),
                 row("shortcuts.action.markdown_view", &[modifier, "Shift", "V"]),
             ],

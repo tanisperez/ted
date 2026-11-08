@@ -63,6 +63,12 @@ _version: 2
 "search.action.toggle_wrap":
   en: "Wrap long lines on or off"
   es: "Ajustar las líneas largas o no"
+"search.action.fold":
+  en: "Fold the block"
+  es: "Plegar el bloque"
+"search.action.unfold":
+  en: "Unfold the block"
+  es: "Desplegar el bloque"
 "search.action.change_language":
   en: "Change the highlighting language"
   es: "Cambiar el lenguaje del resaltado"

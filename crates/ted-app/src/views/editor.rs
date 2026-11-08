@@ -14,6 +14,7 @@
 //! input methods (with their marked text) work as in any native field; editing keys (Enter, Tab,
 //! Backspace, the clipboard, undo) are actions bound in the `Editor` key context.
 
+use gpui_kit::assets::IconName;
 use gpui_kit::component::ActiveTheme;
 use gpui_kit::component::input::InputState;
 use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu};
@@ -29,6 +30,7 @@ use crate::state::editor::{
     next_occurrence,
 };
 use crate::state::find::Find;
+use crate::state::fold::{MAX_CLOSER_LEN, markdown_blocks};
 use crate::state::git_gutter::MarkKind;
 use crate::state::minimap::{
     EditorMeasures, LINE_HEIGHT as MINIMAP_LINE, MAX_COLUMNS as MINIMAP_COLUMNS, MinimapLayout,
@@ -170,8 +172,20 @@ actions!(
         ScrollLineUp,
         /// Scrolls one line down, the cursor stays.
         ScrollLineDown,
+        /// Folds the block the cursor is in.
+        FoldBlock,
+        /// Unfolds the block on the cursor's line.
+        UnfoldBlock,
     ]
 );
+
+/// Side of the chevron that folds a block, centered in the gutter's right padding.
+const FOLD_ICON_SIZE: f32 = 12.0;
+/// Space between the end of a folded line and its marker, and the marker's side padding.
+const FOLD_MARKER_GAP: f32 = 6.0;
+const FOLD_MARKER_PADDING: f32 = 5.0;
+/// Markdown files bigger than this fold by indentation only, in bytes.
+const MARKDOWN_BLOCKS_MAX: usize = 4 * 1024 * 1024;
 
 /// Width of the minimap column, its left padding, and the narrowest editor that shows it.
 const MINIMAP_WIDTH: f32 = 100.0;
@@ -244,6 +258,8 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-shift-enter", InsertLineAbove, context),
         KeyBinding::new("cmd-]", IndentLine, context),
         KeyBinding::new("cmd-[", OutdentLine, context),
+        KeyBinding::new("cmd-alt-[", FoldBlock, context),
+        KeyBinding::new("cmd-alt-]", UnfoldBlock, context),
         KeyBinding::new("cmd-a", SelectAll, context),
         KeyBinding::new("cmd-c", Copy, context),
         KeyBinding::new("cmd-x", Cut, context),
@@ -278,6 +294,11 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-[", OutdentLine, context),
         KeyBinding::new("ctrl-up", ScrollLineUp, context),
         KeyBinding::new("ctrl-down", ScrollLineDown, context),
+        KeyBinding::new("ctrl-shift-[", FoldBlock, context),
+        KeyBinding::new("ctrl-shift-]", UnfoldBlock, context),
+        // Where the platform reports the shifted character instead.
+        KeyBinding::new("ctrl-{", FoldBlock, context),
+        KeyBinding::new("ctrl-}", UnfoldBlock, context),
         KeyBinding::new("ctrl-a", SelectAll, context),
         // The context menu shows the last binding of each action: the usual ones go last.
         KeyBinding::new("ctrl-insert", Copy, context),
@@ -345,6 +366,10 @@ pub struct EditorView {
     /// The text an input method is composing, as byte offsets: shown in the document, replaced
     /// as the composition changes and committed when it ends.
     marked: Option<Range<usize>>,
+    /// Whether the pointer is over the gutter: the chevrons of the blocks show then.
+    gutter_hovered: bool,
+    /// While the Markdown blocks of the text are being found in the background.
+    finding_blocks: bool,
     /// The text area's top left corner and line height in the last frame, for the input method's
     /// candidate window.
     text_origin: Point<Pixels>,
@@ -422,6 +447,8 @@ impl EditorView {
             column_start: None,
             searching_occurrence: false,
             marked: None,
+            gutter_hovered: false,
+            finding_blocks: false,
             text_origin: Point::default(),
             line_height: px(20.0),
             find: Find::default(),
@@ -452,6 +479,40 @@ impl EditorView {
                     editor.parse(next, cx);
                 }
                 cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// Finds the Markdown blocks of the text in the background when it changed. A change meanwhile
+    /// is picked up by the next frame.
+    fn find_markdown_blocks(&mut self, cx: &mut Context<Self>) {
+        let state = &self.state;
+        let version = state.buffer.version();
+        if self.finding_blocks
+            || state.syntax.language != ted_syntax::Language::Markdown
+            || state.buffer.len() > MARKDOWN_BLOCKS_MAX
+            || state
+                .markdown_blocks
+                .as_ref()
+                .is_some_and(|(found, _)| *found == version)
+        {
+            return;
+        }
+        self.finding_blocks = true;
+        let rope = state.buffer.rope().clone();
+        cx.spawn(async move |this, cx| {
+            let blocks = cx
+                .background_spawn(
+                    async move { markdown_blocks(&ted_core::Buffer::from_rope(rope)) },
+                )
+                .await;
+            let _ = this.update(cx, |editor, cx| {
+                editor.finding_blocks = false;
+                editor.state.markdown_blocks = Some((version, blocks.into()));
+                if editor.gutter_hovered {
+                    cx.notify();
+                }
             });
         })
         .detach();
@@ -737,6 +798,14 @@ impl Render for EditorView {
             .on_action(cx.listener(|this, _: &ToggleComment, _, cx| {
                 this.edit(cx, EditorState::toggle_comment)
             }))
+            .on_action(
+                cx.listener(|this, _: &FoldBlock, _, cx| {
+                    this.edit(cx, EditorState::fold_at_cursor)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &UnfoldBlock, _, cx| {
+                this.edit(cx, EditorState::unfold_at_cursor)
+            }))
             .on_action(cx.listener(|this, _: &ScrollLineUp, _, cx| {
                 this.state.scroll_lines(-1.0);
                 cx.notify();
@@ -973,6 +1042,10 @@ pub struct EditorLayout {
     numbers: Vec<(Pixels, ShapedLine)>,
     /// The git change marks of the visible lines, in the gutter.
     git_marks: Vec<(Bounds<Pixels>, Hsla)>,
+    /// The chevrons of the blocks on screen.
+    fold_chevrons: Vec<FoldChevron>,
+    /// The markers after the folded lines, which unfold them on click.
+    fold_markers: Vec<FoldMarker>,
     painted: Vec<PaintedLine>,
     cursors: Vec<Bounds<Pixels>>,
     current_lines: Vec<Bounds<Pixels>>,
@@ -990,6 +1063,22 @@ pub struct EditorLayout {
     hitbox: Hitbox,
     text_hitbox: Hitbox,
     gutter_hitbox: Hitbox,
+}
+
+/// A chevron in the gutter: down on a block that can fold, right on a folded one.
+struct FoldChevron {
+    line: usize,
+    folded: bool,
+    bounds: Bounds<Pixels>,
+    hitbox: Hitbox,
+}
+
+/// The marker after a folded line: `⋯`, and the closing line when the fold hides one.
+struct FoldMarker {
+    line: usize,
+    bounds: Bounds<Pixels>,
+    text: ShapedLine,
+    hitbox: Hitbox,
 }
 
 /// The minimap of a frame: where it is and its blocks with their colors.
@@ -1112,6 +1201,9 @@ impl Element for EditorElement {
         let colors = SyntaxColors::new(&cx.theme().highlight_theme, &cx.palette());
 
         self.editor.update(cx, |editor, cx| {
+            editor.state.sync_folds();
+            editor.find_markdown_blocks(cx);
+            let gutter_hovered = editor.gutter_hovered;
             let state = &mut editor.state;
             if let Some(request) = state.syntax.sync(&mut state.buffer) {
                 editor.parse(request, cx);
@@ -1146,7 +1238,11 @@ impl Element for EditorElement {
                 (segments, first_y)
             } else {
                 let (lines, first_y) = state.visible_lines();
-                let segments = lines
+                let segments = state
+                    .folds
+                    .runs(lines)
+                    .into_iter()
+                    .flat_map(|(_, lines)| lines)
                     .map(|line| {
                         let slice = state.buffer.line(line);
                         let (range, start_display) = if slice.len() > LONG_LINE {
@@ -1369,6 +1465,61 @@ impl Element for EditorElement {
                 })
                 .collect();
 
+            // The chevrons: always on a folded block, on the others while the pointer is over the
+            // gutter. Finding out reads only the lines right below each visible one.
+            let mut fold_chevrons = Vec::new();
+            let mut fold_markers = Vec::new();
+            let chevron_x = gutter.right() - px(EDITOR_GUTTER_RIGHT + FOLD_ICON_SIZE) / 2.0;
+            let chevron_inset = (line_height - px(FOLD_ICON_SIZE)) / 2.0;
+            for row in painted.iter() {
+                let fold = state.folds.fold_at(row.line);
+                if row.first && (fold.is_some() || (gutter_hovered && state.starts_block(row.line)))
+                {
+                    let bounds = Bounds::new(
+                        point(chevron_x, bounds.top() + row.y + chevron_inset),
+                        size(px(FOLD_ICON_SIZE), px(FOLD_ICON_SIZE)),
+                    );
+                    fold_chevrons.push(FoldChevron {
+                        line: row.line,
+                        folded: fold.is_some(),
+                        bounds,
+                        hitbox: window.insert_hitbox(bounds, HitboxBehavior::Normal),
+                    });
+                }
+                let Some(fold) = fold.filter(|_| row.last) else {
+                    continue;
+                };
+                let closer = fold
+                    .closes
+                    .then(|| state.buffer.line(fold.last).to_string())
+                    .map(|line| line.trim().to_string())
+                    .filter(|closer| closer.len() <= MAX_CLOSER_LEN);
+                let label: SharedString = match closer {
+                    Some(closer) => format!("\u{22ef} {closer}").into(),
+                    None => "\u{22ef}".into(),
+                };
+                let run = TextRun {
+                    len: label.len(),
+                    font: font.clone(),
+                    color: palette.fg_muted,
+                    background_color: None,
+                    underline: None,
+                    strikethrough: None,
+                };
+                let shaped = text_system.shape_line(label, font_size, &[run], None);
+                let left = text_left + row.x + row.shaped.width + px(FOLD_MARKER_GAP);
+                let marker = Bounds::new(
+                    point(left, bounds.top() + row.y),
+                    size(shaped.width + px(FOLD_MARKER_PADDING * 2.0), line_height),
+                );
+                fold_markers.push(FoldMarker {
+                    line: row.line,
+                    bounds: marker,
+                    text: shaped,
+                    hitbox: window.insert_hitbox(marker, HitboxBehavior::Normal),
+                });
+            }
+
             // The git change marks, only while the text is the one they were computed for.
             let mut git_marks = Vec::new();
             if let Some(marks) = &state.git_marks
@@ -1376,6 +1527,9 @@ impl Element for EditorElement {
             {
                 let x = gutter.left() + px(GIT_MARK_LEFT);
                 for mark in marks.on_lines(lines.clone()) {
+                    if state.folds.hides_all(mark.lines.clone()) {
+                        continue;
+                    }
                     let (color, top, height) = match mark.kind {
                         MarkKind::Added | MarkKind::Modified => {
                             let first = mark.lines.start.max(lines.start);
@@ -1416,7 +1570,7 @@ impl Element for EditorElement {
 
             let minimap = minimap_area.map(|area| {
                 let layout = MinimapLayout::new(EditorMeasures {
-                    lines: state.buffer.line_count(),
+                    lines: state.display_lines(),
                     line_height: f64::from(viewport.line_height),
                     scroll_y: state.scroll_y,
                     max_scroll_y: state.max_scroll_y(),
@@ -1424,33 +1578,35 @@ impl Element for EditorElement {
                 });
                 let height = f64::from(area.size.height);
                 let mut blocks = Vec::new();
-                let lines = layout.lines(state.buffer.line_count(), height);
+                let places = layout.lines(state.display_lines(), height);
                 let max_bytes = MINIMAP_COLUMNS * 4;
-                let spans = state.syntax.lines_spans(
-                    &state.buffer,
-                    lines.clone(),
-                    max_bytes,
-                    MINIMAP_MAX_RANGE,
-                );
-                for (line, spans) in lines.zip(spans) {
-                    let top = (line as f64 * MINIMAP_LINE - layout.scroll) as f32;
-                    let slice = state.buffer.line(line);
-                    let end = slice.floor_char_boundary(slice.len().min(max_bytes));
-                    let text = slice.slice(..end).to_string();
-                    for (columns, highlight) in line_blocks(&text, &spans) {
-                        let color = highlight
-                            .and_then(|highlight| colors.get(highlight))
-                            .unwrap_or(text_color);
-                        blocks.push((
-                            Bounds::new(
-                                point(
-                                    area.left() + px(MINIMAP_PADDING + columns.start as f32),
-                                    area.top() + px(top),
+                for (first_place, lines) in state.folds.runs(places) {
+                    let spans = state.syntax.lines_spans(
+                        &state.buffer,
+                        lines.clone(),
+                        max_bytes,
+                        MINIMAP_MAX_RANGE,
+                    );
+                    for (place, (line, spans)) in (first_place..).zip(lines.zip(spans)) {
+                        let top = (place as f64 * MINIMAP_LINE - layout.scroll) as f32;
+                        let slice = state.buffer.line(line);
+                        let end = slice.floor_char_boundary(slice.len().min(max_bytes));
+                        let text = slice.slice(..end).to_string();
+                        for (columns, highlight) in line_blocks(&text, &spans) {
+                            let color = highlight
+                                .and_then(|highlight| colors.get(highlight))
+                                .unwrap_or(text_color);
+                            blocks.push((
+                                Bounds::new(
+                                    point(
+                                        area.left() + px(MINIMAP_PADDING + columns.start as f32),
+                                        area.top() + px(top),
+                                    ),
+                                    size(px(columns.len() as f32), px(MINIMAP_BLOCK_HEIGHT)),
                                 ),
-                                size(px(columns.len() as f32), px(MINIMAP_BLOCK_HEIGHT)),
-                            ),
-                            color.opacity(MINIMAP_ALPHA),
-                        ));
+                                color.opacity(MINIMAP_ALPHA),
+                            ));
+                        }
                     }
                 }
                 let slider = Bounds::new(
@@ -1564,6 +1720,8 @@ impl Element for EditorElement {
                 line_height,
                 numbers,
                 git_marks,
+                fold_chevrons,
+                fold_markers,
                 painted,
                 cursors,
                 current_lines,
@@ -1629,6 +1787,20 @@ impl Element for EditorElement {
                         cx,
                     );
                 }
+                for marker in &layout.fold_markers {
+                    window.set_cursor_style(CursorStyle::PointingHand, &marker.hitbox);
+                    let background = if marker.hitbox.is_hovered(window) {
+                        palette.accent_subtle
+                    } else {
+                        palette.raised
+                    };
+                    window.paint_quad(fill(marker.bounds, background).corner_radii(px(4.0)));
+                    let origin = marker.bounds.origin + point(px(FOLD_MARKER_PADDING), px(0.0));
+                    let _ =
+                        marker
+                            .text
+                            .paint(origin, line_height, TextAlign::Left, None, window, cx);
+                }
                 for cursor in &layout.cursors {
                     window.paint_quad(fill(*cursor, palette.accent));
                 }
@@ -1644,6 +1816,31 @@ impl Element for EditorElement {
             for (y, number) in &layout.numbers {
                 let origin = point(number_right - number.width, bounds.top() + *y);
                 let _ = number.paint(origin, line_height, TextAlign::Left, None, window, cx);
+            }
+            for chevron in &layout.fold_chevrons {
+                window.set_cursor_style(CursorStyle::PointingHand, &chevron.hitbox);
+                let hovered = chevron.hitbox.is_hovered(window);
+                if hovered {
+                    let area = chevron.bounds.dilate(px(1.0));
+                    window.paint_quad(fill(area, palette.hover).corner_radii(px(3.0)));
+                }
+                let icon = match chevron.folded {
+                    true => IconName::ChevronRight,
+                    false => IconName::ChevronDown,
+                };
+                let color = if hovered {
+                    palette.fg
+                } else {
+                    palette.fg_muted
+                };
+                let _ = window.paint_svg(
+                    chevron.bounds,
+                    icon.path(),
+                    None,
+                    TransformationMatrix::unit(),
+                    color,
+                    cx,
+                );
             }
         });
 
@@ -1710,6 +1907,19 @@ impl EditorElement {
         let hscrollbar = layout.hscrollbar;
         let minimap = layout.minimap.as_ref().map(|minimap| minimap.geometry);
         let hitbox = layout.hitbox.clone();
+        let gutter_hitbox = layout.gutter_hitbox.clone();
+        // What a click folds or unfolds: the chevrons and the markers on screen.
+        let fold_targets: Vec<(Bounds<Pixels>, usize)> = layout
+            .fold_chevrons
+            .iter()
+            .map(|chevron| (chevron.bounds.dilate(px(2.0)), chevron.line))
+            .chain(
+                layout
+                    .fold_markers
+                    .iter()
+                    .map(|marker| (marker.bounds, marker.line)),
+            )
+            .collect();
 
         let editor = self.editor.clone();
         let wheel_hitbox = hitbox.clone();
@@ -1846,6 +2056,20 @@ impl EditorElement {
                 cx.stop_propagation();
                 return;
             }
+            if let Some((_, line)) = fold_targets
+                .iter()
+                .find(|(bounds, _)| bounds.contains(&event.position))
+            {
+                editor.update(cx, |editor, cx| {
+                    window.focus(&editor.focus_handle, cx);
+                    editor.marked = None;
+                    if editor.state.toggle_fold(*line) {
+                        cx.notify();
+                    }
+                });
+                cx.stop_propagation();
+                return;
+            }
             editor.update(cx, |editor, cx| {
                 window.focus(&editor.focus_handle, cx);
                 editor.marked = None;
@@ -1872,11 +2096,17 @@ impl EditorElement {
         });
 
         let editor = self.editor.clone();
-        window.on_mouse_event(move |event: &MouseMoveEvent, phase, _window, cx| {
+        window.on_mouse_event(move |event: &MouseMoveEvent, phase, window, cx| {
             if !phase.bubble() {
                 return;
             }
+            let over_gutter = gutter_hitbox.is_hovered(window);
             editor.update(cx, |editor, cx| {
+                // A repaint only when it changes, so moving the pointer costs nothing otherwise.
+                if editor.gutter_hovered != over_gutter {
+                    editor.gutter_hovered = over_gutter;
+                    cx.notify();
+                }
                 if let Some(start) = editor.column_start {
                     if event.pressed_button == Some(MouseButton::Middle) {
                         let end = editor.column_at(event.position - text.origin);
