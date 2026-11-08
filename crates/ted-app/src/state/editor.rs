@@ -110,6 +110,9 @@ impl Caret {
     }
 }
 
+/// The Markdown blocks of a text, as (first line, last line), and the version of the text.
+pub type MarkdownBlocks = (u64, Arc<[(usize, usize)]>);
+
 /// One open document in an editor.
 #[derive(Debug, Clone, Default)]
 pub struct EditorState {
@@ -166,7 +169,7 @@ pub struct EditorState {
     /// The folded blocks (`state::fold`). No cursor is ever on a hidden line.
     pub folds: FoldMap,
     /// The Markdown blocks found in the text, by line, and the version of the text they are for.
-    pub markdown_blocks: Option<(u64, Arc<[(usize, usize)]>)>,
+    pub markdown_blocks: Option<MarkdownBlocks>,
 }
 
 /// The rows of the wrapped lines, valid for one buffer version and one width in columns.
