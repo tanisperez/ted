@@ -6293,12 +6293,12 @@ dependencies = [
  "serde",
  "serde_json",
  "ted-cli",
- "ted-core",
- "ted-editor",
- "ted-syntax",
  "ted-workspace",
  "telaio-app",
+ "telaio-editor",
  "telaio-git",
+ "telaio-syntax",
+ "telaio-text",
  "telaio-ui",
  "tempfile",
  "toml 0.8.23",
@@ -6312,37 +6312,70 @@ dependencies = [
 ]
 
 [[package]]
-name = "ted-core"
+name = "ted-workspace"
 version = "0.7.0-dev"
 dependencies = [
+ "async-channel",
  "fastrand",
+ "globset",
+ "ignore",
+ "log",
+ "notify",
  "pretty_assertions",
- "regex",
- "ropey",
+ "telaio-text",
+ "tempfile",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
-name = "ted-editor"
-version = "0.7.0-dev"
+name = "telaio-app"
+version = "0.23.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.23.0#dbdf422f01bc8c70566e7cb76f214d6a7bb1af0d"
 dependencies = [
- "fastrand",
+ "chrono",
+ "dirs 7.0.0",
+ "gpui-kit",
+ "icu_decimal",
+ "icu_locale_core",
+ "log",
+ "rust-i18n",
+ "serde",
+ "sys-locale",
+ "telaio-ui",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "telaio-editor"
+version = "0.23.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.23.0#dbdf422f01bc8c70566e7cb76f214d6a7bb1af0d"
+dependencies = [
  "gpui-kit",
  "log",
- "pretty_assertions",
  "rust-i18n",
- "ted-core",
- "ted-syntax",
+ "telaio-syntax",
+ "telaio-text",
  "telaio-ui",
 ]
 
 [[package]]
-name = "ted-syntax"
-version = "0.7.0-dev"
+name = "telaio-git"
+version = "0.23.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.23.0#dbdf422f01bc8c70566e7cb76f214d6a7bb1af0d"
 dependencies = [
- "pretty_assertions",
+ "dunce",
+ "log",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "telaio-syntax"
+version = "0.23.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.23.0#dbdf422f01bc8c70566e7cb76f214d6a7bb1af0d"
+dependencies = [
  "pulldown-cmark",
  "ropey",
- "ted-core",
+ "telaio-text",
  "tree-sitter",
  "tree-sitter-bash",
  "tree-sitter-containerfile",
@@ -6364,53 +6397,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "ted-workspace"
-version = "0.7.0-dev"
+name = "telaio-text"
+version = "0.23.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.23.0#dbdf422f01bc8c70566e7cb76f214d6a7bb1af0d"
 dependencies = [
- "async-channel",
- "fastrand",
- "globset",
- "ignore",
- "log",
- "notify",
- "pretty_assertions",
- "ted-core",
- "tempfile",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "telaio-app"
-version = "0.22.4"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.22.4#e74386ad2dc8137fac1d9b61b9f14b113091184d"
-dependencies = [
- "chrono",
- "dirs 7.0.0",
- "gpui-kit",
- "icu_decimal",
- "icu_locale_core",
- "log",
- "rust-i18n",
- "serde",
- "sys-locale",
- "telaio-ui",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "telaio-git"
-version = "0.22.4"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.22.4#e74386ad2dc8137fac1d9b61b9f14b113091184d"
-dependencies = [
- "dunce",
- "log",
- "thiserror 2.0.21",
+ "regex",
+ "ropey",
 ]
 
 [[package]]
 name = "telaio-ui"
-version = "0.22.4"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.22.4#e74386ad2dc8137fac1d9b61b9f14b113091184d"
+version = "0.23.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.23.0#dbdf422f01bc8c70566e7cb76f214d6a7bb1af0d"
 dependencies = [
  "gpui-kit",
  "rust-i18n",

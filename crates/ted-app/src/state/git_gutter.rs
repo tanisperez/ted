@@ -3,7 +3,7 @@
 //! executor after a load, a save or a status change, never per frame; the editor only looks up
 //! the marks of its visible lines.
 
-pub use ted_editor::gutter::{GitMarks, GutterMark, MarkKind};
+pub use telaio_editor::gutter::{GitMarks, GutterMark, MarkKind};
 use telaio_git::FileDiff;
 
 /// The marks of a parsed diff from `HEAD` to the file on disk.

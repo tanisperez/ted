@@ -10,8 +10,8 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 use rust_i18n::t;
-use ted_core::{QueryError, SearchOptions, SearchQuery};
 use ted_workspace::{FileMask, LineMatch};
+use telaio_text::{QueryError, SearchOptions, SearchQuery};
 
 use crate::state::locale::plural;
 

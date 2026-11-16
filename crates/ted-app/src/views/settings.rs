@@ -29,13 +29,13 @@ use crate::state::settings::{
     parse_excludes,
 };
 use crate::theme::{self, Palette, PaletteExt};
-use ted_editor::state::editor::set_indentation;
+use telaio_editor::state::editor::set_indentation;
 
 use super::document_icons;
 use super::logo::logo;
 use super::root::AppView;
 use super::settings_git::git_sections;
-use ted_editor::views::editor::EditorDisplay;
+use telaio_editor::views::editor::EditorDisplay;
 
 /// Side of the app icon in the About header.
 const ABOUT_ICON_SIZE: f32 = 48.0;
@@ -202,6 +202,7 @@ pub fn apply_editor_settings(settings: &Settings, cx: &mut App) {
         current_line: settings.highlight_current_line,
         minimap: settings.minimap,
         word_wrap: settings.word_wrap,
+        ..EditorDisplay::default()
     });
 }
 

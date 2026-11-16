@@ -12,8 +12,8 @@ use gpui_kit::component::notification::Notification;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
-use ted_core::{Buffer, SearchQuery, Selection};
 use ted_workspace::replace_in_file;
+use telaio_text::{Buffer, SearchQuery, Selection};
 
 use crate::state::launch::Target;
 use crate::state::locale::plural;
@@ -159,7 +159,7 @@ impl AppView {
     pub(crate) fn reveal_pending(
         &mut self,
         path: &std::path::Path,
-        editor: &Entity<ted_editor::views::editor::EditorView>,
+        editor: &Entity<telaio_editor::views::editor::EditorView>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -349,7 +349,7 @@ struct ReplaceJob {
 
 /// Selects `offset` in `editor`, scrolled into view, and gives it the focus.
 fn select_range(
-    editor: &Entity<ted_editor::views::editor::EditorView>,
+    editor: &Entity<telaio_editor::views::editor::EditorView>,
     offset: Range<usize>,
     window: &mut Window,
     cx: &mut App,

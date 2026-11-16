@@ -8,7 +8,7 @@ use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Instant, SystemTime};
 
-use ted_core::Rope;
+use telaio_text::Rope;
 
 /// The UTF-8 byte order mark, written first when the file had one.
 const BOM: &[u8] = b"\xEF\xBB\xBF";

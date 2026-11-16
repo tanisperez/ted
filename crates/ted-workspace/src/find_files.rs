@@ -11,7 +11,7 @@ use std::ops::Range;
 use std::path::Path;
 
 use globset::{Glob, GlobSet, GlobSetBuilder};
-use ted_core::{Buffer, SearchQuery};
+use telaio_text::{Buffer, SearchQuery};
 
 use crate::load::{FileContent, load_file};
 use crate::save::{SaveError, save_file};
@@ -218,7 +218,7 @@ pub fn replace_in_file(
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
-    use ted_core::SearchOptions;
+    use telaio_text::SearchOptions;
 
     fn query(text: &str) -> SearchQuery {
         SearchQuery::with_options(

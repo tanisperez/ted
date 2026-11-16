@@ -2,7 +2,7 @@
 //! column with the typography of `docs/design-system.md`. It lives next to the editor (the split
 //! view), in its place (the preview view) or in a tab of its own.
 //!
-//! The text is parsed by `ted_syntax::parse_markdown` on the background executor, a moment after
+//! The text is parsed by `telaio_syntax::parse_markdown` on the background executor, a moment after
 //! the last edit, and a result for an older text is dropped (a generation counter). The blocks
 //! are a gpui `list`, so only those on screen are laid out, whatever the size of the file. In the
 //! split view the preview follows the editor: the block that holds the editor's top line is
@@ -18,15 +18,15 @@ use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
-use ted_syntax::{
+use telaio_syntax::{
     Block, BlockKind, Inline, InlineStyle, MarkdownDocument, parse_markdown, word_count,
 };
 
 use crate::state::markdown_view::MarkdownView;
 use crate::theme::{Palette, PaletteExt};
-use ted_editor::SyntaxColors;
+use telaio_editor::SyntaxColors;
 
-use ted_editor::views::editor::EditorView;
+use telaio_editor::views::editor::EditorView;
 
 /// How long the preview waits after an edit before parsing again.
 const REPARSE_DELAY: Duration = Duration::from_millis(150);
@@ -643,7 +643,7 @@ fn styled_run(
 /// The runs of a code block: its highlighted ranges in their syntax colors, the rest plain.
 fn code_runs(
     text: &str,
-    spans: &[ted_syntax::HighlightSpan],
+    spans: &[telaio_syntax::HighlightSpan],
     style: &PreviewStyle,
 ) -> Vec<TextRun> {
     let plain = style.palette.fg;

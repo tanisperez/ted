@@ -515,7 +515,7 @@ in Geist Mono 11/500 beside the icon (`Alt+2`, `Ctrl+2` on macOS, as Postino).
 ### Markdown preview
 
 `views/markdown.rs` and `views/markdown_preview.rs`, the blocks from
-`ted_syntax::parse_markdown`. A Markdown file gets a floating toolbar (top 10, right 22,
+`telaio_syntax::parse_markdown`. A Markdown file gets a floating toolbar (top 10, right 22,
 `overlay`, a `border` border, radius 8, padding 3, a soft shadow) with three 26x24 buttons, Editor
 only (`Code`), Editor and preview (`Columns2`) and Preview only (`Eye`), the selected one in
 `accent_subtle` with `accent_text`, a 1x16 separator and "Open the preview in a tab"

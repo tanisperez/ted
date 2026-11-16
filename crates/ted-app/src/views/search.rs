@@ -24,7 +24,9 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 use ted_workspace::{ExplorerFilter, FileIndex, index_files};
-use telaio_ui::components::{MODAL_INNER_RADIUS, ModalPlacement, edit_menu, framed_dialog};
+use telaio_ui::components::{
+    MODAL_INNER_RADIUS, ModalPlacement, edit_menu_area, framed_dialog, no_input_menu,
+};
 
 use crate::actions;
 use crate::state::launch::{Target, shorten_path};
@@ -32,7 +34,7 @@ use crate::state::palette::{self, ActionId, MAX_FILE_RESULTS, Match};
 use crate::theme::{Palette, PaletteExt};
 
 use super::root::AppView;
-use ted_editor::views::editor::KEY_CONTEXT as EDITOR_CONTEXT;
+use telaio_editor::views::editor::KEY_CONTEXT as EDITOR_CONTEXT;
 
 /// Width of the palette.
 const PALETTE_WIDTH: f32 = 560.0;
@@ -344,12 +346,12 @@ fn boxed_action(action: ActionId) -> Option<Box<dyn Action>> {
         ZoomReset => Box::new(actions::ZoomReset),
         CopyPath => Box::new(actions::CopyPath),
         Reveal => Box::new(actions::RevealInFileManager),
-        Find => Box::new(ted_editor::views::find::OpenFind),
-        Replace => Box::new(ted_editor::views::find::OpenReplace),
-        GoToLine => Box::new(ted_editor::views::goto::OpenGoto),
-        ToggleWrap => Box::new(ted_editor::views::editor::ToggleWrap),
-        FoldBlock => Box::new(ted_editor::views::editor::FoldBlock),
-        UnfoldBlock => Box::new(ted_editor::views::editor::UnfoldBlock),
+        Find => Box::new(telaio_editor::views::find::OpenFind),
+        Replace => Box::new(telaio_editor::views::find::OpenReplace),
+        GoToLine => Box::new(telaio_editor::views::goto::OpenGoto),
+        ToggleWrap => Box::new(telaio_editor::views::editor::ToggleWrap),
+        FoldBlock => Box::new(telaio_editor::views::editor::FoldBlock),
+        UnfoldBlock => Box::new(telaio_editor::views::editor::UnfoldBlock),
         ChangeLanguage => Box::new(actions::ChangeLanguage),
         CycleMarkdownView => Box::new(actions::CycleMarkdownView),
         OpenMarkdownPreview => Box::new(actions::OpenMarkdownPreview),
@@ -366,7 +368,7 @@ fn render_palette(
     results: &Entity<SearchResults>,
     recent: &[FileRow],
     actions: &[ActionRow],
-    editor: Option<&Entity<ted_editor::views::editor::EditorView>>,
+    editor: Option<&Entity<telaio_editor::views::editor::EditorView>>,
     cx: &mut App,
 ) -> AnyElement {
     let palette = cx.palette();
@@ -517,7 +519,7 @@ enum Confirmed {
 fn run(
     confirmed: Confirmed,
     weak: WeakEntity<AppView>,
-    editor: Option<Entity<ted_editor::views::editor::EditorView>>,
+    editor: Option<Entity<telaio_editor::views::editor::EditorView>>,
     window: &mut Window,
     cx: &mut App,
 ) {
@@ -554,11 +556,12 @@ fn render_search_row(search_input: &Entity<InputState>, cx: &App) -> AnyElement 
         .border_color(cx.theme().border)
         .child(Icon::new(IconName::Search).text_color(cx.theme().muted_foreground))
         .child(
-            Input::new(search_input)
-                .context_menu(edit_menu(search_input, cx))
-                .appearance(false)
-                .flex_1()
-                .p_0(),
+            edit_menu_area(search_input).flex_1().child(
+                Input::new(search_input)
+                    .context_menu(no_input_menu())
+                    .appearance(false)
+                    .p_0(),
+            ),
         )
         .into_any_element()
 }

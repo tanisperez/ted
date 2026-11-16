@@ -14,8 +14,8 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
-use ted_syntax::Language;
-use telaio_ui::components::ScrollbarOverlay;
+use telaio_syntax::Language;
+use telaio_ui::components::{ScrollbarOverlay, edit_menu_area, no_input_menu};
 
 use crate::state::language_picker::{self, Choice, Found, Move};
 use crate::state::status::language_label;
@@ -259,8 +259,9 @@ impl LanguageMenu {
                         .text_color(palette.fg_muted),
                 )
                 .child(
-                    div().flex_1().min_w_0().child(
+                    edit_menu_area(&self.input).flex_1().min_w_0().child(
                         Input::new(&self.input)
+                            .context_menu(no_input_menu())
                             .appearance(false)
                             .p_0()
                             .text_size(px(TEXT_SIZE))

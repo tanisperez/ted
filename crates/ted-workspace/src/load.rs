@@ -5,7 +5,7 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::time::{Instant, SystemTime};
 
-use ted_core::Buffer;
+use telaio_text::Buffer;
 
 /// How much of the start of the file is searched for NUL bytes to call it binary.
 const BINARY_SAMPLE_LEN: usize = 8 * 1024;
@@ -185,7 +185,7 @@ mod tests {
         let (buffer, lossy, _) = text(load_file(&write(&dir, b"a\r\nb\r\n")).unwrap());
         assert!(!lossy);
         assert_eq!(buffer.line(0), "a");
-        assert_eq!(buffer.line_ending(), ted_core::LineEnding::CrLf);
+        assert_eq!(buffer.line_ending(), telaio_text::LineEnding::CrLf);
     }
 
     #[test]

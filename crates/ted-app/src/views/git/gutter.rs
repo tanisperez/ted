@@ -14,7 +14,7 @@ use crate::state::git_gutter::{GitMarks, gutter_marks};
 use crate::state::launch::Target;
 
 use super::super::root::AppView;
-use ted_editor::views::editor::EditorView;
+use telaio_editor::views::editor::EditorView;
 
 impl AppView {
     /// Reads the marks of every open editor again, after a status change.

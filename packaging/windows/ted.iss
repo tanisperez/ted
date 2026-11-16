@@ -131,7 +131,7 @@ Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; Val
 ; sets an extension's default value nor its UserChoice: files keep their app and their icon until
 ; the user picks ted in "Open with" with "Always". Windows then remembers ted.<ext>, and Explorer
 ; shows its icon. packaging/icons/documents/generate.py makes the .ico files; this list is the
-; extensions ted highlights (crates/ted-syntax/src/language.rs) plus YAML, INI and CSV, minus the
+; extensions ted highlights (telaio-syntax/src/language.rs in telaio) plus YAML, INI and CSV, minus the
 ; scripts Windows runs on a double click (.ps1, .bat, .cmd, .py, .pyw, .js): with a second handler
 ; listed, Windows asks which app opens them, and picking ted there stops them from running.
 Root: HKA; Subkey: "Software\Classes\ted.txt"; ValueType: string; ValueName: ""; ValueData: "Text document"; Flags: uninsdeletekey

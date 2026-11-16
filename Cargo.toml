@@ -13,11 +13,11 @@ authors = ["Estanislao Pérez Nartallo <tanisperez@gmail.com>"]
 [workspace.dependencies]
 gpui-kit = "0.9.1"
 # The design system and standard components shared with Postino, Vano and Nastro. Same gpui-kit pin.
-telaio-ui = { git = "https://github.com/tanisperez/telaio", tag = "v0.22.4" }
+telaio-ui = { git = "https://github.com/tanisperez/telaio", tag = "v0.23.0" }
 # The application shell: logging, command line pieces, language, numbers, paths, window bootstrap.
-telaio-app = { git = "https://github.com/tanisperez/telaio", tag = "v0.22.4" }
+telaio-app = { git = "https://github.com/tanisperez/telaio", tag = "v0.23.0" }
 # The git client shared with Postino: drives the `git` executable, no gpui.
-telaio-git = { git = "https://github.com/tanisperez/telaio", tag = "v0.22.4" }
+telaio-git = { git = "https://github.com/tanisperez/telaio", tag = "v0.23.0" }
 serde = "1"
 serde_json = "1"
 thiserror = "2"
@@ -30,46 +30,11 @@ toml = "0.8"
 log = "0.4"
 # Already built by gpui-component (translations); same version.
 rust-i18n = "4.2"
-# The rope of the text buffer, the exact version and features gpui-component already builds.
-ropey = { version = "=2.0.0-beta.1", features = ["metric_chars", "metric_lines_lf", "metric_utf16"] }
-# Syntax highlighting: the exact tree-sitter and grammar versions gpui-component 0.9.1 pins.
-tree-sitter = "=0.26.13"
-tree-sitter-rust = "=0.24.0"
-tree-sitter-javascript = "=0.23.1"
-tree-sitter-json = "=0.24.8"
-tree-sitter-toml-ng = "=0.7.0"
-tree-sitter-md = "=0.5.1"
-tree-sitter-html = "=0.23.2"
-# Not built by gpui-component by default, but the version it pins behind its `tree-sitter-make`
-# feature.
-tree-sitter-make = "=1.1.1"
-# Shell and Python: the versions gpui-component pins behind its `tree-sitter-bash` and
-# `tree-sitter-python` features.
-tree-sitter-bash = "=0.23.3"
-tree-sitter-python = "=0.23.6"
-# PowerShell: not in gpui-component; the maintained grammar of airbus-cert, built for tree-sitter
-# 0.26.
-tree-sitter-powershell = "=0.26.6"
-# CSS: the version gpui-component pins.
-tree-sitter-css = "=0.23.2"
-# YAML: the version gpui-component pins behind its `tree-sitter-yaml` feature.
-tree-sitter-yaml = "=0.7.1"
-# Java and Kotlin: the versions gpui-component pins behind its `tree-sitter-java` and
-# `tree-sitter-kotlin` features.
-tree-sitter-java = "=0.23.5"
-tree-sitter-kotlin-sg = "=0.4.0"
-# TypeScript (and TSX) and SQL: the versions gpui-component pins behind its `tree-sitter-typescript`
-# and `tree-sitter-sql` features.
-tree-sitter-typescript = "=0.23.2"
-tree-sitter-sequel = "=0.3.8"
-# The Markdown parser of the preview. Not gpui-component's `markdown` 1.0.0: it does not scale
-# with the size of the file (see crates/ted-syntax/src/markdown.rs).
-pulldown-cmark = { version = "=0.13.0", default-features = false }
-# Dockerfile: not in gpui-component. tree-sitter-dockerfile needs tree-sitter 0.20, this one only
-# tree-sitter-language.
-tree-sitter-containerfile = "=0.9.2"
-# Find in file: a literal searched with the case rules of Unicode. The version gpui already builds.
-regex = "1.13"
+# The editor (telaio-editor), its buffer (telaio-text) and its highlighting (telaio-syntax, every
+# grammar and the Markdown preview), moved from ted to telaio for Postino #258.
+telaio-editor = { git = "https://github.com/tanisperez/telaio", tag = "v0.23.0" }
+telaio-text = { git = "https://github.com/tanisperez/telaio", tag = "v0.23.0" }
+telaio-syntax = { git = "https://github.com/tanisperez/telaio", tag = "v0.23.0", features = ["all-languages", "markdown-preview"] }
 # Folder explorer: gitignore matching, file watching and the batched channel. The exact versions
 # gpui already builds.
 ignore = "0.4.33"
@@ -98,3 +63,4 @@ strip = true
 # to rebuild and debug.
 [profile.dev.package."*"]
 opt-level = 2
+

@@ -17,7 +17,7 @@ use ted_workspace::{FileContent, load_file, modified_time, save_file};
 use crate::state::launch::{Target, display_name};
 
 use super::choice::{Choice, ChoiceStyle, ask};
-use ted_editor::views::editor::EditorView;
+use telaio_editor::views::editor::EditorView;
 
 use super::root::{AppView, Document};
 
@@ -134,9 +134,9 @@ impl AppView {
 
             let version = snapshot.version();
             let edits = cx
-                .background_spawn(
-                    async move { ted_core::cleanup_edits(&snapshot, trim, final_newline) },
-                )
+                .background_spawn(async move {
+                    telaio_text::cleanup_edits(&snapshot, trim, final_newline)
+                })
                 .await;
             let taken = editor.update(cx, |editor, cx| {
                 let state = &mut editor.state;

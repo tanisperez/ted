@@ -17,9 +17,9 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
-use ted_core::Buffer;
-use ted_syntax::Language;
 use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
+use telaio_syntax::Language;
+use telaio_text::Buffer;
 use telaio_ui::components::{EmptyState, open_shortcuts_dialog};
 
 use crate::actions::{
@@ -36,14 +36,14 @@ use crate::theme::PaletteExt;
 use crate::theme::metrics::{
     EXPLORER_RESIZE_HANDLE, EXPLORER_WIDTH, EXPLORER_WIDTH_MAX, EXPLORER_WIDTH_MIN,
 };
-use ted_editor::state::editor::{EditorState, estimate_lines};
-use ted_editor::state::syntax::Syntax;
+use telaio_editor::state::editor::{EditorState, estimate_lines};
+use telaio_editor::state::syntax::Syntax;
 
 use super::document_icons::DocumentIcons;
 use super::explorer::{ExplorerEvent, ExplorerView};
 use super::find_files::{OpenFindInFiles, OpenReplaceInFiles};
 use super::git::{CheckoutChoice, GitTasks, MenuContext, new_branch_menu};
-use ted_editor::views::editor::EditorView;
+use telaio_editor::views::editor::EditorView;
 
 /// Files at least this big show their first [`HEAD_BYTES`] while the rest loads.
 const HEAD_THRESHOLD: u64 = 8 * 1024 * 1024;
@@ -506,7 +506,7 @@ impl AppView {
         }
         let mut state = EditorState::new(Buffer::default());
         state.syntax = Syntax::new(Language::PlainText, self.settings.highlight_max_bytes());
-        let editor = cx.new(|cx| EditorView::new(state, cx));
+        let editor = cx.new(|cx| new_editor(state, cx));
         let subscription = cx.observe_in(&editor, window, |this, _, window, cx| {
             this.update_title(window, cx)
         });
@@ -804,7 +804,7 @@ impl AppView {
                 state.syntax = Syntax::new(detect_language(&path, &state.buffer), max_bytes);
                 state.path = Some(path);
                 state.disk_modified = modified;
-                let editor = cx.new(|cx| EditorView::new(state, cx));
+                let editor = cx.new(|cx| new_editor(state, cx));
                 document._subscription =
                     Some(cx.observe_in(&editor, window, |this, _, window, cx| {
                         this.update_title(window, cx)
@@ -1064,4 +1064,13 @@ impl Render for AppView {
                 |root, view| root.child(view),
             )
     }
+}
+
+/// An editor for `state`, with ted's right-click menu: the standard entries, then Duplicate line
+/// and Delete line.
+fn new_editor(state: EditorState, cx: &mut Context<EditorView>) -> EditorView {
+    let mut editor = EditorView::new(state, cx);
+    editor
+        .set_context_menu(|entries, edit, _, _| entries.section(telaio_editor::line_entries(edit)));
+    editor
 }

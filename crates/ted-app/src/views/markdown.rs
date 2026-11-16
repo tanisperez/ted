@@ -12,7 +12,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
-use ted_syntax::Language;
+use telaio_syntax::Language;
 
 use crate::actions::CycleMarkdownView;
 use crate::state::markdown_view::MarkdownView;
@@ -20,7 +20,7 @@ use crate::theme::{Palette, PaletteExt};
 
 use super::markdown_preview::MarkdownPreview;
 use super::root::{AppView, DocumentView};
-use ted_editor::views::editor::EditorView;
+use telaio_editor::views::editor::EditorView;
 
 /// Size of a toolbar button.
 const TOOL_WIDTH: f32 = 26.0;

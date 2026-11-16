@@ -3,7 +3,7 @@
 
 use std::ops::Range;
 
-use ted_syntax::Language;
+use telaio_syntax::Language;
 
 /// Rows that Page Up and Page Down move, as in the design.
 pub const PAGE_ROWS: usize = 7;

@@ -92,25 +92,19 @@ A Cargo workspace of small crates, UI kept thin. Planned layout (update this dia
 crate is added). Dependency direction, no cycles, no crate depends on `ted-app`:
 
 ```
-ted-app ──> ted-editor ────> ted-syntax ──> ted-core
-   │              └─────────> ted-core
-   ├──────> ted-workspace ──> ted-core
-   ├──────> ted-syntax
-   ├──────> ted-core
+ted-app ──> ted-workspace ──> telaio-text
+   ├──────> telaio-editor, telaio-syntax, telaio-text (from telaio)
    └──────> ted-cli (standalone, depends on no other ted crate)
 ```
 
-- `ted-core`: the text buffer (rope), positions, selections, edits, undo history, line endings,
-  indentation detection. No IO, no gpui.
-- `ted-syntax`: language detection by extension and name, tree-sitter highlighting computed
-  incrementally and off the main thread, the log highlighter (levels and dates, no tree-sitter),
-  and the blocks of the Markdown preview (`parse_markdown`, with `pulldown-cmark`: the `markdown`
-  crate gpui-kit builds does not scale with the file size). No gpui.
-- `ted-editor`: the editor component (#258 of Postino): `EditorView` and its gpui element, the
-  editor state (cursors, scroll, folding, soft wrap, minimap, the git gutter marks, syntax runs of
-  the visible lines), the find bar and Go to line, with their own strings in `locales/`. It runs
-  no git and reads no settings file: the app hands it the text, the display options and the
-  gutter marks. It moves to telaio next, for Postino.
+- The editor is telaio's (moved there from ted for Postino #258): `telaio-text` (the rope
+  buffer, positions, selections, edits, undo history, line endings, indentation detection),
+  `telaio-syntax` (language detection, tree-sitter highlighting off the main thread, the log
+  highlighter and the Markdown preview blocks, with `all-languages` and `markdown-preview`) and
+  `telaio-editor` (`EditorView` and its element, folding, wrap, minimap, gutter marks, find and
+  Go to line). ted gives every editor its menu (`views/root.rs`, `new_editor`), its display
+  settings (`EditorDisplay` global) and the git gutter marks. A change to the editor goes to
+  telaio, never to a local copy.
 - `ted-workspace`: filesystem access. Reads files in the background, lists one folder at a time
   (lazily, honoring `.gitignore` and the exclude patterns), watches for changes, saves
   atomically (write a temporary file, then rename), and the disk side of Find in files (file

@@ -2,10 +2,10 @@
 //! costs the same for any file size: it runs on every render.
 
 use rust_i18n::t;
-use ted_core::Indent;
-use ted_syntax::Language;
+use telaio_syntax::Language;
+use telaio_text::Indent;
 
-use ted_editor::state::editor::EditorState;
+use telaio_editor::state::editor::EditorState;
 
 /// The status bar items of a document, left to right.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,7 +64,7 @@ pub fn language_label(language: Language) -> String {
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
-    use ted_core::{Buffer, Position};
+    use telaio_text::{Buffer, Position};
 
     #[test]
     fn a_crlf_file_indented_with_two_spaces() {
@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn the_language_is_named() {
         let mut state = EditorState::new(Buffer::from_text("{}"));
-        state.syntax = ted_editor::state::syntax::Syntax::new(Language::Json, 0);
+        state.syntax = telaio_editor::state::syntax::Syntax::new(Language::Json, 0);
         assert_eq!(DocumentStatus::of(&state).language, "JSON");
     }
 

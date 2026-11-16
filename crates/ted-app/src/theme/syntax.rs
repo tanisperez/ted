@@ -1,6 +1,6 @@
 //! The syntax themes, a [`SyntaxTheme`] per mode that [`super::install`] passes to telaio, as the
 //! setting `syntax_theme` chooses ([`themes`]). The editor paints with them through
-//! `ted_editor::SyntaxColors`.
+//! `telaio_editor::SyntaxColors`.
 //!
 //! In ted's own theme every color is one of the palette's (keep them in sync with
 //! `docs/design-system.md`): comments in `fg_muted`, keywords in the PATCH purple, functions in
@@ -14,7 +14,7 @@
 use telaio_ui::{SyntaxStyle, SyntaxTheme};
 
 use crate::state::settings::SyntaxThemeChoice;
-use ted_editor::syntax_colors::CONTROL_CAPTURE;
+use telaio_editor::syntax_colors::CONTROL_CAPTURE;
 
 /// The light and the dark colors of a syntax theme.
 pub fn themes(choice: SyntaxThemeChoice) -> (SyntaxTheme, SyntaxTheme) {
@@ -96,7 +96,7 @@ const VSCODE_DARK: SyntaxTheme = SyntaxTheme(&[
 mod tests {
     use super::{CONTROL_CAPTURE, DARK, LIGHT, SyntaxThemeChoice, themes};
     use pretty_assertions::assert_eq;
-    use ted_editor::syntax_colors::CAPTURES;
+    use telaio_editor::syntax_colors::CAPTURES;
 
     /// The captures a theme may leave out: they show as the keyword or in the text color.
     const OPTIONAL: [&str; 3] = [CONTROL_CAPTURE, "variable", "variable.special"];

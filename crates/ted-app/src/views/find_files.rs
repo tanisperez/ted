@@ -28,8 +28,8 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
-use ted_core::{Buffer, SearchQuery};
 use ted_workspace::{ExplorerFilter, FileMask, find_lines, index_files, read_text};
+use telaio_text::{Buffer, SearchQuery};
 use telaio_ui::components::{CheckState, PrimaryButton, SecondaryButton, TriCheckbox};
 
 use crate::state::find_files::{FileResult, FindFiles, MAX_MATCHES, Scope, row_parts};
@@ -38,8 +38,8 @@ use crate::theme::metrics::{
     FIND_FILES_LIST_HEIGHT, FIND_FILES_ROW_HEIGHT, FIND_FILES_TOP, FIND_FILES_WIDTH, RADIUS_DIALOG,
 };
 
-use ted_editor::views::field::Field;
-use ted_editor::views::find::{ToggleCase, ToggleRegex, ToggleWholeWord, toggle};
+use telaio_editor::views::field::Field;
+use telaio_editor::views::find::{ToggleCase, ToggleRegex, ToggleWholeWord, toggle};
 
 actions!(
     find_files,
@@ -392,7 +392,7 @@ impl FindFilesView {
 
     fn toggle_option(
         &mut self,
-        flip: impl FnOnce(&mut ted_core::SearchOptions),
+        flip: impl FnOnce(&mut telaio_text::SearchOptions),
         cx: &mut Context<Self>,
     ) {
         flip(&mut self.state.options);
