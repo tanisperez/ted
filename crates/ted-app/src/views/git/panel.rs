@@ -102,6 +102,7 @@ impl AppView {
                 confirm_label: t!("git.discard.confirm").into(),
                 destructive: true,
                 show_cancel: true,
+                icon: None,
                 on_confirm: Rc::new(move |window, cx| {
                     let repo = repo.clone();
                     let paths = paths.clone();

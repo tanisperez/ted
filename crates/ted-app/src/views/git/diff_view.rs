@@ -262,6 +262,7 @@ impl DiffView {
                 confirm_label: t!("git.diff.revert").into(),
                 destructive: true,
                 show_cancel: true,
+                icon: None,
                 on_confirm: Rc::new(revert),
             },
         );

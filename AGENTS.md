@@ -32,15 +32,15 @@ Expo/React Native conventions here.
 - Name: **ted** (Tanis editor). Binary `ted`, app id `codes.tanis.ted`, env prefix `TED_`,
   repository `tanisperez/ted`.
 - License: Apache-2.0, as Postino.
-- Stack: Rust (edition 2024, stable toolchain) + `gpui-kit` 0.8.0 + telaio (`telaio-ui`,
-  `telaio-app`) pinned to one tag in `[workspace.dependencies]`, as in Postino (`v0.15.0` today), plus `telaio-git`, the git client shared with Postino.
+- Stack: Rust (edition 2024, stable toolchain) + `gpui-kit` 0.9.1 + telaio (`telaio-ui`,
+  `telaio-app`) pinned to one tag in `[workspace.dependencies]`, as in Postino (`v0.22.4` today), plus `telaio-git`, the git client shared with Postino.
   `cargo tree -d --depth 0 | grep gpui` must stay empty.
 - **Text engine: our own.** No `gpui-kit` `InputState` for the document editor: it costs about
   460 MB of RSS for a 15 MB file in Postino and we do not control its render cost. ted has its
   own rope buffer and its own gpui element that lays out and paints only the visible lines.
   `gpui-kit` inputs are still fine for small fields (find box, settings).
 - Rope: `ropey` at the version `gpui-component` already builds (2.0.0-beta.1 with gpui-kit
-  0.8.0), so it is not compiled twice. Same for `tree-sitter` and its grammars: reuse the
+  0.9.1), so it is not compiled twice. Same for `tree-sitter` and its grammars: reuse the
   versions and, where it fits, the highlighter of `gpui-component` (`src/highlighter/`, Apache
   licensed) before adding new crates.
 - **Zed is an inspiration, not a source.** Its editor crates (`editor`, `text`, `rope`,

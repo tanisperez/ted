@@ -133,10 +133,16 @@ pub fn bind_keys(cx: &mut App) {
     ]);
     // Ctrl+Tab switches tabs on every platform, macOS included, as in Postino. The editor binds
     // only plain `tab` and `shift-tab`, so this still fires while it has the focus.
-    // The commit message's Ctrl+Enter / Cmd+Enter, bound after the input's own `secondary-enter`
-    // (a new line) so it runs first, and only inside the Git panel's message.
+    // The commit message's Ctrl+Enter / Cmd+Enter, bound after the input's own one (a new line)
+    // so it runs first, and only inside the Git panel's message. `KeyBinding::new` no longer
+    // accepts the `secondary-` alias (gpui-pre 0.3.12).
+    let commit_keys = if cfg!(target_os = "macos") {
+        "cmd-enter"
+    } else {
+        "ctrl-enter"
+    };
     cx.bind_keys([KeyBinding::new(
-        "secondary-enter",
+        commit_keys,
         CommitFromMessage,
         Some("CommitMessage > Input"),
     )]);

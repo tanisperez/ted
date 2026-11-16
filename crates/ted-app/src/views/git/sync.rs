@@ -221,6 +221,7 @@ impl AppView {
                 confirm_label: t!("git.push.confirm").into(),
                 destructive: false,
                 show_cancel: true,
+                icon: None,
                 on_confirm: Rc::new(move |window, cx| {
                     let target = target.clone();
                     let _ = weak.update(cx, |view, cx| view.push(target, window, cx));

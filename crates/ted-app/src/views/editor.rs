@@ -1923,7 +1923,7 @@ impl EditorElement {
 
         let editor = self.editor.clone();
         let wheel_hitbox = hitbox.clone();
-        window.on_mouse_event(move |event: &ScrollWheelEvent, phase, window, cx| {
+        window.on_mouse_event(move |event: &ScrollEvent, phase, window, cx| {
             // Not `is_hovered`, which is false from a key press until the mouse moves.
             if !phase.bubble() || !wheel_hitbox.should_handle_scroll(window) {
                 return;

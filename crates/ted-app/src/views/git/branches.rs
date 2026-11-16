@@ -351,6 +351,7 @@ impl AppView {
                 confirm_label: t!("common.delete").into(),
                 destructive: true,
                 show_cancel: true,
+                icon: None,
                 on_confirm: Rc::new(move |window, cx| {
                     let name = name.clone();
                     let _ = weak.update(cx, |view, cx| view.delete_branch(name, false, window, cx));
@@ -414,6 +415,7 @@ impl AppView {
                 confirm_label: t!("git.branch.force_confirm").into(),
                 destructive: true,
                 show_cancel: true,
+                icon: None,
                 on_confirm: Rc::new(move |window, cx| {
                     let name = name.clone();
                     let _ = weak.update(cx, |view, cx| view.delete_branch(name, true, window, cx));
