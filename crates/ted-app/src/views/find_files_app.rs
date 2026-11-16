@@ -159,7 +159,7 @@ impl AppView {
     pub(crate) fn reveal_pending(
         &mut self,
         path: &std::path::Path,
-        editor: &Entity<super::editor::EditorView>,
+        editor: &Entity<ted_editor::views::editor::EditorView>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -349,7 +349,7 @@ struct ReplaceJob {
 
 /// Selects `offset` in `editor`, scrolled into view, and gives it the focus.
 fn select_range(
-    editor: &Entity<super::editor::EditorView>,
+    editor: &Entity<ted_editor::views::editor::EditorView>,
     offset: Range<usize>,
     window: &mut Window,
     cx: &mut App,

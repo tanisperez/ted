@@ -17,7 +17,7 @@ use ted_workspace::{FileContent, load_file, modified_time, save_file};
 use crate::state::launch::{Target, display_name};
 
 use super::choice::{Choice, ChoiceStyle, ask};
-use super::editor::EditorView;
+use ted_editor::views::editor::EditorView;
 
 use super::root::{AppView, Document};
 

@@ -18,9 +18,9 @@ use crate::actions::CycleMarkdownView;
 use crate::state::markdown_view::MarkdownView;
 use crate::theme::{Palette, PaletteExt};
 
-use super::editor::EditorView;
 use super::markdown_preview::MarkdownPreview;
 use super::root::{AppView, DocumentView};
+use ted_editor::views::editor::EditorView;
 
 /// Size of a toolbar button.
 const TOOL_WIDTH: f32 = 26.0;

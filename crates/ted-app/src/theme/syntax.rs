@@ -1,5 +1,6 @@
 //! The syntax themes, a [`SyntaxTheme`] per mode that [`super::install`] passes to telaio, as the
-//! setting `syntax_theme` chooses ([`themes`]).
+//! setting `syntax_theme` chooses ([`themes`]). The editor paints with them through
+//! `ted_editor::SyntaxColors`.
 //!
 //! In ted's own theme every color is one of the palette's (keep them in sync with
 //! `docs/design-system.md`): comments in `fg_muted`, keywords in the PATCH purple, functions in
@@ -9,104 +10,11 @@
 //!
 //! Comments ask for italics, but the bundled Geist Mono has no italic face, so they show
 //! upright until it gets one.
-//!
-//! The editor paints `ted_syntax`'s classes with [`SyntaxColors`]: each class takes the color of
-//! one capture of the theme. The log classes mean a severity, not a kind of code, so they take
-//! the palette's colors in every theme (dates and `DEBUG`/`TRACE` `fg_muted`, `ERROR` `danger`,
-//! `WARN` `warning`, `INFO` `info`).
 
-use gpui_kit::Hsla;
-use gpui_kit::component::highlighter::HighlightTheme;
-use ted_syntax::Highlight;
-use telaio_ui::{Palette, SyntaxStyle, SyntaxTheme};
+use telaio_ui::{SyntaxStyle, SyntaxTheme};
 
 use crate::state::settings::SyntaxThemeChoice;
-
-/// The capture of [`Highlight::Control`]. gpui-kit's themes have a fixed list of names without a
-/// control keyword, and this one is what it uses for `keyword.control.import`.
-const CONTROL_CAPTURE: &str = "preproc";
-
-/// The captures the editor paints with, in the order of [`capture_index`].
-const CAPTURES: [&str; 14] = [
-    "comment",
-    "keyword",
-    "function",
-    "property",
-    "attribute",
-    "string",
-    "number",
-    "type",
-    "boolean",
-    "constant",
-    "tag",
-    CONTROL_CAPTURE,
-    "variable",
-    "variable.special",
-];
-
-/// The position of the keyword capture, the color of [`Highlight::Control`] in a theme without one.
-const KEYWORD: usize = 1;
-
-/// The position in [`CAPTURES`] of the capture that colors `highlight`, `None` for the log classes.
-fn capture_index(highlight: Highlight) -> Option<usize> {
-    Some(match highlight {
-        Highlight::Comment => 0,
-        Highlight::Keyword => KEYWORD,
-        Highlight::Function => 2,
-        Highlight::Property => 3,
-        Highlight::Attribute => 4,
-        Highlight::String => 5,
-        Highlight::Number => 6,
-        Highlight::Type => 7,
-        Highlight::Boolean => 8,
-        Highlight::Constant => 9,
-        Highlight::Tag => 10,
-        Highlight::Control => 11,
-        Highlight::Variable => 12,
-        Highlight::BuiltinVariable => 13,
-        Highlight::LogError
-        | Highlight::LogWarn
-        | Highlight::LogInfo
-        | Highlight::LogDebug
-        | Highlight::LogTrace
-        | Highlight::LogDate => return None,
-    })
-}
-
-/// The color of every class in the current theme, looked up once per frame.
-pub struct SyntaxColors {
-    captures: [Option<Hsla>; CAPTURES.len()],
-    log_error: Hsla,
-    log_warn: Hsla,
-    log_info: Hsla,
-    log_muted: Hsla,
-}
-
-impl SyntaxColors {
-    pub fn new(theme: &HighlightTheme, palette: &Palette) -> Self {
-        Self {
-            captures: CAPTURES.map(|name| theme.style(name).and_then(|style| style.color)),
-            log_error: palette.danger,
-            log_warn: palette.warning,
-            log_info: palette.info,
-            log_muted: palette.fg_muted,
-        }
-    }
-
-    /// The color of `highlight`, `None` for the plain text color.
-    pub fn get(&self, highlight: Highlight) -> Option<Hsla> {
-        match highlight {
-            Highlight::LogError => Some(self.log_error),
-            Highlight::LogWarn => Some(self.log_warn),
-            Highlight::LogInfo => Some(self.log_info),
-            Highlight::LogDebug | Highlight::LogTrace | Highlight::LogDate => Some(self.log_muted),
-            Highlight::Control => {
-                self.captures[capture_index(highlight)?].or(self.captures[KEYWORD])
-            }
-            _ => self.captures[capture_index(highlight)?],
-        }
-    }
-}
+use ted_editor::syntax_colors::CONTROL_CAPTURE;
 
 /// The light and the dark colors of a syntax theme.
 pub fn themes(choice: SyntaxThemeChoice) -> (SyntaxTheme, SyntaxTheme) {
@@ -188,6 +96,7 @@ const VSCODE_DARK: SyntaxTheme = SyntaxTheme(&[
 mod tests {
     use super::{CONTROL_CAPTURE, DARK, LIGHT, SyntaxThemeChoice, themes};
     use pretty_assertions::assert_eq;
+    use ted_editor::syntax_colors::CAPTURES;
 
     /// The captures a theme may leave out: they show as the keyword or in the text color.
     const OPTIONAL: [&str; 3] = [CONTROL_CAPTURE, "variable", "variable.special"];
@@ -196,7 +105,7 @@ mod tests {
     fn every_theme_colors_what_the_editor_paints() {
         for choice in SyntaxThemeChoice::ALL {
             let (light, dark) = themes(choice);
-            for name in super::CAPTURES.iter().filter(|n| !OPTIONAL.contains(n)) {
+            for name in CAPTURES.iter().filter(|n| !OPTIONAL.contains(n)) {
                 assert!(light.get(name).is_some(), "{choice:?} {name}");
                 assert!(dark.get(name).is_some(), "{choice:?} {name}");
             }

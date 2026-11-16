@@ -5,7 +5,7 @@ use rust_i18n::t;
 use ted_core::Indent;
 use ted_syntax::Language;
 
-use super::editor::EditorState;
+use ted_editor::state::editor::EditorState;
 
 /// The status bar items of a document, left to right.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn the_language_is_named() {
         let mut state = EditorState::new(Buffer::from_text("{}"));
-        state.syntax = crate::state::syntax::Syntax::new(Language::Json, 0);
+        state.syntax = ted_editor::state::syntax::Syntax::new(Language::Json, 0);
         assert_eq!(DocumentStatus::of(&state).language, "JSON");
     }
 

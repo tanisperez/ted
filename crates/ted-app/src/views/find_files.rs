@@ -38,8 +38,8 @@ use crate::theme::metrics::{
     FIND_FILES_LIST_HEIGHT, FIND_FILES_ROW_HEIGHT, FIND_FILES_TOP, FIND_FILES_WIDTH, RADIUS_DIALOG,
 };
 
-use super::field::Field;
-use super::find::{ToggleCase, ToggleRegex, ToggleWholeWord, toggle};
+use ted_editor::views::field::Field;
+use ted_editor::views::find::{ToggleCase, ToggleRegex, ToggleWholeWord, toggle};
 
 actions!(
     find_files,

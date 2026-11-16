@@ -22,8 +22,10 @@ A Cargo workspace of small crates. Dependency direction, no cycles, and no crate
 `ted-app`:
 
 ```
-ted-app ──> ted-workspace ──> ted-core
-   ├──────> ted-syntax ─────> ted-core
+ted-app ──> ted-editor ────> ted-syntax ──> ted-core
+   │              └─────────> ted-core
+   ├──────> ted-workspace ──> ted-core
+   ├──────> ted-syntax
    ├──────> ted-core
    └──────> ted-cli (standalone, depends on no other ted crate)
 ```
@@ -32,11 +34,12 @@ ted-app ──> ted-workspace ──> ted-core
 | --- | --- | --- |
 | `ted-core` | The text buffer (rope), positions, selections, edits, undo history, line endings, indentation detection. No IO. | no |
 | `ted-syntax` | Language detection by extension and name, tree-sitter highlighting computed incrementally and off the main thread, the log highlighter (levels and dates, no tree-sitter), and the blocks of the Markdown preview (`parse_markdown`). | no |
+| `ted-editor` | The editor component: `EditorView` and its gpui element, cursors, scroll, folding, soft wrap, minimap, gutter marks, syntax runs of the visible lines, find bar and Go to line. No file IO, settings file or git. | yes |
 | `ted-workspace` | Filesystem access. Reads files in the background, lists one folder at a time (lazily, honoring `.gitignore` and the exclude patterns), watches for changes, saves atomically (write a temporary file, then rename). | no |
 | `ted-cli` | `-h/--help`, `-V/--version` and the path argument, `IDENTITY` (the `telaio_app::AppIdentity` of ted), `build.rs` with the commit, as `postino-cli`. | no |
-| `ted-app` | The gpui binary (`ted`). Views, the editor element and glue. | yes |
+| `ted-app` | The gpui binary (`ted`). Views and glue. | yes |
 
-Everything except `ted-app` is testable with `cargo test`. `ted-app` calls
+Everything except `ted-app` and the views of `ted-editor` is testable with `cargo test`. `ted-app` calls
 `.with_assets(gpui_kit::assets::AllAssets)` and opens the window with `WindowDecorations::Client`
 on Linux, as Postino. Update the diagram above when a crate is added.
 
@@ -50,7 +53,7 @@ The document editor does not use `gpui-kit`'s `InputState`:
   not own, and gpui re-renders the whole window on every `cx.notify()`. We cannot guarantee that
   its per frame work stays independent of the document size.
 
-So ted has its own rope buffer (`ted-core`) and its own gpui element (`ted-app`) that lays out and
+So ted has its own rope buffer (`ted-core`) and its own gpui element (`ted-editor`) that lays out and
 paints only the visible lines. `gpui-kit` inputs remain fine for small fields: the find box, the
 settings controls, the search trigger.
 
@@ -91,7 +94,7 @@ highlighting more than the visible range, searching a whole file.
 - Opening a file: the first chunk is read and shown (first screen in under 100 ms after the window
   has opened), and the rest loads in the background in chunks into the rope, each chunk applied
   under the document's generation.
-- Highlighting (`ted-app/src/state/syntax.rs`): tree-sitter parses off the main thread, one parse
+- Highlighting (`ted-editor/src/state/syntax.rs`): tree-sitter parses off the main thread, one parse
   at a time. The viewport shows plain text until the first tree arrives. After that, every edit
   is recorded by the buffer (`Buffer::track_changes`, `take_changes`) and moves the tree at once
   (`SyntaxTree::edited`), so typing keeps its colors, and an incremental parse from that moved

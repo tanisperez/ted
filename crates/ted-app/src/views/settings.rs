@@ -20,7 +20,6 @@ use telaio_ui::components::{
     switch_halo, text_field,
 };
 
-use crate::state::editor::set_indentation;
 use crate::state::launch::shorten_path;
 use crate::state::locale::{self, LANGUAGES, LanguageChoice};
 use crate::state::markdown_view::MarkdownView;
@@ -30,12 +29,13 @@ use crate::state::settings::{
     parse_excludes,
 };
 use crate::theme::{self, Palette, PaletteExt};
+use ted_editor::state::editor::set_indentation;
 
 use super::document_icons;
-use super::editor::EditorDisplay;
 use super::logo::logo;
 use super::root::AppView;
 use super::settings_git::git_sections;
+use ted_editor::views::editor::EditorDisplay;
 
 /// Side of the app icon in the About header.
 const ABOUT_ICON_SIZE: f32 = 48.0;

@@ -27,23 +27,23 @@ use crate::actions::{
     OpenMarkdownPreview, OpenSearch, OpenSettings, OpenShortcuts, PreviousTab, Save, ShowWhatsNew,
     ToggleExplorer, ToggleGit, ZoomIn, ZoomOut, ZoomReset,
 };
-use crate::state::editor::{EditorState, estimate_lines};
 use crate::state::git::GitState;
 use crate::state::launch::{self, LaunchError, Target};
 use crate::state::recents::{self, Recents};
 use crate::state::settings::{Settings, SettingsCategory, Startup};
-use crate::state::syntax::Syntax;
 use crate::state::tabs::Tabs;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
     EXPLORER_RESIZE_HANDLE, EXPLORER_WIDTH, EXPLORER_WIDTH_MAX, EXPLORER_WIDTH_MIN,
 };
+use ted_editor::state::editor::{EditorState, estimate_lines};
+use ted_editor::state::syntax::Syntax;
 
 use super::document_icons::DocumentIcons;
-use super::editor::EditorView;
 use super::explorer::{ExplorerEvent, ExplorerView};
 use super::find_files::{OpenFindInFiles, OpenReplaceInFiles};
 use super::git::{CheckoutChoice, GitTasks, MenuContext, new_branch_menu};
+use ted_editor::views::editor::EditorView;
 
 /// Files at least this big show their first [`HEAD_BYTES`] while the rest loads.
 const HEAD_THRESHOLD: u64 = 8 * 1024 * 1024;

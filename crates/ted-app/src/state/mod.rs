@@ -2,29 +2,22 @@
 //! or a GPU.
 
 pub mod config;
-pub mod editor;
 pub mod explorer;
-pub mod find;
 pub mod find_files;
-pub mod fold;
 pub mod git;
 pub mod git_branches;
 pub mod git_gutter;
 pub mod git_sync;
-pub mod goto;
 pub mod language_picker;
 pub mod launch;
 pub mod locale;
 pub mod markdown_view;
-pub mod minimap;
 pub mod open_queue;
 pub mod palette;
 pub mod recents;
 pub mod settings;
 pub mod shortcuts;
 pub mod status;
-pub mod syntax;
 pub mod tabs;
 pub mod whats_new;
 pub mod window;
-pub mod wrap;

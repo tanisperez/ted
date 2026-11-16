@@ -6294,6 +6294,7 @@ dependencies = [
  "serde_json",
  "ted-cli",
  "ted-core",
+ "ted-editor",
  "ted-syntax",
  "ted-workspace",
  "telaio-app",
@@ -6318,6 +6319,20 @@ dependencies = [
  "pretty_assertions",
  "regex",
  "ropey",
+]
+
+[[package]]
+name = "ted-editor"
+version = "0.7.0-dev"
+dependencies = [
+ "fastrand",
+ "gpui-kit",
+ "log",
+ "pretty_assertions",
+ "rust-i18n",
+ "ted-core",
+ "ted-syntax",
+ "telaio-ui",
 ]
 
 [[package]]

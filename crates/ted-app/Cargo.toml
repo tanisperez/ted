@@ -23,6 +23,7 @@ telaio-app = { workspace = true }
 telaio-git = { workspace = true }
 ted-cli = { path = "../ted-cli" }
 ted-core = { path = "../ted-core" }
+ted-editor = { path = "../ted-editor" }
 ted-syntax = { path = "../ted-syntax" }
 ted-workspace = { path = "../ted-workspace" }
 

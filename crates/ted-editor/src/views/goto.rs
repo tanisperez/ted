@@ -12,11 +12,9 @@ use gpui_kit::*;
 use rust_i18n::t;
 use telaio_ui::components::{IconButton, PrimaryButton, SecondaryButton};
 
+use crate::metrics::{GOTO_BUTTON_HEIGHT, GOTO_FIELD_HEIGHT, GOTO_TOP, GOTO_WIDTH, RADIUS_DIALOG};
 use crate::state::goto::parse_target;
-use crate::theme::PaletteExt;
-use crate::theme::metrics::{
-    GOTO_BUTTON_HEIGHT, GOTO_FIELD_HEIGHT, GOTO_TOP, GOTO_WIDTH, RADIUS_DIALOG,
-};
+use telaio_ui::PaletteExt;
 
 use super::editor::{EditorView, KEY_CONTEXT};
 use super::field::Field;

@@ -153,8 +153,8 @@ pub struct EditorState {
     pub disk_modified: Option<SystemTime>,
     /// The language and the syntax tree of the text.
     pub syntax: Syntax,
-    /// The git change marks of the gutter, for the file as saved (`state::git_gutter`).
-    pub git_marks: Option<super::git_gutter::GitMarks>,
+    /// The git change marks of the gutter, for the file as saved (`state::gutter`).
+    pub git_marks: Option<super::gutter::GitMarks>,
     /// Whether long lines wrap into rows (soft wrap), as the editor last decided from the
     /// settings and [`Self::wrap_override`]. While it does, `scroll_y` still counts one line
     /// height per line, whatever its rows: the scrollbar and the minimap stay cheap.

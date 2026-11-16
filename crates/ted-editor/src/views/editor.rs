@@ -25,24 +25,24 @@ use std::ops::Range;
 
 use ted_core::{EditKind, Position, Selection};
 
+use crate::metrics::{
+    EDITOR_GUTTER_PADDING, EDITOR_GUTTER_RIGHT, EDITOR_SCROLLBAR_WIDTH, EDITOR_TEXT_PADDING,
+};
 use crate::state::editor::{
     EditorState, Movement, PADDING_TOP, Viewport, column_for_expanded, expand_tabs, expanded_index,
     next_occurrence,
 };
 use crate::state::find::Find;
 use crate::state::fold::{MAX_CLOSER_LEN, markdown_blocks};
-use crate::state::git_gutter::MarkKind;
+use crate::state::gutter::MarkKind;
 use crate::state::minimap::{
     EditorMeasures, LINE_HEIGHT as MINIMAP_LINE, MAX_COLUMNS as MINIMAP_COLUMNS, MinimapLayout,
     line_blocks,
 };
 use crate::state::syntax::{ParseRequest, line_runs};
 use crate::state::wrap::wraps_by_default;
-use crate::theme::PaletteExt;
-use crate::theme::metrics::{
-    EDITOR_GUTTER_PADDING, EDITOR_GUTTER_RIGHT, EDITOR_SCROLLBAR_WIDTH, EDITOR_TEXT_PADDING,
-};
-use crate::theme::syntax::SyntaxColors;
+use crate::syntax_colors::SyntaxColors;
+use telaio_ui::PaletteExt;
 
 /// Lines longer than this, in bytes, are shaped only around the visible columns.
 const LONG_LINE: usize = 2_000;
@@ -203,7 +203,7 @@ const MATCH_ALPHA: f32 = 0.22;
 const CURRENT_MATCH_ALPHA: f32 = 0.5;
 
 /// The key context of the editor, for its bindings.
-pub(crate) const KEY_CONTEXT: &str = "Editor";
+pub const KEY_CONTEXT: &str = "Editor";
 
 /// Registers the editor's key bindings.
 pub fn bind_keys(cx: &mut App) {

@@ -23,10 +23,10 @@ use ted_syntax::{
 };
 
 use crate::state::markdown_view::MarkdownView;
-use crate::theme::syntax::SyntaxColors;
 use crate::theme::{Palette, PaletteExt};
+use ted_editor::SyntaxColors;
 
-use super::editor::EditorView;
+use ted_editor::views::editor::EditorView;
 
 /// How long the preview waits after an edit before parsing again.
 const REPARSE_DELAY: Duration = Duration::from_millis(150);

@@ -21,11 +21,11 @@ use rust_i18n::t;
 use ted_core::Selection;
 use telaio_ui::components::{IconButton, SecondaryButton};
 
-use crate::state::find::STEP;
-use crate::theme::PaletteExt;
-use crate::theme::metrics::{
+use crate::metrics::{
     FIND_BAR_BUTTON, FIND_BAR_FIELD_HEIGHT, FIND_BAR_FIELD_WIDTH, FIND_COUNT_WIDTH,
 };
+use crate::state::find::STEP;
+use telaio_ui::PaletteExt;
 
 use super::editor::{EditorView, KEY_CONTEXT};
 use super::field::Field;
@@ -84,7 +84,7 @@ pub fn bind_keys(cx: &mut App) {
 }
 
 /// One of the toggles of the bar, as the design draws them: 24 x 22, `accent_subtle` when on.
-pub(crate) fn toggle(
+pub fn toggle(
     id: &'static str,
     icon: IconName,
     tooltip: SharedString,

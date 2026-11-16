@@ -31,8 +31,8 @@ use crate::state::launch::{Target, shorten_path};
 use crate::state::palette::{self, ActionId, MAX_FILE_RESULTS, Match};
 use crate::theme::{Palette, PaletteExt};
 
-use super::editor::KEY_CONTEXT as EDITOR_CONTEXT;
 use super::root::AppView;
+use ted_editor::views::editor::KEY_CONTEXT as EDITOR_CONTEXT;
 
 /// Width of the palette.
 const PALETTE_WIDTH: f32 = 560.0;
@@ -344,12 +344,12 @@ fn boxed_action(action: ActionId) -> Option<Box<dyn Action>> {
         ZoomReset => Box::new(actions::ZoomReset),
         CopyPath => Box::new(actions::CopyPath),
         Reveal => Box::new(actions::RevealInFileManager),
-        Find => Box::new(super::find::OpenFind),
-        Replace => Box::new(super::find::OpenReplace),
-        GoToLine => Box::new(super::goto::OpenGoto),
-        ToggleWrap => Box::new(super::editor::ToggleWrap),
-        FoldBlock => Box::new(super::editor::FoldBlock),
-        UnfoldBlock => Box::new(super::editor::UnfoldBlock),
+        Find => Box::new(ted_editor::views::find::OpenFind),
+        Replace => Box::new(ted_editor::views::find::OpenReplace),
+        GoToLine => Box::new(ted_editor::views::goto::OpenGoto),
+        ToggleWrap => Box::new(ted_editor::views::editor::ToggleWrap),
+        FoldBlock => Box::new(ted_editor::views::editor::FoldBlock),
+        UnfoldBlock => Box::new(ted_editor::views::editor::UnfoldBlock),
         ChangeLanguage => Box::new(actions::ChangeLanguage),
         CycleMarkdownView => Box::new(actions::CycleMarkdownView),
         OpenMarkdownPreview => Box::new(actions::OpenMarkdownPreview),
@@ -366,7 +366,7 @@ fn render_palette(
     results: &Entity<SearchResults>,
     recent: &[FileRow],
     actions: &[ActionRow],
-    editor: Option<&Entity<super::editor::EditorView>>,
+    editor: Option<&Entity<ted_editor::views::editor::EditorView>>,
     cx: &mut App,
 ) -> AnyElement {
     let palette = cx.palette();
@@ -517,7 +517,7 @@ enum Confirmed {
 fn run(
     confirmed: Confirmed,
     weak: WeakEntity<AppView>,
-    editor: Option<Entity<super::editor::EditorView>>,
+    editor: Option<Entity<ted_editor::views::editor::EditorView>>,
     window: &mut Window,
     cx: &mut App,
 ) {

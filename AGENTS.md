@@ -92,8 +92,10 @@ A Cargo workspace of small crates, UI kept thin. Planned layout (update this dia
 crate is added). Dependency direction, no cycles, no crate depends on `ted-app`:
 
 ```
-ted-app ──> ted-workspace ──> ted-core
-   ├──────> ted-syntax ─────> ted-core
+ted-app ──> ted-editor ────> ted-syntax ──> ted-core
+   │              └─────────> ted-core
+   ├──────> ted-workspace ──> ted-core
+   ├──────> ted-syntax
    ├──────> ted-core
    └──────> ted-cli (standalone, depends on no other ted crate)
 ```
@@ -104,13 +106,18 @@ ted-app ──> ted-workspace ──> ted-core
   incrementally and off the main thread, the log highlighter (levels and dates, no tree-sitter),
   and the blocks of the Markdown preview (`parse_markdown`, with `pulldown-cmark`: the `markdown`
   crate gpui-kit builds does not scale with the file size). No gpui.
+- `ted-editor`: the editor component (#258 of Postino): `EditorView` and its gpui element, the
+  editor state (cursors, scroll, folding, soft wrap, minimap, the git gutter marks, syntax runs of
+  the visible lines), the find bar and Go to line, with their own strings in `locales/`. It runs
+  no git and reads no settings file: the app hands it the text, the display options and the
+  gutter marks. It moves to telaio next, for Postino.
 - `ted-workspace`: filesystem access. Reads files in the background, lists one folder at a time
   (lazily, honoring `.gitignore` and the exclude patterns), watches for changes, saves
   atomically (write a temporary file, then rename), and the disk side of Find in files (file
   masks, reading files as text, replacing on disk). No gpui.
 - `ted-cli`: `-h/--help`, `-V/--version` and the path argument, `IDENTITY` (the
   `telaio_app::AppIdentity` of ted), `build.rs` with the commit, as `postino-cli`.
-- `ted-app`: the gpui binary (`ted`). Views, the editor element and glue. Git goes through
+- `ted-app`: the gpui binary (`ted`). Views and glue. Git goes through
   telaio's `telaio-git` (it runs the `git` executable, never a library), always on the background
   executor; the Git views live in `views/git/` and their plain state in `state/git.rs`. UI state that can be
   tested without a window lives in plain Rust under `ted-app/src/state`, as in Postino.

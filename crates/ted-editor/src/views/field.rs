@@ -13,8 +13,8 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use telaio_ui::components::{edit_menu, input_line_height};
 
-use crate::theme::PaletteExt;
-use crate::theme::metrics::{FIELD_RADIUS, FIELD_RING};
+use crate::metrics::{FIELD_RADIUS, FIELD_RING};
+use telaio_ui::PaletteExt;
 
 /// Line height of the input inside a [`Field`].
 const LINE_HEIGHT: f32 = 20.0;
