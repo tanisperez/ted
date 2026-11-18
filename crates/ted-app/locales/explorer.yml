@@ -6,3 +6,15 @@ _version: 2
 "explorer.collapse_all":
   en: "Collapse all"
   es: "Contraer todo"
+"explorer.move.replace_title":
+  en: "Replace %{name}?"
+  es: "¿Reemplazar %{name}?"
+"explorer.move.replace_detail":
+  en: "%{folder} already has a %{name}. Replacing it loses its content."
+  es: "Ya hay un %{name} en %{folder}. Si lo reemplazas, se pierde su contenido."
+"explorer.move.replace":
+  en: "Replace"
+  es: "Reemplazar"
+"explorer.move.failed":
+  en: "Could not move %{name}: %{error}"
+  es: "No se pudo mover %{name}: %{error}"

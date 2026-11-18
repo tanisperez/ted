@@ -4,6 +4,7 @@ mod choice;
 mod document;
 mod document_icons;
 mod explorer;
+mod explorer_move;
 mod find_files;
 mod find_files_app;
 mod find_results;

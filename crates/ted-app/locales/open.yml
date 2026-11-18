@@ -63,3 +63,15 @@ _version: 2
 "welcome.recent_files":
   en: "Recent files"
   es: "Archivos recientes"
+"open.drop_file":
+  en: "Drop to open the file"
+  es: "Suelta para abrir el archivo"
+"open.drop_files":
+  en: "Drop to open %{count} files"
+  es: "Suelta para abrir %{count} archivos"
+"open.drop_folder":
+  en: "Drop to open the folder"
+  es: "Suelta para abrir la carpeta"
+"open.drop_tabs":
+  en: "Each in its own tab"
+  es: "Cada uno en su pestaña"

@@ -9,6 +9,8 @@ description: Working on a folder in ted: the explorer, tabs, switching and closi
 
 <h2>The explorer</h2>
 <p>See <a href="interface.html#explorer">The interface</a> for what it shows and its keys. The file in the editor is revealed and selected in the explorer. <kbd>Alt</kbd> <kbd>1</kbd>, or the <strong>Files</strong> toggle of the status bar, shows or hides it. Right click a file or folder to copy its path, its path relative to the open folder, or to show it in your file manager; right click below the rows for the open folder itself.</p>
+<p>Drag a file or a folder onto another folder to move it there; the folder it lands in is highlighted. Dropping it on a file moves it next to that file, and below the rows into the open folder. When the folder already has an entry with that name, ted asks before replacing it. The tabs of the files moved stay open, on their new paths.</p>
+<p>Files and folders dragged from your file manager onto the window open when dropped, as with <a href="command-line.html">ted on the command line</a>: each file in a tab, and a folder as the open folder.</p>
 
 <h2 id="search">Search files and actions</h2>
 <p><kbd>Ctrl</kbd> <kbd>K</kbd>, or the search box of the title bar, opens a list at the top of the window. Type part of a file's name or path to find it in the open folder: the letters do not have to be together, so <code>srb</code> finds <code>src/status_bar.rs</code>, and a match in the file name comes before one in its folders. Type a <code>/</code> to match the folders too (<code>state/root</code>). With nothing typed it lists the recent files.</p>

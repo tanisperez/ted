@@ -200,6 +200,9 @@ pub struct AppView {
     pub(crate) pending_line: Option<(PathBuf, usize)>,
     /// The bounds of the active tab in the last frame, where `Shift+F10` opens its menu.
     pub(crate) tab_bounds: Rc<std::cell::Cell<Option<Bounds<Pixels>>>>,
+    /// Files or folders dragged from outside over the window: how many files, and whether a
+    /// folder is among them, for the drop overlay (#98).
+    pub(crate) external_drag: Option<(usize, bool)>,
     /// The context menu `Shift+F10` opened, while it is open.
     pub(crate) keyboard_menu: Option<super::keyboard_menu::KeyboardMenu>,
     /// The language menu of the status bar.
@@ -285,6 +288,7 @@ impl AppView {
             pending_line: None,
             tab_bounds: Rc::default(),
             keyboard_menu: None,
+            external_drag: None,
             checkout_choice: CheckoutChoice::default(),
             document_icons: DocumentIcons::default(),
             file_index: None,
@@ -471,6 +475,9 @@ impl AppView {
                     window,
                     |this, _, event: &ExplorerEvent, window, cx| match event {
                         ExplorerEvent::Open(path) => this.open_path(path, window, cx),
+                        ExplorerEvent::Move { from, to_dir } => {
+                            this.move_entry(from.clone(), to_dir.clone(), window, cx)
+                        }
                     },
                 );
                 self.explorer = Some((explorer, subscription));
@@ -968,6 +975,64 @@ impl AppView {
         div().flex_1().child(state)
     }
 
+    /// While files are dragged over the window from outside: a dashed box over the documents that
+    /// says what dropping them does (design `ted 0.7.0`).
+    fn render_drop_overlay(&mut self, cx: &mut Context<Self>) -> Option<AnyElement> {
+        if !cx.has_active_drag() {
+            self.external_drag = None;
+        }
+        let (files, folder) = self.external_drag?;
+        let palette = cx.palette();
+        let title = if folder {
+            t!("open.drop_folder")
+        } else if files == 1 {
+            t!("open.drop_file")
+        } else {
+            t!("open.drop_files", count = files)
+        };
+        let detail =
+            (!folder && files > 1 && self.explorer.is_some()).then(|| t!("open.drop_tabs"));
+        Some(
+            div()
+                .absolute()
+                .top(TITLE_BAR_HEIGHT + px(8.0))
+                .left(px(12.0))
+                .right(px(12.0))
+                .bottom(px(12.0))
+                .rounded(px(10.0))
+                .border_2()
+                .border_dashed()
+                .border_color(palette.accent)
+                .bg(palette.accent.opacity(0.12))
+                .flex()
+                .flex_col()
+                .items_center()
+                .justify_center()
+                .gap(px(8.0))
+                .child(
+                    Icon::new(if folder {
+                        IconName::FolderOpen
+                    } else {
+                        IconName::FileInput
+                    })
+                    .size(px(28.0))
+                    .text_color(palette.accent_text),
+                )
+                .child(
+                    div()
+                        .font_weight(FontWeight::MEDIUM)
+                        .child(title.into_owned()),
+                )
+                .children(detail.map(|detail| {
+                    div()
+                        .text_size(px(12.5))
+                        .text_color(palette.fg_muted)
+                        .child(detail.into_owned())
+                }))
+                .into_any_element(),
+        )
+    }
+
     /// The invisible strip on the explorer's right edge that resizes it.
     fn render_resize_handle(&self, cx: &mut Context<Self>) -> impl IntoElement {
         div()
@@ -1113,6 +1178,23 @@ impl Render for AppView {
             .on_action(
                 cx.listener(|this, _: &ZoomReset, window, cx| this.zoom_editor(None, window, cx)),
             )
+            // Files and folders dropped from the file manager open, as `ted a b` would (#98).
+            .on_drag_move::<ExternalPaths>(cx.listener(
+                |this, event: &DragMoveEvent<ExternalPaths>, _, cx| {
+                    let paths = event.drag(cx).paths();
+                    let folder = paths.iter().any(|path| path.is_dir());
+                    let files = paths.iter().filter(|path| !path.is_dir()).count();
+                    if this.external_drag != Some((files, folder)) {
+                        this.external_drag = Some((files, folder));
+                        cx.notify();
+                    }
+                },
+            ))
+            .on_drop(cx.listener(|this, paths: &ExternalPaths, window, cx| {
+                this.external_drag = None;
+                let paths = paths.paths().to_vec();
+                this.open_paths(&paths, window, cx);
+            }))
             .on_action(cx.listener(Self::on_open_context_menu))
             .on_action(cx.listener(Self::copy_current_path))
             .on_action(cx.listener(Self::reveal_current))
@@ -1167,6 +1249,7 @@ impl Render for AppView {
             .child(content)
             .child(self.render_status_bar(cx))
             .children(self.render_keyboard_menu())
+            .children(self.render_drop_overlay(cx))
             .when_some(
                 self.find_files
                     .as_ref()

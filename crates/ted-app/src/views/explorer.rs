@@ -16,7 +16,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
-use ted_workspace::{ExplorerFilter, FolderWatcher, list_dir};
+use ted_workspace::{ExplorerFilter, FolderWatcher, list_dir, pointless_move};
 use telaio_ui::components::{IconButton, SectionLabel, TreeRow};
 
 use crate::state::explorer::{ExplorerTree, Listing};
@@ -62,6 +62,41 @@ pub fn bind_keys(cx: &mut App) {
 pub enum ExplorerEvent {
     /// A file was picked.
     Open(PathBuf),
+    /// A file or a folder was dragged onto a folder: move `from` into `to_dir` (#98).
+    Move { from: PathBuf, to_dir: PathBuf },
+}
+
+/// A file or a folder of the explorer while it is dragged, drawn as a chip under the pointer.
+#[derive(Clone)]
+pub struct DraggedPath {
+    pub path: PathBuf,
+    folder: bool,
+    name: SharedString,
+}
+
+impl Render for DraggedPath {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let palette = cx.palette();
+        let icon = if self.folder {
+            IconName::Folder
+        } else {
+            IconName::File
+        };
+        h_flex()
+            .h(px(26.0))
+            .px(px(10.0))
+            .gap(px(6.0))
+            .items_center()
+            .rounded(px(6.0))
+            .bg(palette.overlay)
+            .border_1()
+            .border_color(palette.border_strong)
+            .shadow_md()
+            .text_size(px(12.5))
+            .text_color(palette.fg)
+            .child(Icon::new(icon).small().text_color(palette.fg_subtle))
+            .child(self.name.clone())
+    }
 }
 
 /// The explorer of one opened folder.
@@ -309,9 +344,42 @@ impl Render for ExplorerView {
                                     .child(text.to_string()),
                             );
                         }
+                        // Dropped on a folder, into it; on a file, into the file's folder.
+                        let drop_dir = if folder {
+                            Some(row.path.clone())
+                        } else {
+                            row.path.parent().map(Path::to_path_buf)
+                        };
+                        let dragged = DraggedPath {
+                            path: row.path.clone(),
+                            folder,
+                            name: row.name.clone().into(),
+                        };
+                        let target_dir = drop_dir.clone();
+                        let (accent, accent_subtle) = (palette.accent, palette.accent_subtle);
                         // Its own right-click menu, which wins over the list's.
                         div()
                             .id(("row-menu", index))
+                            .rounded(px(5.0))
+                            .on_drag(dragged, |dragged, _, _, cx| cx.new(|_| dragged.clone()))
+                            .when_some(drop_dir, |row, dir| {
+                                row.drag_over::<DraggedPath>(move |style, dragged, _, _| {
+                                    if folder && !pointless_move(&dragged.path, &dir) {
+                                        style.bg(accent_subtle).border_1().border_color(accent)
+                                    } else {
+                                        style
+                                    }
+                                })
+                            })
+                            .on_drop(cx.listener(move |_, dragged: &DraggedPath, _, cx| {
+                                if let Some(dir) = target_dir.clone() {
+                                    cx.emit(ExplorerEvent::Move {
+                                        from: dragged.path.clone(),
+                                        to_dir: dir,
+                                    });
+                                }
+                                cx.stop_propagation();
+                            }))
                             .child(item)
                             .context_menu(move |menu, _, _| {
                                 location::path_items(menu, &menu_path, folder, Some(&menu_root))
@@ -376,6 +444,16 @@ impl Render for ExplorerView {
                         &palette,
                     )),
             )
+            // Dropped below the rows: into the root folder.
+            .on_drop(cx.listener({
+                let root = root_path.clone();
+                move |_, dragged: &DraggedPath, _, cx| {
+                    cx.emit(ExplorerEvent::Move {
+                        from: dragged.path.clone(),
+                        to_dir: root.clone(),
+                    });
+                }
+            }))
             // The empty area below the rows: the root folder's menu.
             .context_menu(move |menu, _, _| location::path_items(menu, &root_path, true, None))
     }
