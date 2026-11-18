@@ -33,6 +33,8 @@
     <link rel="preload" href="fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="css/style.css">
     <script src="js/theme.js"></script>
+    <script src="js/copy.js" defer></script>
+    <script src="js/download.js" defer></script>
 </head>
 <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -45,7 +47,7 @@
             </a>
             <nav class="nav" aria-label="Main">
                 <a class="nav-wide" href="./#features">Features</a>
-                <a href="install.html">Download</a>
+                <a href="install.html" aria-current="page">Download</a>
                 <a href="docs/">Docs</a>
                 <a class="nav-github" href="https://github.com/tanisperez/ted" aria-label="ted on GitHub">
                     <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -63,7 +65,7 @@
         <section class="page-head">
             <div class="wrap">
                 <h1>Download ted</h1>
-                <p>Free and open source. Pick your system below. Every package is on the <a href="https://github.com/tanisperez/ted/releases/latest">latest GitHub release</a>, with its SHA-256 checksum in <code>SHA256SUMS</code>.</p>
+                <p>Free and open source. Pick your system below, or install it with your package manager to get updates with the rest of your software.</p>
             </div>
         </section>
 
@@ -72,51 +74,80 @@
                 <ul class="downloads">
                     <li class="download">
                         <h2>Windows</h2>
-                        <p>Windows 10 and 11, 64 bit. The installer is for your user only and needs no administrator rights. It adds ted to the Start menu, puts <code>ted</code> on your PATH and adds <strong>Open with ted</strong> to the Explorer menu of files and folders. The portable zip needs no installer at all.</p>
-                        <a class="btn btn-primary" href="https://github.com/tanisperez/ted/releases/latest">Download the installer</a>
-                        <span class="alt">File <code>ted-…-windows-x86_64-setup.exe</code></span>
-                        <a class="btn btn-secondary" href="https://github.com/tanisperez/ted/releases/latest">Download the portable zip</a>
-                        <span class="alt">File <code>ted-…-windows-x86_64-portable.zip</code></span>
+                        <p>Windows 10 and 11, 64 bit. The installer is for your user only and needs no administrator rights. It adds ted to the Start menu, puts <code>ted</code> on your PATH and adds <strong>Open with ted</strong> to the Explorer menu of files and folders. It updates itself. The portable zip needs no installer at all.</p>
+                        <a class="btn btn-primary" href="https://github.com/tanisperez/ted/releases/latest" data-asset="ted-…-windows-x86_64-setup.exe">Download the installer</a>
+                        <span class="alt">File <code data-file>ted-…-windows-x86_64-setup.exe</code></span>
+                        <a class="btn btn-secondary" href="https://github.com/tanisperez/ted/releases/latest" data-asset="ted-…-windows-x86_64-portable.zip">Download the portable zip</a>
+                        <span class="alt">File <code data-file>ted-…-windows-x86_64-portable.zip</code></span>
                     </li>
                     <li class="download">
                         <h2>macOS</h2>
-                        <p>Apple silicon (M1 and later). Open the disk image and drag ted to Applications. ted then shows in the Open With menu of text files and folders.</p>
-                        <a class="btn btn-primary" href="https://github.com/tanisperez/ted/releases/latest">Download the disk image</a>
-                        <span class="alt">File <code>ted-…-macos-arm64.dmg</code></span>
+                        <p>Apple silicon (M1 and later). Open the disk image and drag ted to Applications. ted then shows in the Open With menu of text files and folders. Updates itself.</p>
+                        <a class="btn btn-primary" href="https://github.com/tanisperez/ted/releases/latest" data-asset="ted-…-macos-arm64.dmg">Download the disk image</a>
+                        <span class="alt">File <code data-file>ted-…-macos-arm64.dmg</code></span>
                     </li>
-                    <li class="download">
+                    <li class="download" id="linux">
                         <h2>Linux</h2>
-                        <p>x86_64. A <code>.deb</code>, an <code>.rpm</code>, an Arch package, an AppImage and a tarball. The packages install <code>ted</code> in <code>/usr/bin</code> with its desktop entry and icons.</p>
-                        <a class="btn btn-primary" href="https://github.com/tanisperez/ted/releases/latest">Download a package</a>
-                        <span class="alt">Files <code>.deb</code>, <code>.rpm</code>, <code>.pkg.tar.zst</code>, <code>.AppImage</code>, <code>.tar.gz</code></span>
+                        <p>x86_64. A <code>.deb</code>, an <code>.rpm</code>, an Arch package, an AppImage and a tarball. Use a repository below to get updates, or the <a href="#install-script">install script</a> on any distribution.</p>
+                        <div class="picker">
+                            <select aria-label="Linux package">
+                                <option value="https://github.com/tanisperez/ted/releases/latest" data-asset="ted-…-x86_64.AppImage" selected>AppImage, any distribution</option>
+                                <option value="https://github.com/tanisperez/ted/releases/latest" data-asset="ted-editor_…_amd64.deb">.deb, Debian and Ubuntu</option>
+                                <option value="https://github.com/tanisperez/ted/releases/latest" data-asset="ted-editor-…-1.x86_64.rpm">.rpm, Fedora and openSUSE</option>
+                                <option value="https://github.com/tanisperez/ted/releases/latest" data-asset="ted-editor-…-1-x86_64.pkg.tar.zst">.pkg.tar.zst, Arch Linux</option>
+                                <option value="https://github.com/tanisperez/ted/releases/latest" data-asset="ted-…-linux-x86_64.tar.gz">.tar.gz, any distribution</option>
+                            </select>
+                        </div>
+                        <a class="btn btn-primary" href="https://github.com/tanisperez/ted/releases/latest" data-asset="ted-…-x86_64.AppImage">Download</a>
+                        <span class="alt">File <code data-file>ted-…-x86_64.AppImage</code></span>
                     </li>
                 </ul>
+                <p class="release-line"><span data-version hidden><a href="https://github.com/tanisperez/ted/releases/latest">Version …</a> · </span>Every file and its SHA-256 checksum are on the <a href="https://github.com/tanisperez/ted/releases">releases page</a>.</p>
             </div>
         </section>
 
         <section class="section" id="command-line">
             <div class="wrap">
                 <div class="section-head">
-                    <span class="kicker">Install</span>
-                    <h2>From the command line</h2>
-                    <p>Download the package of the <a href="https://github.com/tanisperez/ted/releases/latest">latest release</a>, then install it with your package manager.</p>
+                    <span class="kicker">Package managers</span>
+                    <h2>Install from the command line</h2>
+                    <p>Each channel is updated with every release, so your usual upgrade command keeps ted up to date.</p>
                 </div>
 
                 <div class="channels">
-                    <article class="channel">
+                    <article class="channel" id="install-script">
+                        <h3>Any Linux distribution <small>install script</small></h3>
+                        <p>Installs ted for your user under <code>~/.local</code>, no sudo. ted then updates itself, or run the script again. <a href="docs/installation.html#install-script">Options and uninstall</a>.</p>
+                        <div class="code">
+<pre><span class="prompt">$ </span>curl -fsSL https://ted.tanis.codes/install.sh | bash</pre>
+                        </div>
+                    </article>
+                    <article class="channel" id="debian">
                         <h3>Debian and Ubuntu <small>apt</small></h3>
+                        <p>Add the signing key and the repository once, then install.</p>
                         <div class="code">
-<pre><span class="prompt">$ </span>sudo apt install ./ted-editor_*_amd64.deb</pre>
+<pre><span class="prompt">$ </span>sudo curl -fsSLo /etc/apt/keyrings/ted.asc https://ted.tanis.codes/ted.asc
+<span class="prompt">$ </span>echo "deb [signed-by=/etc/apt/keyrings/ted.asc] https://ted.tanis.codes/apt stable main" \
+    | sudo tee /etc/apt/sources.list.d/ted.list
+<span class="prompt">$ </span>sudo apt update &amp;&amp; sudo apt install ted-editor</pre>
                         </div>
                     </article>
-                    <article class="channel">
+                    <article class="channel" id="fedora">
                         <h3>Fedora and openSUSE <small>dnf, zypper</small></h3>
+                        <p>Add the repository once, then install. The key is imported on the first install.</p>
                         <div class="code">
-<pre><span class="prompt">$ </span>sudo dnf install ./ted-editor-*.x86_64.rpm</pre>
+<pre><span class="cm"># Fedora</span>
+<span class="prompt">$ </span>sudo curl -fsSLo /etc/yum.repos.d/ted.repo https://ted.tanis.codes/rpm/ted.repo
+<span class="prompt">$ </span>sudo dnf install ted-editor
+
+<span class="cm"># openSUSE</span>
+<span class="prompt">$ </span>sudo zypper addrepo https://ted.tanis.codes/rpm/ted.repo
+<span class="prompt">$ </span>sudo zypper install ted-editor</pre>
                         </div>
                     </article>
-                    <article class="channel">
+                    <article class="channel" id="arch">
                         <h3>Arch Linux <small>pacman</small></h3>
+                        <p>Download the Arch package of the latest release, then install it. It is not in the AUR yet.</p>
                         <div class="code">
 <pre><span class="prompt">$ </span>sudo pacman -U ./ted-editor-*-x86_64.pkg.tar.zst</pre>
                         </div>

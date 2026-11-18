@@ -1,5 +1,7 @@
-# Publishes site/ to GitHub Pages (ted.tanis.codes). The site is rebuilt from scratch on every
-# run, there is no gh-pages branch. The custom domain is set in the repository's Pages settings.
+# Publishes site/ to GitHub Pages (ted.tanis.codes). The site is rebuilt from scratch on
+# every run, there is no gh-pages branch (docs/releasing.md). The signed APT and DNF
+# repositories (#101) are added to the same upload from the deb and rpm files of the last stable
+# releases. They are skipped until the GPG_PRIVATE_KEY secret exists and a stable release does.
 name: Website
 
 on:
@@ -7,7 +9,11 @@ on:
     branches: [main]
     paths:
       - "site/**"
+      - "packaging/linux/repo.sh"
       - ".github/workflows/website.yml"
+  # A stable release publishes new packages. Pre-releases never enter the repositories.
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -22,6 +28,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -35,6 +43,53 @@ jobs:
       # site/docs-src holds the sources of site/docs, not pages.
       - name: Assemble the site
         run: rsync -a --exclude docs-src/ --exclude README.md site/ _site/
+
+      # The download buttons point at the files of the latest stable release, and the pages show
+      # its version. Without a stable release they keep linking to the releases page.
+      - name: Link the downloads to the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh release view --json tagName -q .tagName 2>/dev/null || true)
+          if [ -z "$tag" ]; then
+            echo "No stable release yet, the downloads link to the releases page."
+            exit 0
+          fi
+          python3 site/docs-src/release_links.py _site "$tag"
+
+      - name: Install the repository tools
+        if: env.GPG_PRIVATE_KEY != ''
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq apt-utils createrepo-c rpm
+
+      # The last 3 stable releases stay in the repositories, older ones remain on Releases.
+      - name: Build the APT and DNF repositories
+        if: env.GPG_PRIVATE_KEY != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          tags=$(gh release list --exclude-pre-releases --exclude-drafts --limit 3 \
+              --json tagName -q '.[].tagName')
+          if [ -z "$tags" ]; then
+            echo "No stable release yet, skipping the Linux repositories."
+            exit 0
+          fi
+          mkdir packages
+          for tag in $tags; do
+            gh release download "$tag" --pattern '*.deb' --pattern '*.rpm' --dir packages
+          done
+
+          export GNUPGHOME=$RUNNER_TEMP/gnupg
+          mkdir -m 700 "$GNUPGHOME"
+          printf '%s' "$GPG_PASSPHRASE" > "$RUNNER_TEMP/gpg-pass"
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          export GPG_KEY_ID=$(gpg --batch --list-secret-keys --with-colons | awk -F: '/^fpr/ {print $10; exit}')
+          export GPG_PASSPHRASE_FILE=$RUNNER_TEMP/gpg-pass
+
+          for what in apt rpm key; do
+            packaging/linux/repo.sh "$what" packages _site
+          done
+          rm -rf "$GNUPGHOME" "$RUNNER_TEMP/gpg-pass"
 
       - uses: actions/configure-pages@v6
 

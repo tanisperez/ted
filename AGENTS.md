@@ -49,16 +49,20 @@ Expo/React Native conventions here.
   runs) is fine; write our own code. Only `gpui` itself is Apache-2.0.
 - Languages of the UI: **English** (source and fallback) and **Spanish**. Not Galician nor
   Italian.
-- Website (decided on 2026-10-30): `ted.tanis.codes`, a smaller copy of Postino's `site/` with
-  screenshots only (no videos, no install script, no package repositories), deployed by
-  `website.yml`. The user docs live in `site/docs-src/pages/` as in Postino (rule 13), built with
-  `make docs`; every user-visible change updates them in the same commit. No package
-  repositories and no updater for now: sections 15 and 16 of the shared rules apply only where
-  they do not need them.
+- Website (decided on 2026-10-30, extended on 2026-11-19 for 0.7.0): `ted.tanis.codes`, a
+  smaller copy of Postino's `site/` with screenshots only (no videos), deployed by `website.yml`,
+  which also points the download buttons at the latest release (`release_links.py`). The user
+  docs live in `site/docs-src/pages/` as in Postino (rule 13), built with `make docs`; every
+  user-visible change updates them in the same commit.
+- Distribution (decided on 2026-11-19, the user asked for 0.7.0, as Postino): the install script
+  `site/install.sh` (#100), the in-app updater with `latest.json` (#99), and signed APT and DNF
+  repositories built by `website.yml` with `packaging/linux/repo.sh` (#101), which need the
+  `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` secrets. The package is `ted-editor`; the AUR package
+  `ted-editor-bin` is a template (`packaging/aur`), not published, as Postino's.
 - Releases (decided on 2026-10-30): the `release.yml` workflow and `packaging/` of Postino, with
-  the same packages minus `latest.json` (deb, rpm, Arch, AppImage, tarball, macOS dmg and app
-  tarball, Windows installer and portable zip, `SHA256SUMS`). The installers put `ted` on the
-  `PATH` where the platform allows it. See `docs/releasing.md`.
+  the same packages (deb, rpm, Arch, AppImage, tarball with the install script, macOS dmg and app
+  tarball, Windows installer and portable zip, `SHA256SUMS`, `latest.json`). The installers put
+  `ted` on the `PATH` where the platform allows it. See `docs/releasing.md`.
 - Settings: `settings.toml` under the config dir (`~/.config/ted/settings.toml` on Linux), plain
   text, applied at once, as in the design.
 - Folding (decided on 2026-11-08): blocks come from the indentation, read only around the line,
@@ -73,8 +77,7 @@ Expo/React Native conventions here.
 
 ## Pending decisions (ask before choosing)
 
-- Package repositories (APT, DNF, AUR), other channels and the in-app updater (not before the
-  user asks).
+- Other channels (Flathub, Homebrew, winget) and publishing to the AUR: not before the user asks.
 - Language of the user docs (English for now, as everything in the repository).
 - Split views: not planned; ask before designing them. Soft wrap was decided on 2026-11-01 and
   is in 0.3.0 (#43): Alt+Z, the status bar toggle, the `word_wrap` setting for code, Markdown

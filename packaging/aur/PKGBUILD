@@ -1,0 +1,26 @@
+# Maintainer: Estanislao Pérez Nartallo <tanisperez@gmail.com>
+#
+# Template of the AUR package `ted-editor-bin`. `pkgver` and the checksum are filled in for each
+# release (`updpkgsums`, or by CI once the AUR account exists, see packaging/aur/README.md).
+pkgname=ted-editor-bin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='A fast, lightweight text editor'
+arch=('x86_64')
+url='https://ted.tanis.codes'
+license=('Apache-2.0')
+depends=('libxkbcommon' 'libxkbcommon-x11' 'libxcb' 'wayland' 'libglvnd')
+optdepends=('vulkan-icd-loader: Vulkan renderer'
+            'git: Git panel')
+provides=('ted-editor')
+conflicts=('ted-editor')
+source=("ted-$pkgver-linux-x86_64.tar.gz::https://github.com/tanisperez/ted/releases/download/v$pkgver/ted-$pkgver-linux-x86_64.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+    cd "ted-$pkgver-linux-x86_64"
+    install -Dm755 bin/ted "$pkgdir/usr/bin/ted"
+    cp -r share "$pkgdir/usr/share"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 NOTICE "$pkgdir/usr/share/licenses/$pkgname/NOTICE"
+}
