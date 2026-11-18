@@ -54,6 +54,13 @@ actions!(
         CycleMarkdownView,
         /// Opens the preview of a Markdown document in a tab of its own.
         OpenMarkdownPreview,
+        /// Goes to the next block of changes of the diff tab (`F7`), or past the last one, pressed
+        /// twice, to the next changed file.
+        NextDiffChange,
+        /// Goes to the previous block of changes of the diff tab (`Shift+F7`).
+        PreviousDiffChange,
+        /// Opens the file of the diff tab at its current change (`F4`).
+        OpenDiffFile,
         /// Shows the next tab, wrapping around (`Ctrl+Tab`).
         NextTab,
         /// Shows the previous tab, wrapping around (`Ctrl+Shift+Tab`).
@@ -87,6 +94,12 @@ pub mod hints {
 
 /// Registers the app wide key bindings. `None` as the context: anywhere in the window.
 pub fn bind_keys(cx: &mut App) {
+    // The diff tab's keys, only while it has the focus (Postino #224).
+    cx.bind_keys([
+        KeyBinding::new("f7", NextDiffChange, Some("GitDiff")),
+        KeyBinding::new("shift-f7", PreviousDiffChange, Some("GitDiff")),
+        KeyBinding::new("f4", OpenDiffFile, Some("GitDiff")),
+    ]);
     #[cfg(target_os = "macos")]
     cx.bind_keys([
         KeyBinding::new("cmd-n", NewFile, None),

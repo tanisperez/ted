@@ -9,7 +9,10 @@ use gpui_kit::*;
 use rust_i18n::t;
 use telaio_git::GitError;
 
-use crate::state::git::RepoState;
+use std::collections::HashSet;
+
+use crate::state::git::{ChangeRowKind, RepoState, change_rows};
+use crate::state::git_diff::neighbour;
 use crate::state::launch::Target;
 
 use super::super::root::DocumentView;
@@ -157,9 +160,10 @@ impl AppView {
     }
 
     /// Opens a changed file of the panel in its tab. `path` is relative to the open folder.
-    pub(crate) fn open_changed_file(
+    pub(crate) fn open_changed_file_at(
         &mut self,
         path: &str,
+        line: Option<usize>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -167,6 +171,67 @@ impl AppView {
             return;
         };
         let path = root.join(path);
-        self.open_path(&path, window, cx);
+        let open = self
+            .documents
+            .position(|document| document.path.as_deref() == Some(path.as_path()));
+        let loaded = open.and_then(|index| {
+            let document = self.documents.items().get(index)?;
+            document.editor().cloned().map(|editor| (index, editor))
+        });
+        match (loaded, line) {
+            (Some((index, editor)), Some(line)) => {
+                self.activate_document(index, window, cx);
+                super::super::find_files_app::cursor_to_line(&editor, line, window, cx);
+            }
+            (_, line) => {
+                self.pending_line = line.map(|line| (path.clone(), line));
+                self.open_path(&path, window, cx);
+            }
+        }
+    }
+
+    /// `F7` past the last block, or `Shift+F7` before the first: the diff of the next or previous
+    /// changed file in the Git panel's order, folded folders included, landing on its first block
+    /// (or its last, going back). Nothing past the first or last file.
+    pub(crate) fn open_neighbour_diff(
+        &mut self,
+        repo_path: &str,
+        forward: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some((repo, status)) = self.git.status() else {
+            return;
+        };
+        let files: Vec<(String, String, char)> =
+            change_rows(status, repo.prefix(), &HashSet::new(), self.git.flat)
+                .into_iter()
+                .filter_map(|row| match row.kind {
+                    ChangeRowKind::File { letter, .. } => {
+                        let repo_path = row.repo_paths.first()?.clone();
+                        Some((repo_path, row.path, letter))
+                    }
+                    _ => None,
+                })
+                .collect();
+        let Some(current) = files.iter().position(|(path, _, _)| path == repo_path) else {
+            return;
+        };
+        let Some((repo_path, path, letter)) = neighbour(&files, current, forward).cloned() else {
+            return;
+        };
+        if !forward
+            && let Some(diff) =
+                self.documents
+                    .items()
+                    .iter()
+                    .find_map(|document| match &document.view {
+                        DocumentView::Diff(diff) => Some(diff.clone()),
+                        _ => None,
+                    })
+        {
+            diff.update(cx, |diff, _| diff.land_on_last());
+        }
+        self.open_git_diff(repo_path, path, letter, window, cx);
     }
 }

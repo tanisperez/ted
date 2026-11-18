@@ -171,6 +171,15 @@ _version: 2
 "shortcuts.action.commit":
   en: "Commit, in the message"
   es: "Hacer commit, en el mensaje"
+"shortcuts.action.next_change":
+  en: "Next change, in a diff"
+  es: "Cambio siguiente, en un diff"
+"shortcuts.action.previous_change":
+  en: "Previous change, in a diff"
+  es: "Cambio anterior, en un diff"
+"shortcuts.action.open_change":
+  en: "Open the file at the change, in a diff"
+  es: "Abrir el archivo en el cambio, en un diff"
 "shortcuts.key.click":
   en: "Click"
   es: "Clic"

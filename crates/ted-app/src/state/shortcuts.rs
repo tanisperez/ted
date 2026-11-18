@@ -134,7 +134,12 @@ pub fn groups() -> Vec<ShortcutGroup> {
         },
         ShortcutGroup {
             title: t!("shortcuts.group.git").to_string(),
-            shortcuts: vec![row("shortcuts.action.commit", &[modifier, "\u{21b5}"])],
+            shortcuts: vec![
+                row("shortcuts.action.commit", &[modifier, "\u{21b5}"]),
+                row("shortcuts.action.next_change", &["F7"]),
+                row("shortcuts.action.previous_change", &["Shift", "F7"]),
+                row("shortcuts.action.open_change", &["F4"]),
+            ],
         },
     ]
 }

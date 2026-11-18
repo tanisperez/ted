@@ -138,6 +138,55 @@ pub fn segments(
     out
 }
 
+/// The 0 based line of the new file where change block `block` of `diff` starts: its first
+/// added line, or for a pure removal the line that follows it (as Postino).
+pub fn block_new_line(diff: &FileDiff, block: usize) -> Option<usize> {
+    let block = diff.blocks.get(block)?;
+    Some(block.new_start.saturating_sub(1) as usize)
+}
+
+/// The change block that line `row` of the diff is part of, `None` for a context line.
+pub fn block_at_row(diff: &FileDiff, row: usize) -> Option<usize> {
+    let index = diff
+        .blocks
+        .partition_point(|block| block.first_line <= row)
+        .checked_sub(1)?;
+    let block = &diff.blocks[index];
+    (row < block.first_line + block.removed + block.added).then_some(index)
+}
+
+/// The item before or after `current` in `items`, with no wrap: the previous or next file.
+pub fn neighbour<T>(items: &[T], current: usize, forward: bool) -> Option<&T> {
+    if forward {
+        items.get(current + 1)
+    } else {
+        current.checked_sub(1).and_then(|index| items.get(index))
+    }
+}
+
+/// How much of the diff header fits the width of the diff area (design `ted 0.7.0`, Postino
+/// #289).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeaderFit {
+    /// Every label, from [`HEADER_FULL_WIDTH`].
+    Full,
+    /// Previous, Next and Open file as icons with tooltips, and the counter as `3/19`.
+    Narrow,
+}
+
+/// The area width, in logical pixels, from which the header shows every label. Measured with
+/// the Spanish labels, the longest, and a file name of 20 characters.
+pub const HEADER_FULL_WIDTH: f32 = 700.0;
+
+/// The header for an area `width` wide.
+pub fn header_fit(width: f32) -> HeaderFit {
+    if width >= HEADER_FULL_WIDTH {
+        HeaderFit::Full
+    } else {
+        HeaderFit::Narrow
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,6 +254,39 @@ mod tests {
         assert!(syntax[3].iter().any(|(_, h)| *h == Highlight::Keyword));
         // Context lines are colored once.
         assert_eq!(syntax[0].len(), 1);
+    }
+
+    #[test]
+    fn finds_the_block_of_a_row_and_its_new_line() {
+        // Lines: 0 context, 1 removed, 2 added, 3 context, 4 added.
+        let patch = "diff --git a/a b/a\n--- a/a\n+++ b/a\n@@ -1,3 +1,4 @@\n a\n-b\n+B\n c\n+d\n";
+        let diff = parse_file_diff(patch);
+        assert_eq!(diff.blocks.len(), 2);
+        assert_eq!(block_at_row(&diff, 0), None);
+        assert_eq!(block_at_row(&diff, 1), Some(0));
+        assert_eq!(block_at_row(&diff, 2), Some(0));
+        assert_eq!(block_at_row(&diff, 3), None);
+        assert_eq!(block_at_row(&diff, 4), Some(1));
+        assert_eq!(block_new_line(&diff, 0), Some(1));
+        assert_eq!(block_new_line(&diff, 1), Some(3));
+        assert_eq!(block_new_line(&diff, 2), None);
+    }
+
+    #[test]
+    fn neighbours_stop_at_the_ends() {
+        let items = [1, 2, 3];
+        assert_eq!(neighbour(&items, 0, true), Some(&2));
+        assert_eq!(neighbour(&items, 2, true), None);
+        assert_eq!(neighbour(&items, 0, false), None);
+        assert_eq!(neighbour(&items, 2, false), Some(&2));
+    }
+
+    #[test]
+    fn the_header_drops_labels_when_narrow() {
+        assert_eq!(header_fit(1046.0), HeaderFit::Full);
+        assert_eq!(header_fit(HEADER_FULL_WIDTH), HeaderFit::Full);
+        // The smallest window with the Git panel open leaves 674 px.
+        assert_eq!(header_fit(674.0), HeaderFit::Narrow);
     }
 
     #[test]

@@ -360,6 +360,33 @@ _version: 2
 "git.diff.blocks.other":
   en: "%{count} changes"
   es: "%{count} cambios"
+"git.diff.previous":
+  en: "Previous"
+  es: "Anterior"
+"git.diff.next":
+  en: "Next"
+  es: "Siguiente"
+"git.diff.previous_tooltip":
+  en: "Previous change"
+  es: "Cambio anterior"
+"git.diff.next_tooltip":
+  en: "Next change"
+  es: "Cambio siguiente"
+"git.diff.position_one":
+  en: "%{current} of %{total} change"
+  es: "%{current} de %{total} cambio"
+"git.diff.position":
+  en: "%{current} of %{total} changes"
+  es: "%{current} de %{total} cambios"
+"git.diff.position_short":
+  en: "%{current}/%{total}"
+  es: "%{current}/%{total}"
+"git.diff.hint_next":
+  en: "Press F7 again to go to the next file"
+  es: "Pulsa F7 otra vez para ir al siguiente archivo"
+"git.diff.hint_previous":
+  en: "Press Shift+F7 again to go to the previous file"
+  es: "Pulsa Shift+F7 otra vez para ir al archivo anterior"
 "git.diff.stage":
   en: "Stage"
   es: "Preparar"

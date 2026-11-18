@@ -6,11 +6,14 @@
 //! screen. Long lines scroll sideways under the line numbers and the block's buttons, which stay
 //! in place. There is one diff tab: opening another file's diff reuses it.
 
+use std::cell::Cell;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::time::Duration;
 
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::Button;
 use gpui_kit::component::scroll::ScrollbarAxis;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -22,10 +25,14 @@ use telaio_git::{
     block_patch, parse_file_diff,
 };
 use telaio_ui::components::{
-    ConfirmDialog, EmptyState, GhostButton, SecondaryButton, open_confirm_dialog,
+    ConfirmDialog, EmptyState, GhostButton, NeutralButtonExt, SecondaryButton, open_confirm_dialog,
 };
 
-use crate::state::git_diff::{LineSpans, diff_syntax, expand_tabs, segments};
+use crate::actions::{NextDiffChange, OpenDiffFile, PreviousDiffChange};
+use crate::state::git_diff::{
+    HeaderFit, LineSpans, block_at_row, block_new_line, diff_syntax, expand_tabs, header_fit,
+    segments,
+};
 use crate::state::locale::plural;
 use crate::theme::{Palette, PaletteExt};
 
@@ -44,6 +51,10 @@ const SIGN_WIDTH: f32 = 16.0;
 const END_PADDING: f32 = 24.0;
 /// Height of the header.
 const HEADER_HEIGHT: f32 = 40.0;
+/// The key context of the diff tab, where `F7`, `Shift+F7` and `F4` are bound (`actions.rs`).
+const DIFF_KEY_CONTEXT: &str = "GitDiff";
+/// How long the "press again" hint stays under the header.
+const EDGE_HINT_TIME: Duration = Duration::from_secs(3);
 /// Above this many bytes on a side of the file the diff is shown without syntax colors, as a
 /// big response body in Postino.
 const HIGHLIGHT_MAX_BYTES: usize = 4 * 1024 * 1024;
@@ -175,6 +186,22 @@ pub(crate) struct DiffView {
     /// The sideways scroll of the lines' text, kept by an empty element as wide as the longest
     /// line, under the list.
     text_scroll: ScrollHandle,
+    /// Where `F7`, `Shift+F7` and `F4` act.
+    focus: FocusHandle,
+    /// Focus the tab on the next render: a file was just opened in it.
+    focus_pending: bool,
+    /// The change block the counter, `F7` and `F4` start from.
+    current: usize,
+    /// Scroll to [`Self::current`] on the next render, where the layout is known.
+    scroll_pending: bool,
+    /// Land on the last block of the next file read (`Shift+F7` past the first block).
+    land_last: bool,
+    /// The "press again" hint while it shows: `true` for the next file, `false` for the previous.
+    edge_hint: Option<bool>,
+    /// Hides the hint after [`EDGE_HINT_TIME`], a one-shot timer.
+    hint_task: Option<Task<()>>,
+    /// The width of the diff area in the last frame, for what the header fits.
+    area_width: Rc<Cell<f32>>,
 }
 
 impl DiffView {
@@ -196,9 +223,102 @@ impl DiffView {
             task: None,
             scroll: UniformListScrollHandle::new(),
             text_scroll: ScrollHandle::new(),
+            focus: cx.focus_handle(),
+            focus_pending: true,
+            current: 0,
+            scroll_pending: false,
+            land_last: false,
+            edge_hint: None,
+            hint_task: None,
+            area_width: Rc::new(Cell::new(f32::MAX)),
         };
         view.reload(cx);
         view
+    }
+
+    /// Where the diff's keys act, for the root to focus when the tab is shown again.
+    pub(crate) fn focus_handle(&self) -> &FocusHandle {
+        &self.focus
+    }
+
+    /// Makes the next file read land on its last block, for `Shift+F7` from the previous file.
+    pub(crate) fn land_on_last(&mut self) {
+        self.land_last = true;
+    }
+
+    fn block_count(&self) -> usize {
+        match &self.loaded {
+            Some(Ok(loaded)) => loaded.diff.blocks.len(),
+            _ => 0,
+        }
+    }
+
+    /// `F7` and `Shift+F7`: the next or previous block, or, pressed again at the last or first
+    /// one, the next or previous changed file (Postino #224).
+    fn step(&mut self, forward: bool, window: &mut Window, cx: &mut Context<Self>) {
+        let count = self.block_count();
+        let next = if forward {
+            (self.current + 1 < count).then_some(self.current + 1)
+        } else {
+            self.current.checked_sub(1).filter(|_| count > 0)
+        };
+        if let Some(next) = next {
+            self.current = next;
+            self.scroll_pending = true;
+            self.edge_hint = None;
+            cx.notify();
+            return;
+        }
+        if self.edge_hint == Some(forward) {
+            self.edge_hint = None;
+            let (app, repo_path) = (self.app.clone(), self.repo_path.clone());
+            // Deferred: opening the file shows it in this same view.
+            window.defer(cx, move |window, cx| {
+                let _ = app.update(cx, |app, cx| {
+                    app.open_neighbour_diff(&repo_path, forward, window, cx)
+                });
+            });
+            cx.notify();
+            return;
+        }
+        self.edge_hint = Some(forward);
+        self.hint_task = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(EDGE_HINT_TIME).await;
+            let _ = this.update(cx, |view, cx| {
+                view.edge_hint = None;
+                cx.notify();
+            });
+        }));
+        cx.notify();
+    }
+
+    /// A click on a changed line makes its block the current one.
+    fn select_row(&mut self, row: usize, cx: &mut Context<Self>) {
+        let Some(Ok(loaded)) = &self.loaded else {
+            return;
+        };
+        if let Some(block) = block_at_row(&loaded.diff, row) {
+            self.current = block;
+            self.edge_hint = None;
+            cx.notify();
+        }
+    }
+
+    /// `F4` and Open file: the file in the editor, at the line of the current change.
+    fn open_file(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.letter == 'D' {
+            return;
+        }
+        let line = match &self.loaded {
+            Some(Ok(loaded)) => block_new_line(&loaded.diff, self.current),
+            _ => None,
+        };
+        let (app, path) = (self.app.clone(), self.path.clone());
+        window.defer(cx, move |window, cx| {
+            let _ = app.update(cx, |app, cx| {
+                app.open_changed_file_at(&path, line, window, cx)
+            });
+        });
     }
 
     /// The tab's name: the file name.
@@ -221,6 +341,8 @@ impl DiffView {
             self.scroll = UniformListScrollHandle::new();
             self.text_scroll.set_offset(point(px(0.0), px(0.0)));
         }
+        self.focus_pending = true;
+        self.edge_hint = None;
         (self.repo, self.repo_path, self.path, self.letter) = (repo, repo_path, path, letter);
         self.reload(cx);
     }
@@ -229,6 +351,9 @@ impl DiffView {
     pub(crate) fn reload(&mut self, cx: &mut Context<Self>) {
         let repo = self.repo.clone();
         let repo_path = self.repo_path.clone();
+        // A new file starts on its first block (or its last, from Shift+F7); a reload of the same
+        // one keeps the current block.
+        let fresh = self.loaded.is_none();
         self.task = Some(cx.spawn(async move |this, cx| {
             let result = cx
                 .background_spawn(async move { Loaded::read(&repo, &repo_path) })
@@ -238,6 +363,14 @@ impl DiffView {
                     log::warn!("reading a diff failed: {error}");
                     error.to_string()
                 }));
+                let count = view.block_count();
+                if fresh {
+                    let last = std::mem::take(&mut view.land_last);
+                    view.current = if last { count.saturating_sub(1) } else { 0 };
+                    view.scroll_pending = count > 0;
+                } else {
+                    view.current = view.current.min(count.saturating_sub(1));
+                }
                 cx.notify();
             });
         }));
@@ -324,7 +457,33 @@ impl DiffView {
             _ => None,
         };
         let mono = cx.theme().mono_font_family.clone();
-        let path = self.path.clone();
+        let full = header_fit(self.area_width.get()) == HeaderFit::Full;
+        let navigation = summary
+            .filter(|(_, _, blocks)| *blocks > 0)
+            .map(|(_, _, blocks)| self.render_navigation(blocks, full, palette, cx));
+        let open_file = (self.letter != 'D').then(|| {
+            let open = cx.listener(|view, _: &ClickEvent, window, cx| view.open_file(window, cx));
+            if full {
+                SecondaryButton::new("diff-open-file", t!("git.diff.open_file"))
+                    .icon(Icon::new(IconName::FileText))
+                    .key_hint("F4")
+                    .on_click(open)
+                    .into_any_element()
+            } else {
+                Button::new("diff-open-file")
+                    .neutral_bordered(cx, palette.raised, palette.border_strong, palette.fg_muted)
+                    .size(px(28.0))
+                    .rounded(px(7.0))
+                    .icon(Icon::new(IconName::FileText).size(px(13.0)))
+                    .tooltip_with_action(
+                        t!("git.diff.open_file"),
+                        &OpenDiffFile,
+                        Some(DIFF_KEY_CONTEXT),
+                    )
+                    .on_click(open)
+                    .into_any_element()
+            }
+        });
         h_flex()
             .flex_none()
             .h(px(HEADER_HEIGHT))
@@ -341,11 +500,29 @@ impl DiffView {
                     .text_color(letter_color(self.letter, palette))
                     .child(self.letter.to_string()),
             )
+            // The folder gives way first, then the name: nothing overlaps (Postino #289).
             .child(
                 h_flex()
                     .min_w_0()
-                    .child(div().text_color(palette.fg_subtle).child(folder))
-                    .child(div().child(name)),
+                    .flex_shrink(1.0)
+                    .overflow_hidden()
+                    .whitespace_nowrap()
+                    .child(
+                        div()
+                            .min_w_0()
+                            .flex_shrink(1.0)
+                            .overflow_hidden()
+                            .text_ellipsis()
+                            .text_color(palette.fg_subtle)
+                            .child(folder),
+                    )
+                    .child(
+                        div()
+                            .flex_shrink_0()
+                            .overflow_hidden()
+                            .text_ellipsis()
+                            .child(name),
+                    ),
             )
             .children(summary.map(|(additions, deletions, blocks)| {
                 h_flex()
@@ -362,23 +539,126 @@ impl DiffView {
                             .text_color(palette.danger)
                             .child(format!("\u{2212}{deletions}")),
                     )
-                    .child(
-                        div()
-                            .text_color(palette.fg_subtle)
-                            .child(plural("git.diff.blocks", blocks)),
-                    )
+                    .when(blocks == 0, |summary| {
+                        summary.child(
+                            div()
+                                .text_color(palette.fg_subtle)
+                                .child(plural("git.diff.blocks", blocks)),
+                        )
+                    })
+                    .flex_none()
+                    .whitespace_nowrap()
             }))
             .child(div().flex_1())
-            .child(
-                SecondaryButton::new("diff-open-file", t!("git.diff.open_file"))
-                    .icon(Icon::new(IconName::FileText))
-                    .on_click(cx.listener(move |view, _, window, cx| {
-                        let path = path.clone();
-                        let _ = view.app.update(cx, |app, cx| {
-                            app.open_changed_file(&path, window, cx);
-                        });
-                    })),
+            .children(navigation)
+            .children(open_file)
+    }
+
+    /// The counter and the Previous and Next buttons, in one bordered box, with the "press
+    /// again" hint under them.
+    fn render_navigation(
+        &self,
+        blocks: usize,
+        full: bool,
+        palette: &Palette,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let step = |id: &'static str,
+                    icon: IconName,
+                    label: Option<String>,
+                    tooltip: String,
+                    action: &dyn Action,
+                    forward: bool,
+                    cx: &mut Context<Self>| {
+            Button::new(id)
+                .neutral_ghost(cx, palette.fg_muted)
+                .h(px(26.0))
+                .px(px(if label.is_some() { 8.0 } else { 6.0 }))
+                .rounded(px(0.0))
+                .icon(Icon::new(icon).size(px(14.0)))
+                .when_some(label, |button, label| button.label(label))
+                .tooltip_with_action(tooltip, action, Some(DIFF_KEY_CONTEXT))
+                .on_click(cx.listener(move |view, _, window, cx| view.step(forward, window, cx)))
+        };
+        let previous = step(
+            "diff-previous",
+            IconName::ChevronUp,
+            full.then(|| t!("git.diff.previous").into_owned()),
+            t!("git.diff.previous_tooltip").into_owned(),
+            &PreviousDiffChange,
+            false,
+            cx,
+        );
+        let next = step(
+            "diff-next",
+            IconName::ChevronDown,
+            full.then(|| t!("git.diff.next").into_owned()),
+            t!("git.diff.next_tooltip").into_owned(),
+            &NextDiffChange,
+            true,
+            cx,
+        );
+        let (current, total) = (self.current + 1, blocks);
+        let counter = if full && total == 1 {
+            t!("git.diff.position_one", current = current, total = total)
+        } else if full {
+            t!("git.diff.position", current = current, total = total)
+        } else {
+            t!("git.diff.position_short", current = current, total = total)
+        };
+        // Deferred, so it paints over the lines below the header.
+        let hint = self.edge_hint.map(|forward| {
+            let text = if forward {
+                t!("git.diff.hint_next")
+            } else {
+                t!("git.diff.hint_previous")
+            };
+            deferred(
+                div()
+                    .absolute()
+                    .top(px(34.0))
+                    .right_0()
+                    .px(px(8.0))
+                    .py(px(5.0))
+                    .rounded(px(6.0))
+                    .bg(palette.raised)
+                    .border_1()
+                    .border_color(palette.border_strong)
+                    .shadow_md()
+                    .text_size(px(12.0))
+                    .text_color(palette.fg)
+                    .whitespace_nowrap()
+                    .child(text.into_owned()),
             )
+            .with_priority(1)
+        });
+        h_flex()
+            .relative()
+            .flex_none()
+            .items_center()
+            .gap(px(8.0))
+            .child(
+                div()
+                    .text_size(px(12.0))
+                    .text_color(palette.fg_subtle)
+                    .whitespace_nowrap()
+                    .child(counter.into_owned()),
+            )
+            .child(
+                h_flex()
+                    .h(px(28.0))
+                    .items_center()
+                    .rounded(px(7.0))
+                    .border_1()
+                    .border_color(palette.border_strong)
+                    .bg(palette.raised)
+                    .overflow_hidden()
+                    .child(previous)
+                    .child(div().w(px(1.0)).h_full().bg(palette.border_strong))
+                    .child(next),
+            )
+            .children(hint)
+            .into_any_element()
     }
 }
 
@@ -419,47 +699,68 @@ impl Render for DiffView {
                     .map_or(theme.mono_font_size * 0.6, |advance| advance.width);
                 let text_width = char_width * loaded.longest as f32
                     + px(NUMBER_WIDTH * 2.0 + SIGN_WIDTH + END_PADDING);
-                let mut lines = uniform_list(
-                    "diff-lines",
-                    count,
-                    cx.processor(|view, range: std::ops::Range<usize>, _window, cx| {
-                        let palette = cx.palette();
-                        let colors = SyntaxColors::new(&cx.theme().highlight_theme, &palette);
-                        let Some(Ok(loaded)) = &view.loaded else {
-                            return Vec::new();
-                        };
-                        let diff = loaded.diff.clone();
-                        let stages = loaded.stages.clone();
-                        let syntax = loaded.syntax.clone();
-                        range
-                            .filter_map(|index| diff.lines.get(index).map(|line| (index, line)))
-                            .map(|(index, line)| {
-                                let block = diff
-                                    .blocks
-                                    .iter()
-                                    .position(|block| block.first_line == index);
-                                let actions = block.and_then(|block| {
-                                    stages
-                                        .get(block)
-                                        .copied()
-                                        .flatten()
-                                        .map(|stage| render_block_actions(block, stage, cx))
-                                });
-                                let scroll_x = view.text_scroll.offset().x;
-                                let spans = syntax.get(index).map_or(&[][..], Vec::as_slice);
-                                let style = LineStyle {
-                                    palette: &palette,
-                                    colors: &colors,
-                                };
-                                render_line(index, line, spans, actions, scroll_x, style, cx)
-                            })
-                            .collect()
-                    }),
-                )
-                .track_scroll(&self.scroll)
-                .size_full();
+                let mut lines =
+                    uniform_list(
+                        "diff-lines",
+                        count,
+                        cx.processor(|view, range: std::ops::Range<usize>, _window, cx| {
+                            let palette = cx.palette();
+                            let colors = SyntaxColors::new(&cx.theme().highlight_theme, &palette);
+                            let Some(Ok(loaded)) = &view.loaded else {
+                                return Vec::new();
+                            };
+                            let diff = loaded.diff.clone();
+                            let stages = loaded.stages.clone();
+                            let syntax = loaded.syntax.clone();
+                            let current = diff.blocks.get(view.current).map(|block| {
+                                block.first_line..block.first_line + block.removed + block.added
+                            });
+                            range
+                                .filter_map(|index| diff.lines.get(index).map(|line| (index, line)))
+                                .map(|(index, line)| {
+                                    let block = diff
+                                        .blocks
+                                        .iter()
+                                        .position(|block| block.first_line == index);
+                                    let actions = block.and_then(|block| {
+                                        stages
+                                            .get(block)
+                                            .copied()
+                                            .flatten()
+                                            .map(|stage| render_block_actions(block, stage, cx))
+                                    });
+                                    let scroll_x = view.text_scroll.offset().x;
+                                    let spans = syntax.get(index).map_or(&[][..], Vec::as_slice);
+                                    let style = LineStyle {
+                                        palette: &palette,
+                                        colors: &colors,
+                                        current: current
+                                            .as_ref()
+                                            .is_some_and(|rows| rows.contains(&index)),
+                                    };
+                                    div()
+                                        .id(("diff-row", index))
+                                        .on_click(cx.listener(move |view, _, _, cx| {
+                                            view.select_row(index, cx)
+                                        }))
+                                        .child(render_line(
+                                            index, line, spans, actions, scroll_x, style, cx,
+                                        ))
+                                        .into_any_element()
+                                })
+                                .collect()
+                        }),
+                    )
+                    .track_scroll(&self.scroll)
+                    .size_full();
                 // A sideways wheel moves the text, not the lines.
                 lines.style().restrict_scroll_to_axis = Some(true);
+                if std::mem::take(&mut self.scroll_pending)
+                    && let Some(block) = loaded.diff.blocks.get(self.current)
+                {
+                    self.scroll
+                        .scroll_to_item(block.first_line, ScrollStrategy::Center);
+                }
                 div()
                     .relative()
                     .flex_1()
@@ -490,10 +791,41 @@ impl Render for DiffView {
                     .into_any_element()
             }
         };
+        if std::mem::take(&mut self.focus_pending) {
+            self.focus.focus(window, cx);
+        }
+        // The area's width, for the header of the next frame; a change renders again.
+        let width = self.area_width.clone();
+        let id = cx.entity_id();
+        let measure = canvas(
+            move |bounds, _, cx| {
+                let now = f32::from(bounds.size.width);
+                if (width.get() - now).abs() > 0.5 {
+                    width.set(now);
+                    cx.notify(id);
+                }
+            },
+            |_, _, _, _| {},
+        )
+        .absolute()
+        .inset_0();
         v_flex()
             .id("diff-view")
+            .relative()
             .size_full()
             .bg(palette.bg)
+            .track_focus(&self.focus)
+            .key_context(DIFF_KEY_CONTEXT)
+            .on_action(
+                cx.listener(|view, _: &NextDiffChange, window, cx| view.step(true, window, cx)),
+            )
+            .on_action(
+                cx.listener(|view, _: &PreviousDiffChange, window, cx| {
+                    view.step(false, window, cx)
+                }),
+            )
+            .on_action(cx.listener(|view, _: &OpenDiffFile, window, cx| view.open_file(window, cx)))
+            .child(measure)
             .child(self.render_header(&palette, cx))
             .child(body)
     }
@@ -530,6 +862,8 @@ fn render_block_actions(block: usize, stage: BlockStage, cx: &mut Context<DiffVi
 struct LineStyle<'a> {
     palette: &'a Palette,
     colors: &'a SyntaxColors,
+    /// Whether the line is in the current block: an accent bar on its left edge.
+    current: bool,
 }
 
 fn render_line(
@@ -594,6 +928,18 @@ fn render_line(
         .font_family(mono)
         .text_size(size)
         .when_some(tint, |row, tint| row.bg(tint))
+        .relative()
+        .when(style.current, |row| {
+            row.child(
+                div()
+                    .absolute()
+                    .left_0()
+                    .top_0()
+                    .bottom_0()
+                    .w(px(2.0))
+                    .bg(palette.accent),
+            )
+        })
         .child(number(line.old_number))
         .child(number(line.new_number))
         .child(

@@ -171,6 +171,14 @@ impl AppView {
         {
             select_range(editor, offset, window, cx);
         }
+        if self
+            .pending_line
+            .as_ref()
+            .is_some_and(|(pending, _)| pending == path)
+            && let Some((_, line)) = self.pending_line.take()
+        {
+            cursor_to_line(editor, line, window, cx);
+        }
     }
 
     /// Leaves results in a tab: the last results tab, replaced, or a new one with `new_tab`.
@@ -348,6 +356,26 @@ struct ReplaceJob {
 }
 
 /// Selects `offset` in `editor`, scrolled into view, and gives it the focus.
+/// Puts the cursor at the start of `line` (0 based), centered once the editor has its layout,
+/// and focuses the editor (F4 in the diff tab).
+pub(crate) fn cursor_to_line(
+    editor: &Entity<telaio_editor::views::editor::EditorView>,
+    line: usize,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    editor.update(cx, |editor, cx| {
+        let line = line.min(editor.state.buffer.line_count().saturating_sub(1));
+        editor
+            .state
+            .set_cursor(telaio_text::Position::new(line, 0), false);
+        editor.state.center_cursor();
+        cx.notify();
+    });
+    let focus = editor.read(cx).focus_handle().clone();
+    focus.focus(window, cx);
+}
+
 fn select_range(
     editor: &Entity<telaio_editor::views::editor::EditorView>,
     offset: Range<usize>,

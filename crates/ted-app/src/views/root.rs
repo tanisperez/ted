@@ -186,6 +186,8 @@ pub struct AppView {
     pub(crate) find_files_open: bool,
     /// A match to select in a file once it has loaded (Find in files).
     pub(crate) pending_reveal: Option<(PathBuf, std::ops::Range<usize>)>,
+    /// A line to put the cursor on in a file once it has loaded (F4 in the diff tab).
+    pub(crate) pending_line: Option<(PathBuf, usize)>,
     /// The language menu of the status bar.
     pub(crate) language_menu: Entity<super::language_menu::LanguageMenu>,
     /// The choice of the checkout dialog while it is open.
@@ -263,6 +265,7 @@ impl AppView {
             find_files: None,
             find_files_open: false,
             pending_reveal: None,
+            pending_line: None,
             checkout_choice: CheckoutChoice::default(),
             document_icons: DocumentIcons::default(),
             file_index: None,
@@ -602,6 +605,10 @@ impl AppView {
             Some(document) => {
                 if let Some(editor) = document.editor() {
                     let focus = editor.read(cx).focus_handle().clone();
+                    focus.focus(window, cx);
+                } else if let DocumentView::Diff(diff) = &document.view {
+                    // So F7, Shift+F7 and F4 work after a tab switch.
+                    let focus = diff.read(cx).focus_handle().clone();
                     focus.focus(window, cx);
                 }
                 if let (Some((explorer, _)), Some(path)) = (&self.explorer, &document.path) {
