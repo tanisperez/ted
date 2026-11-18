@@ -6,6 +6,7 @@
 //! screen. Long lines scroll sideways under the line numbers and the block's buttons, which stay
 //! in place. There is one diff tab: opening another file's diff reuses it.
 
+use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -15,13 +16,16 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
+use telaio_editor::SyntaxColors;
 use telaio_git::{
-    ApplyTarget, DiffSource, FileDiff, GitError, LineKind, Repo, block_patch, parse_file_diff,
+    ApplyTarget, DiffSource, FileDiff, FileVersion, GitError, LineKind, Repo, block_applies,
+    block_patch, parse_file_diff,
 };
 use telaio_ui::components::{
     ConfirmDialog, EmptyState, GhostButton, SecondaryButton, open_confirm_dialog,
 };
 
+use crate::state::git_diff::{LineSpans, diff_syntax, expand_tabs, segments};
 use crate::state::locale::plural;
 use crate::theme::{Palette, PaletteExt};
 
@@ -40,6 +44,9 @@ const SIGN_WIDTH: f32 = 16.0;
 const END_PADDING: f32 = 24.0;
 /// Height of the header.
 const HEADER_HEIGHT: f32 = 40.0;
+/// Above this many bytes on a side of the file the diff is shown without syntax colors, as a
+/// big response body in Postino.
+const HIGHLIGHT_MAX_BYTES: usize = 4 * 1024 * 1024;
 
 /// Whether a block of the diff is in the index already.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,6 +67,8 @@ struct Loaded {
     longest: usize,
     /// Per change block, whether it is staged; `None` without buttons.
     stages: Vec<Option<BlockStage>>,
+    /// Per line, its syntax spans; empty without a grammar.
+    syntax: Arc<Vec<LineSpans>>,
     additions: usize,
     deletions: usize,
 }
@@ -84,15 +93,30 @@ impl Loaded {
             .max()
             .unwrap_or(0);
         let with_actions = diff.blocks.len() <= MAX_BLOCK_ACTIONS;
+        // The index once, instead of one or two `git apply --check` per block (Postino #285).
+        let index = with_actions
+            .then(|| repo.file_at(repo_path, &FileVersion::Index).ok().flatten())
+            .flatten();
         let stages = (0..diff.blocks.len())
-            .map(|index| {
-                with_actions
-                    .then(|| block_patch(&patch, &diff, index))
-                    .flatten()
-                    .map(|block| block_stage(repo, &block))
+            .map(|block| {
+                if !with_actions {
+                    return None;
+                }
+                index
+                    .as_deref()
+                    .and_then(|index| stage_in_index(&patch, &diff, block, index))
+                    .or_else(|| {
+                        block_patch(&patch, &diff, block).map(|hunk| block_stage(repo, &hunk))
+                    })
             })
             .collect();
+        let syntax = diff_syntax(
+            &diff,
+            telaio_syntax::Language::detect(Path::new(repo_path)),
+            HIGHLIGHT_MAX_BYTES,
+        );
         Ok(Loaded {
+            syntax: Arc::new(syntax),
             diff: Arc::new(diff),
             patch: patch.into(),
             longest,
@@ -101,6 +125,19 @@ impl Loaded {
             deletions,
         })
     }
+}
+
+/// [`block_stage`] worked out from the `index` text instead of git, `None` when
+/// [`block_applies`] cannot tell.
+fn stage_in_index(patch: &str, diff: &FileDiff, block: usize, index: &str) -> Option<BlockStage> {
+    if block_applies(patch, diff, block, index, false)? {
+        return Some(BlockStage::Unstaged);
+    }
+    Some(if block_applies(patch, diff, block, index, true)? {
+        BlockStage::Staged
+    } else {
+        BlockStage::Mixed
+    })
 }
 
 /// Whether `block` (from HEAD to the work tree) is in the index: it applies to the index forward
@@ -387,11 +424,13 @@ impl Render for DiffView {
                     count,
                     cx.processor(|view, range: std::ops::Range<usize>, _window, cx| {
                         let palette = cx.palette();
+                        let colors = SyntaxColors::new(&cx.theme().highlight_theme, &palette);
                         let Some(Ok(loaded)) = &view.loaded else {
                             return Vec::new();
                         };
                         let diff = loaded.diff.clone();
                         let stages = loaded.stages.clone();
+                        let syntax = loaded.syntax.clone();
                         range
                             .filter_map(|index| diff.lines.get(index).map(|line| (index, line)))
                             .map(|(index, line)| {
@@ -407,7 +446,12 @@ impl Render for DiffView {
                                         .map(|stage| render_block_actions(block, stage, cx))
                                 });
                                 let scroll_x = view.text_scroll.offset().x;
-                                render_line(index, line, actions, scroll_x, &palette, cx)
+                                let spans = syntax.get(index).map_or(&[][..], Vec::as_slice);
+                                let style = LineStyle {
+                                    palette: &palette,
+                                    colors: &colors,
+                                };
+                                render_line(index, line, spans, actions, scroll_x, style, cx)
                             })
                             .collect()
                     }),
@@ -481,14 +525,23 @@ fn render_block_actions(block: usize, stage: BlockStage, cx: &mut Context<DiffVi
 
 /// One line of the diff: the old and new line numbers, the sign, the text with its changed words
 /// emphasized, and the block's buttons on its first line.
+/// The colors a line is drawn with, looked up once per frame.
+#[derive(Clone, Copy)]
+struct LineStyle<'a> {
+    palette: &'a Palette,
+    colors: &'a SyntaxColors,
+}
+
 fn render_line(
     index: usize,
     line: &telaio_git::DiffLine,
+    syntax: &[(std::ops::Range<usize>, telaio_syntax::Highlight)],
     actions: Option<AnyElement>,
     scroll_x: Pixels,
-    palette: &Palette,
+    style: LineStyle,
     cx: &App,
 ) -> AnyElement {
+    let palette = style.palette;
     let (tint, emphasis, sign, sign_color) = match line.kind {
         LineKind::Added => (
             Some(palette.success.opacity(0.10)),
@@ -516,26 +569,23 @@ fn render_line(
             .text_color(palette.fg_subtle)
             .child(number.map(|n| n.to_string()).unwrap_or_default())
     };
-    // Tabs are drawn as four spaces; the emphasis ranges are byte offsets of the original text,
-    // so a line with tabs is drawn without them.
-    let text: SharedString = line.text.replace('\t', "    ").into();
-    let highlights: Vec<_> = if line.text.contains('\t') {
-        Vec::new()
-    } else {
-        line.emphasis
-            .iter()
-            .filter(|range| range.end <= text.len())
-            .map(|range| {
-                (
-                    range.clone(),
-                    HighlightStyle {
-                        background_color: Some(emphasis),
-                        ..Default::default()
-                    },
-                )
-            })
-            .collect()
-    };
+    // Tabs are drawn as four spaces; `segments` moves the ranges to match.
+    let text: SharedString = expand_tabs(&line.text).into();
+    let highlights: Vec<_> = segments(&line.text, syntax, &line.emphasis)
+        .into_iter()
+        .map(|segment| {
+            (
+                segment.range,
+                HighlightStyle {
+                    color: segment
+                        .highlight
+                        .and_then(|highlight| style.colors.get(highlight)),
+                    background_color: segment.emphasis.then_some(emphasis),
+                    ..Default::default()
+                },
+            )
+        })
+        .collect();
     h_flex()
         .id(("diff-line", index))
         .w_full()

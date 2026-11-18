@@ -6,6 +6,7 @@ pub mod explorer;
 pub mod find_files;
 pub mod git;
 pub mod git_branches;
+pub mod git_diff;
 pub mod git_gutter;
 pub mod git_sync;
 pub mod language_picker;
