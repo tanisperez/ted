@@ -55,6 +55,10 @@ const HEADER_HEIGHT: f32 = 40.0;
 const DIFF_KEY_CONTEXT: &str = "GitDiff";
 /// How long the "press again" hint stays under the header.
 const EDGE_HINT_TIME: Duration = Duration::from_secs(3);
+/// Width of the minimap on the right of the diff (#105).
+const MINIMAP_WIDTH: f32 = 64.0;
+/// The least height of a mark on the minimap, so a one-line change is still seen.
+const MINIMAP_MIN_MARK: f32 = 2.0;
 /// Above this many bytes on a side of the file the diff is shown without syntax colors, as a
 /// big response body in Postino.
 const HIGHLIGHT_MAX_BYTES: usize = 4 * 1024 * 1024;
@@ -78,6 +82,8 @@ struct Loaded {
     longest: usize,
     /// Per change block, whether it is staged; `None` without buttons.
     stages: Vec<Option<BlockStage>>,
+    /// The changed rows for the minimap: first row, how many, removed or added.
+    marks: Arc<Vec<(usize, usize, LineKind)>>,
     /// Per line, its syntax spans; empty without a grammar.
     syntax: Arc<Vec<LineSpans>>,
     additions: usize,
@@ -92,6 +98,22 @@ impl Loaded {
         let diff = parse_file_diff(&patch);
         let count = |kind: LineKind| diff.lines.iter().filter(|line| line.kind == kind).count();
         let (additions, deletions) = (count(LineKind::Added), count(LineKind::Removed));
+        // The minimap's marks: the removed rows of each block, then its added ones.
+        let marks = diff
+            .blocks
+            .iter()
+            .flat_map(|block| {
+                [
+                    (block.first_line, block.removed, LineKind::Removed),
+                    (
+                        block.first_line + block.removed,
+                        block.added,
+                        LineKind::Added,
+                    ),
+                ]
+            })
+            .filter(|(_, rows, _)| *rows > 0)
+            .collect();
         let longest = diff
             .lines
             .iter()
@@ -127,6 +149,7 @@ impl Loaded {
             HIGHLIGHT_MAX_BYTES,
         );
         Ok(Loaded {
+            marks: Arc::new(marks),
             syntax: Arc::new(syntax),
             diff: Arc::new(diff),
             patch: patch.into(),
@@ -202,6 +225,8 @@ pub(crate) struct DiffView {
     hint_task: Option<Task<()>>,
     /// The width of the diff area in the last frame, for what the header fits.
     area_width: Rc<Cell<f32>>,
+    /// The minimap's bounds in the last frame, for a click or a drag on it.
+    minimap_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
 }
 
 impl DiffView {
@@ -231,6 +256,7 @@ impl DiffView {
             edge_hint: None,
             hint_task: None,
             area_width: Rc::new(Cell::new(f32::MAX)),
+            minimap_bounds: Rc::default(),
         };
         view.reload(cx);
         view
@@ -290,6 +316,104 @@ impl DiffView {
             });
         }));
         cx.notify();
+    }
+
+    /// A click or a drag at `y` on the minimap centers the diff on that point of the file.
+    fn scroll_minimap(&mut self, y: Pixels, cx: &mut Context<Self>) {
+        let (Some(bounds), Some(Ok(loaded))) = (self.minimap_bounds.get(), &self.loaded) else {
+            return;
+        };
+        let height = f32::from(bounds.size.height);
+        if height <= 0.0 {
+            return;
+        }
+        let fraction = (f32::from(y - bounds.origin.y) / height).clamp(0.0, 1.0);
+        let count = loaded.diff.lines.len();
+        let row = ((fraction * count as f32) as usize).min(count.saturating_sub(1));
+        self.scroll.scroll_to_item(row, ScrollStrategy::Center);
+        cx.notify();
+    }
+
+    /// The minimap: the whole file in the height of the diff, with the removed and added rows
+    /// marked in their colors and the visible part as a box (#105, design `ted 0.7.0`). It paints
+    /// only the marks, one per side of a block, never the lines.
+    fn render_minimap(
+        &self,
+        loaded: &Loaded,
+        palette: &Palette,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let marks = loaded.marks.clone();
+        let count = loaded.diff.lines.len().max(1) as f32;
+        let scroll = self.scroll.clone();
+        let cell = self.minimap_bounds.clone();
+        let (added, removed) = (palette.success, palette.danger);
+        let (viewport_fill, viewport_border) = (palette.hover, palette.border_strong);
+        let painter = canvas(
+            move |bounds, _, _| cell.set(Some(bounds)),
+            move |bounds, _, window, _| {
+                let height = f32::from(bounds.size.height);
+                for (first, rows, kind) in marks.iter() {
+                    let top = *first as f32 / count * height;
+                    let tall = (*rows as f32 / count * height).max(MINIMAP_MIN_MARK);
+                    let color = if *kind == LineKind::Added {
+                        added
+                    } else {
+                        removed
+                    };
+                    window.paint_quad(fill(
+                        Bounds::new(
+                            point(bounds.origin.x, bounds.origin.y + px(top)),
+                            size(bounds.size.width, px(tall)),
+                        ),
+                        color,
+                    ));
+                }
+                // The visible part, from the list's last layout.
+                let state = scroll.0.borrow();
+                if let Some(item) = state.last_item_size {
+                    let content = f32::from(item.contents.height);
+                    if content > f32::from(item.item.height) && content > 0.0 {
+                        let offset = -f32::from(state.base_handle.offset().y);
+                        let top = offset / content * height;
+                        let tall = f32::from(item.item.height) / content * height;
+                        window.paint_quad(
+                            fill(
+                                Bounds::new(
+                                    point(bounds.origin.x, bounds.origin.y + px(top)),
+                                    size(bounds.size.width, px(tall.max(4.0))),
+                                ),
+                                viewport_fill,
+                            )
+                            .border_widths(px(1.0))
+                            .border_color(viewport_border),
+                        );
+                    }
+                }
+            },
+        )
+        .size_full();
+        div()
+            .id("diff-minimap")
+            .flex_none()
+            .w(px(MINIMAP_WIDTH))
+            .h_full()
+            .border_l_1()
+            .border_color(palette.border)
+            .cursor_pointer()
+            .child(painter)
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, event: &MouseDownEvent, _, cx| {
+                    view.scroll_minimap(event.position.y, cx)
+                }),
+            )
+            .on_mouse_move(cx.listener(|view, event: &MouseMoveEvent, _, cx| {
+                if event.pressed_button == Some(MouseButton::Left) {
+                    view.scroll_minimap(event.position.y, cx);
+                }
+            }))
+            .into_any_element()
     }
 
     /// A click on a changed line makes its block the current one.
@@ -761,10 +885,12 @@ impl Render for DiffView {
                     self.scroll
                         .scroll_to_item(block.first_line, ScrollStrategy::Center);
                 }
-                div()
+                let minimap = self.render_minimap(loaded, &palette, cx);
+                let list_area = div()
                     .relative()
                     .flex_1()
-                    .min_h_0()
+                    .min_w_0()
+                    .h_full()
                     .child(
                         div()
                             .id("diff-text-scroll")
@@ -787,7 +913,12 @@ impl Render for DiffView {
                         ScrollbarAxis::Horizontal,
                         "diff-horizontal-scrollbar",
                         &palette,
-                    ))
+                    ));
+                h_flex()
+                    .flex_1()
+                    .min_h_0()
+                    .child(list_area)
+                    .child(minimap)
                     .into_any_element()
             }
         };
