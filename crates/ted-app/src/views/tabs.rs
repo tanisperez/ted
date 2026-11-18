@@ -1,6 +1,7 @@
 //! The document tabs (telaio's `DocumentTabs`): one per open document, with its name, the dirty
 //! dot and the close button. A click shows the file, the cross or a middle click closes it,
-//! dragging reorders, and a right click opens Close, Close others and the path items. The + after the last tab creates a new document.
+//! dragging reorders, and a right click opens telaio's standard tab menu (the Close items and the
+//! path items, #95). The + after the last tab creates a new document.
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::tooltip::Tooltip;
@@ -12,10 +13,10 @@ use telaio_ui::components::{DocumentTab, DocumentTabs};
 
 use gpui_kit::WeakEntity;
 use gpui_kit::component::menu::PopupMenu;
-use telaio_ui::components::menu_shortcut_item;
+use telaio_ui::components::{PathItems, TabMenuTarget, path_items, tab_close_items};
 
-use super::location;
-use crate::actions::{NewFile, hints};
+use crate::actions::{CloseTab, CopyPath, NewFile, RevealInFileManager};
+use crate::state::launch::relative_path;
 use crate::state::launch::shorten_path;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{ICON_BUTTON_LG, RADIUS_SM};
@@ -28,13 +29,16 @@ impl AppView {
         let weak = cx.weak_entity();
         let home = std::env::home_dir();
         let active = self.documents.active_index();
+        let dirty_flags = self.dirty_flags(cx);
         let reorder = weak.clone();
-        let mut tabs = DocumentTabs::new("document-tabs").on_reorder(move |from, to, _, cx| {
-            let _ = reorder.update(cx, |view, cx| {
-                view.documents.move_tab(from, to);
-                cx.notify();
+        let mut tabs = DocumentTabs::new("document-tabs")
+            .selected_bounds(self.tab_bounds.clone())
+            .on_reorder(move |from, to, _, cx| {
+                let _ = reorder.update(cx, |view, cx| {
+                    view.documents.move_tab(from, to);
+                    cx.notify();
+                });
             });
-        });
         for (index, document) in self.documents.items().iter().enumerate() {
             let dirty = document
                 .editor()
@@ -44,6 +48,7 @@ impl AppView {
             let close = weak.clone();
             let name = document.name();
             let menu_weak = weak.clone();
+            let menu_target = TabMenuTarget::new(index, &dirty_flags);
             let menu_path = document.path.clone();
             let menu_root = match &self.target {
                 Some(crate::state::launch::Target::Folder(root)) => Some(root.clone()),
@@ -86,6 +91,7 @@ impl AppView {
                         tab_menu(
                             menu,
                             id,
+                            menu_target,
                             &menu_weak,
                             menu_path.as_deref(),
                             menu_root.as_deref(),
@@ -120,34 +126,31 @@ impl AppView {
     }
 }
 
-/// The right-click menu of a tab: Close, Close others and, for a file, its path items.
-fn tab_menu(
+/// The right-click menu of a tab (telaio's standard one, as Postino's): Close, Close others,
+/// to the right, to the left, saved and all, then the path items of a file.
+pub(crate) fn tab_menu(
     menu: PopupMenu,
     id: u64,
+    target: TabMenuTarget,
     weak: &WeakEntity<AppView>,
     path: Option<&std::path::Path>,
     root: Option<&std::path::Path>,
 ) -> PopupMenu {
-    let (close, others) = (weak.clone(), weak.clone());
-    let menu = menu
-        .item(menu_shortcut_item(
-            IconName::Close,
-            t!("tabs.close"),
-            hints::CLOSE_TAB,
-            move |window, cx| {
-                let _ = close.update(cx, |view, cx| view.close_document(id, window, cx));
-            },
-        ))
-        .item(menu_shortcut_item(
-            IconName::CopyX,
-            t!("tabs.close_others"),
-            "",
-            move |window, cx| {
-                let _ = others.update(cx, |view, cx| view.close_other_documents(id, window, cx));
-            },
-        ));
+    let close = weak.clone();
+    let menu = tab_close_items(menu, &target, Some(&CloseTab), move |scope, window, cx| {
+        let _ = close.update(cx, |view, cx| view.close_scope(id, scope, window, cx));
+    });
     match path {
-        Some(path) => location::path_items(menu.separator(), path, false, root),
+        Some(path) => path_items(
+            menu.separator(),
+            PathItems {
+                path: path.to_path_buf(),
+                relative: root.and_then(|root| relative_path(root, path)),
+                folder: false,
+                copy_action: Some(Box::new(CopyPath)),
+                reveal_action: Some(Box::new(RevealInFileManager)),
+            },
+        ),
         None => menu,
     }
 }

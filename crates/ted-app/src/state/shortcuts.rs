@@ -62,6 +62,7 @@ pub fn groups() -> Vec<ShortcutGroup> {
                 row("shortcuts.action.search", &[modifier, "K"]),
                 Shortcut::open_sheet(),
                 row("shortcuts.action.settings", &[modifier, ","]),
+                row("shortcuts.action.tab_menu", &["Shift", "F10"]),
                 row("shortcuts.action.toggle_explorer", &[ALT_OR_CTRL, "1"]),
                 row("shortcuts.action.toggle_git", &[ALT_OR_CTRL, "2"]),
                 row("shortcuts.action.zoom_in", &[modifier, "="]),

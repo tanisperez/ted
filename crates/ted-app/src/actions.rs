@@ -61,6 +61,9 @@ actions!(
         PreviousDiffChange,
         /// Opens the file of the diff tab at its current change (`F4`).
         OpenDiffFile,
+        /// Opens the context menu of the active tab from the keyboard (`Shift+F10`, the menu key),
+        /// as a right click would (Postino #232).
+        OpenContextMenu,
         /// Shows the next tab, wrapping around (`Ctrl+Tab`).
         NextTab,
         /// Shows the previous tab, wrapping around (`Ctrl+Shift+Tab`).
@@ -76,7 +79,6 @@ pub mod hints {
     pub const OPEN_FOLDER: &str = "\u{21e7}\u{2318}O";
     pub const COPY_PATH: &str = "\u{2325}\u{2318}C";
     pub const REVEAL: &str = "\u{2325}\u{2318}R";
-    pub const CLOSE_TAB: &str = "\u{2318}W";
     pub const SEARCH: &str = "\u{2318}K";
 }
 
@@ -88,7 +90,6 @@ pub mod hints {
     pub const OPEN_FOLDER: &str = "Ctrl+Shift+O";
     pub const COPY_PATH: &str = "Ctrl+Alt+C";
     pub const REVEAL: &str = "Ctrl+Alt+R";
-    pub const CLOSE_TAB: &str = "Ctrl+W";
     pub const SEARCH: &str = "Ctrl+K";
 }
 
@@ -99,6 +100,9 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("f7", NextDiffChange, Some("GitDiff")),
         KeyBinding::new("shift-f7", PreviousDiffChange, Some("GitDiff")),
         KeyBinding::new("f4", OpenDiffFile, Some("GitDiff")),
+        // gpui names the menu key `menu` on Linux and Windows; Macs have none.
+        KeyBinding::new("shift-f10", OpenContextMenu, None),
+        KeyBinding::new("menu", OpenContextMenu, None),
     ]);
     #[cfg(target_os = "macos")]
     cx.bind_keys([

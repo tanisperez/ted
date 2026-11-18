@@ -20,7 +20,10 @@ use rust_i18n::t;
 use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
 use telaio_syntax::Language;
 use telaio_text::Buffer;
-use telaio_ui::components::{EmptyState, open_shortcuts_dialog};
+use telaio_ui::components::{
+    CloseScope, EmptyState, UnsavedChoice, close_targets, open_shortcuts_dialog,
+    open_unsaved_dialog,
+};
 
 use crate::actions::{
     ChangeLanguage, CloseTab, CycleMarkdownView, NewFile, NewWindow, NextTab, OpenFile, OpenFolder,
@@ -188,6 +191,10 @@ pub struct AppView {
     pub(crate) pending_reveal: Option<(PathBuf, std::ops::Range<usize>)>,
     /// A line to put the cursor on in a file once it has loaded (F4 in the diff tab).
     pub(crate) pending_line: Option<(PathBuf, usize)>,
+    /// The bounds of the active tab in the last frame, where `Shift+F10` opens its menu.
+    pub(crate) tab_bounds: Rc<std::cell::Cell<Option<Bounds<Pixels>>>>,
+    /// The context menu `Shift+F10` opened, while it is open.
+    pub(crate) keyboard_menu: Option<super::keyboard_menu::KeyboardMenu>,
     /// The language menu of the status bar.
     pub(crate) language_menu: Entity<super::language_menu::LanguageMenu>,
     /// The choice of the checkout dialog while it is open.
@@ -266,6 +273,8 @@ impl AppView {
             find_files_open: false,
             pending_reveal: None,
             pending_line: None,
+            tab_bounds: Rc::default(),
+            keyboard_menu: None,
             checkout_choice: CheckoutChoice::default(),
             document_icons: DocumentIcons::default(),
             file_index: None,
@@ -632,51 +641,120 @@ impl AppView {
             editors.into_iter().collect(),
             window,
             cx,
-            move |this, window, cx| {
-                let Some(index) = this.documents.position(|document| document.id == id) else {
-                    return;
-                };
-                let was_active = this.documents.active_index() == Some(index);
-                let closed = this.documents.close(index);
-                // Its preview tabs go with it.
-                if let Some(editor) = closed.as_ref().and_then(Document::editor) {
-                    this.close_previews_of(editor, cx);
-                }
-                // File mode with nothing left to show: back to the welcome screen.
-                if this.explorer.is_none() && this.documents.is_empty() {
-                    this.target = None;
-                    this.content = Content::Welcome;
-                }
-                if was_active {
-                    this.document_shown(window, cx);
-                } else {
-                    cx.notify();
-                }
-            },
+            move |this, window, cx| this.close_unchecked(id, window, cx),
         );
     }
 
     /// Close others: closes every document but `keep`, each asking first when it has unsaved
     /// changes.
-    pub(crate) fn close_other_documents(
+    /// Closes the document with `id` without asking.
+    fn close_unchecked(&mut self, id: u64, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(index) = self.documents.position(|document| document.id == id) else {
+            return;
+        };
+        let was_active = self.documents.active_index() == Some(index);
+        let closed = self.documents.close(index);
+        // Its preview tabs go with it.
+        if let Some(editor) = closed.as_ref().and_then(Document::editor) {
+            self.close_previews_of(editor, cx);
+        }
+        // File mode with nothing left to show: back to the welcome screen.
+        if self.explorer.is_none() && self.documents.is_empty() {
+            self.target = None;
+            self.content = Content::Welcome;
+        }
+        if was_active {
+            self.document_shown(window, cx);
+        } else {
+            cx.notify();
+        }
+    }
+
+    /// Closes the tabs `scope` names around the one with `id` (the tab menu's Close items). Tabs
+    /// with unsaved changes ask once, all together: Save all, Don't save or Cancel. A file that
+    /// cannot be saved stays open.
+    pub(crate) fn close_scope(
         &mut self,
-        keep: u64,
+        id: u64,
+        scope: CloseScope,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if let Some(index) = self.documents.position(|document| document.id == keep) {
-            self.activate_document(index, window, cx);
-        }
-        let others: Vec<u64> = self
-            .documents
+        let Some(index) = self.documents.position(|document| document.id == id) else {
+            return;
+        };
+        let dirty = self.dirty_flags(cx);
+        let ids: Vec<u64> = close_targets(&dirty, index, scope)
+            .into_iter()
+            .filter_map(|at| self.documents.items().get(at).map(|document| document.id))
+            .collect();
+        self.close_documents(ids, window, cx);
+    }
+
+    /// Whether each open tab has unsaved changes, in the order of the bar.
+    pub(crate) fn dirty_flags(&self, cx: &App) -> Vec<bool> {
+        self.documents
             .items()
             .iter()
-            .map(|document| document.id)
-            .filter(|id| *id != keep)
+            .map(|document| {
+                document
+                    .editor()
+                    .is_some_and(|editor| editor.read(cx).state.has_unsaved())
+            })
+            .collect()
+    }
+
+    /// Closes the documents `ids`, asking once for those with unsaved changes.
+    fn close_documents(&mut self, ids: Vec<u64>, window: &mut Window, cx: &mut Context<Self>) {
+        let unsaved: Vec<(u64, Entity<EditorView>)> = ids
+            .iter()
+            .filter_map(|id| {
+                let index = self.documents.position(|document| document.id == *id)?;
+                let editor = self.documents.items().get(index)?.editor()?.clone();
+                editor.read(cx).state.has_unsaved().then_some((*id, editor))
+            })
             .collect();
-        for id in others {
-            self.close_document(id, window, cx);
+        if unsaved.is_empty() {
+            for id in ids {
+                self.close_unchecked(id, window, cx);
+            }
+            return;
         }
+        let names: Vec<SharedString> = unsaved
+            .iter()
+            .map(|(_, editor)| self.document_name(editor).into())
+            .collect();
+        let weak = cx.weak_entity();
+        open_unsaved_dialog(window, cx, names, move |choice, window, cx| {
+            let (ids, unsaved) = (ids.clone(), unsaved.clone());
+            let _ = weak.update(cx, |this, cx| match choice {
+                UnsavedChoice::Discard => {
+                    for id in ids {
+                        this.close_unchecked(id, window, cx);
+                    }
+                }
+                UnsavedChoice::SaveAll => {
+                    let saves: Vec<(u64, Task<bool>)> = unsaved
+                        .into_iter()
+                        .map(|(id, editor)| (id, this.save_editor(editor, window, cx)))
+                        .collect();
+                    cx.spawn_in(window, async move |this, cx| {
+                        let mut failed = Vec::new();
+                        for (id, save) in saves {
+                            if !save.await {
+                                failed.push(id);
+                            }
+                        }
+                        let _ = this.update_in(cx, |this, window, cx| {
+                            for id in ids.into_iter().filter(|id| !failed.contains(id)) {
+                                this.close_unchecked(id, window, cx);
+                            }
+                        });
+                    })
+                    .detach();
+                }
+            });
+        });
     }
 
     /// Asks for a file or a folder with the native dialog and opens it.
@@ -1025,6 +1103,7 @@ impl Render for AppView {
             .on_action(
                 cx.listener(|this, _: &ZoomReset, window, cx| this.zoom_editor(None, window, cx)),
             )
+            .on_action(cx.listener(Self::on_open_context_menu))
             .on_action(cx.listener(Self::copy_current_path))
             .on_action(cx.listener(Self::reveal_current))
             .on_action(cx.listener(|this, _: &NextTab, window, cx| {
@@ -1063,6 +1142,7 @@ impl Render for AppView {
             .child(self.render_title_bar(window, cx))
             .child(content)
             .child(self.render_status_bar(cx))
+            .children(self.render_keyboard_menu())
             .when_some(
                 self.find_files
                     .as_ref()

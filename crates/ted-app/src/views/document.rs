@@ -32,7 +32,7 @@ impl AppView {
 
     /// Saves the document of `editor`, asking where first when it has no file yet. The task
     /// resolves to whether the file was written.
-    fn save_editor(
+    pub(crate) fn save_editor(
         &mut self,
         editor: Entity<EditorView>,
         window: &mut Window,
@@ -78,7 +78,7 @@ impl AppView {
     }
 
     /// The name of the document of `editor`, as its tab shows it.
-    fn document_name(&self, editor: &Entity<EditorView>) -> String {
+    pub(crate) fn document_name(&self, editor: &Entity<EditorView>) -> String {
         self.documents
             .items()
             .iter()

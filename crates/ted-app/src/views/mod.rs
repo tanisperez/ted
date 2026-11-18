@@ -8,6 +8,7 @@ mod find_files;
 mod find_files_app;
 mod find_results;
 mod git;
+mod keyboard_menu;
 mod language_menu;
 mod location;
 mod logo;

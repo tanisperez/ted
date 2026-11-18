@@ -39,6 +39,9 @@ _version: 2
 "shortcuts.action.close_tab":
   en: "Close the tab"
   es: "Cerrar la pestaña"
+"shortcuts.action.tab_menu":
+  en: "Open the menu of the active tab"
+  es: "Abrir el menú de la pestaña activa"
 "shortcuts.action.next_tab":
   en: "Next tab"
   es: "Pestaña siguiente"
