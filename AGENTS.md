@@ -33,7 +33,7 @@ Expo/React Native conventions here.
   repository `tanisperez/ted`.
 - License: Apache-2.0, as Postino.
 - Stack: Rust (edition 2024, stable toolchain) + `gpui-kit` 0.10.0 + telaio (`telaio-ui`,
-  `telaio-app`) pinned to one tag in `[workspace.dependencies]`, (`v0.28.0` today), plus `telaio-git`, the git client shared with Postino.
+  `telaio-app`) pinned to one tag in `[workspace.dependencies]`, (`v0.29.0` today), plus `telaio-git`, the git client shared with Postino.
   `cargo tree -d --depth 0 | grep gpui` must stay empty.
 - **Text engine: our own.** No `gpui-kit` `InputState` for the document editor: it costs about
   460 MB of RSS for a 15 MB file in Postino and we do not control its render cost. ted has its
