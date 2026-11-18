@@ -1,6 +1,7 @@
 //! Embeds the release notes of this version (`release-notes/X.Y.Z.md`) for the What's new tab,
 //! and the Windows resources (the executable icon, `assets/ted.rc`) into `ted.exe`, as Postino
-//! does.
+//! does. The resources follow the target, not the host, so a cross build from Linux
+//! (`cargo xwin`, which provides `llvm-rc`) gets them too.
 
 use std::path::Path;
 use std::{env, fs};
@@ -8,8 +9,7 @@ use std::{env, fs};
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     embed_release_notes();
-    #[cfg(windows)]
-    {
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
         println!("cargo:rerun-if-changed=assets/ted.rc");
         println!("cargo:rerun-if-changed=assets/ted.ico");
         if let Err(error) =

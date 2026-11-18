@@ -1070,7 +1070,10 @@ impl Render for AppView {
 /// and Delete line.
 fn new_editor(state: EditorState, cx: &mut Context<EditorView>) -> EditorView {
     let mut editor = EditorView::new(state, cx);
-    editor
-        .set_context_menu(|entries, edit, _, _| entries.section(telaio_editor::line_entries(edit)));
+    editor.set_context_menu(|entries, edit, _, _| {
+        entries
+            .section(telaio_editor::line_entries(edit))
+            .section(telaio_editor::fold_entries())
+    });
     editor
 }

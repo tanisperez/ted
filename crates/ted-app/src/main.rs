@@ -1,7 +1,9 @@
 //! ted, the text editor. Binary entry point: initializes `gpui`, the theme and the main window.
 
-// A GUI application on Windows: never open a console window behind the main window.
-#![cfg_attr(windows, windows_subsystem = "windows")]
+// On Windows `ted.exe` is a console subsystem binary, as Postino (#282): shells wait for
+// `ted --help` and read its exit code, and pipes work. The manifest merged at release
+// (`packaging/windows/console.manifest`) keeps Windows 11 24H2 from opening a console for a double
+// click, and `detach_from_console` below frees the terminal when the window opens.
 
 mod actions;
 mod state;
@@ -31,6 +33,11 @@ fn main() -> ExitCode {
         Ok(paths) => paths,
         Err(code) => return code,
     };
+    // The window never holds the terminal it was started from: on Windows, a detached copy of
+    // this process opens it and this one exits.
+    if telaio_app::cli::detach_from_console() == telaio_app::cli::GuiLaunch::Relaunched {
+        return ExitCode::SUCCESS;
+    }
 
     // Settings first, for the log level: the logger is installed before anything else runs, so
     // every later message (gpui's own included) reaches the log file.

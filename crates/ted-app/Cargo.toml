@@ -27,7 +27,8 @@ telaio-text = { workspace = true }
 ted-cli = { path = "../ted-cli" }
 ted-workspace = { path = "../ted-workspace" }
 
-[target.'cfg(windows)'.build-dependencies]
+# The Windows resources, compiled when the target is Windows (build.rs), from any host.
+[build-dependencies]
 embed-resource = "3"
 
 [dev-dependencies]

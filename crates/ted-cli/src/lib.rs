@@ -140,16 +140,15 @@ pub fn parse_args(args: impl IntoIterator<Item = OsString>) -> Launch {
     Launch::Open(paths)
 }
 
-/// Handles the command line before anything else is set up: runs a command (attaching to the
-/// parent console first on Windows) and returns its exit code as the error, or returns the paths
-/// the app opens.
+/// Handles the command line before anything else is set up: runs a command and returns its exit
+/// code as the error, or returns the paths the app opens.
+///
+/// On Windows `ted.exe` is a console subsystem binary, so the output goes to the terminal, file or
+/// pipe the shell gave it, and the shell waits for the exit code.
 pub fn start(args: impl IntoIterator<Item = OsString>) -> Result<Vec<PathBuf>, ExitCode> {
     match parse_args(args) {
         Launch::Open(paths) => Ok(paths),
-        Launch::Command(command) => {
-            telaio_app::cli::attach_parent_console();
-            Err(command.run())
-        }
+        Launch::Command(command) => Err(command.run()),
     }
 }
 

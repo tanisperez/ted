@@ -105,6 +105,13 @@ jobs:
       - name: Build
         run: cargo build --release --locked --target ${{ matrix.target }}
 
+      # ted.exe is a console subsystem binary: adds `consoleAllocationPolicy` to the manifest gpui
+      # embeds, so a double click opens no console window (packaging/windows/README.md).
+      - name: Merge the Windows manifest
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: packaging\windows\merge-manifest.ps1 "target\${{ matrix.target }}\release\ted.exe"
+
       # Tarball, deb, rpm and Arch package (packaging/linux).
       - name: Package for Linux
         if: runner.os == 'Linux'
