@@ -24,6 +24,9 @@ use telaio_app::{logging, window};
 
 use state::settings::{LogLevel, ThemeChoice};
 use state::window::WindowState;
+
+/// The smallest window, in logical pixels, see `main`.
+const MIN_WINDOW_SIZE: (f32, f32) = (1024.0, 640.0);
 use views::AppView;
 
 fn main() -> ExitCode {
@@ -106,8 +109,13 @@ fn main() -> ExitCode {
         views::apply_editor_settings(&settings, cx);
 
         // 1440x900 logical, capped to 90% of the display (see `window::options`), the first time;
-        // then the size it was closed with.
-        let sizes = window::WindowSizes::default();
+        // then the size it was closed with. Never under 1024x640, as Postino (#291): below it the
+        // title bar loses the settings button and the Git panel its commit buttons, and it still
+        // fits a 1920x1080 laptop at 150% (1280x720 logical) with its taskbar.
+        let sizes = window::WindowSizes {
+            min: MIN_WINDOW_SIZE,
+            ..window::WindowSizes::default()
+        };
         let mut window_options = window::options(cx, &IDENTITY, sizes);
         let saved_window = state::window::load();
         if let Some(saved) = saved_window {
@@ -216,11 +224,15 @@ fn remember_window_size(
     let resized = last.clone();
     view.update(cx, |_, cx| {
         cx.observe_window_bounds(window, move |_, window, _| {
+            // A minimized window has no usable size: keep the state it had before (Postino #290).
+            let size = reopening_size(wayland, window);
+            if !state::window::usable_size(size.width.into(), size.height.into()) {
+                return;
+            }
             let mut state = resized.get();
             state.maximized = window.is_maximized();
             // A maximized or fullscreen window keeps the size it goes back to.
             if !state.maximized && !window.is_fullscreen() {
-                let size = reopening_size(wayland, window);
                 state.width = size.width.into();
                 state.height = size.height.into();
             }

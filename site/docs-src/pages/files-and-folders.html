@@ -17,7 +17,7 @@ description: Where ted keeps its settings, its recent files list, its window siz
 <p>On Linux, <code>XDG_CONFIG_HOME</code> and <code>XDG_STATE_HOME</code> move the first three and the last one.</p>
 
 <h2>Window size</h2>
-<p>When the window closes, ted saves its size and whether it was maximized, and opens with them the next time, always centered. Deleting <code>window.toml</code> goes back to the default size.</p>
+<p>When the window closes, ted saves its size and whether it was maximized, and opens with them the next time, always centered. A window closed while minimized keeps the size it had before. The window is never smaller than 1024 × 640. Deleting <code>window.toml</code> goes back to the default size.</p>
 
 <h2>Recent files</h2>
 <p>ted remembers the last ten folders and the last ten files you opened, most recent first. A recent entry that no longer exists leaves the list when you try to open it, and the <strong>X</strong> next to an entry in the title bar's switcher takes it off the list by hand.</p>

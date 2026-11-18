@@ -32,8 +32,9 @@ use super::super::root::AppView;
 use super::super::scrollbars::scrollbar_overlay;
 use super::super::settings_git::INSTALL_GIT_URL;
 
-/// The narrowest the Commit button gets beside Commit and push.
-const COMMIT_BUTTON_MIN_WIDTH: f32 = 96.0;
+/// Least width of a commit button, enough for the longest "Commit and push…" label: below twice
+/// this, the two buttons wrap onto their own rows (Postino #238).
+const COMMIT_BUTTON_MIN_WIDTH: f32 = 140.0;
 
 /// What a click on a row's checkbox does.
 #[derive(Clone, Copy)]
@@ -376,6 +377,7 @@ impl AppView {
         let commit_and_push =
             SecondaryButton::new("git-commit-push", t!("git.commit.commit_and_push"))
                 .icon(Icon::new(IconName::ArrowUp))
+                .full_width()
                 .disabled(!enabled)
                 .on_click(
                     cx.listener(|view, _, window, cx| view.commit_from_box(true, window, cx)),
@@ -399,22 +401,27 @@ impl AppView {
                         .child(div().flex_1().child(amend_box))
                         .child(summary),
                 )
-                // In a narrow panel Commit and push goes to its own line, so no label is cut.
+                // The two buttons always have the same width: halves of the row when both labels
+                // fit, one under the other at full width on a narrow panel, so no label is cut.
                 .child(
                     h_flex()
                         .flex_wrap()
                         .gap(px(6.0))
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w(px(COMMIT_BUTTON_MIN_WIDTH))
-                                .child(commit),
-                        )
-                        .child(div().flex_none().child(commit_and_push)),
+                        .child(commit_button_slot().child(commit))
+                        .child(commit_button_slot().child(commit_and_push)),
                 )
                 .into_any_element(),
         )
     }
+}
+
+/// The box of one of the commit buttons: it grows from [`COMMIT_BUTTON_MIN_WIDTH`], so both
+/// share a row equally or each fills its own.
+fn commit_button_slot() -> Div {
+    div()
+        .flex_grow(1.0)
+        .flex_basis(px(COMMIT_BUTTON_MIN_WIDTH))
+        .min_w(px(COMMIT_BUTTON_MIN_WIDTH))
 }
 
 /// Git is not installed, too old or failed to run.
