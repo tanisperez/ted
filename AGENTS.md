@@ -67,7 +67,7 @@ Expo/React Native conventions here.
 - What's new (decided on 2026-11-08): as Postino, from `release-notes/X.Y.Z.md`, embedded by
   `crates/ted-app/build.rs`.
 - Design: the prototype lives in a claude.ai Artifact, https://claude.ai/artifact/SVu8wEYoZsz3RLP9AxPUkr (pages `Ted Design`, `ted búsqueda`,
-  `ted selector y plegado`, `ted icono app`, `ted document icon`). UI changes are designed there first; read its pages with
+  `ted selector y plegado`, `ted icono app`, `ted document icon`, `ted 0.7.0`). UI changes are designed there first; read its pages with
   the Artifact tool, never a local copy. There is no local `design_system/` folder any more
   (removed on 2026-11-07).
 

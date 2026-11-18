@@ -1,7 +1,9 @@
 # ted icon
 
 `ted.svg` is the master: the indigo square with braces and a cursor of the 0.5.0 design
-(variant 1e of the design's `ted icono app` page, without its metadata). It is the same file
+(variant 1e of the design's `ted icono app` page, without its metadata). Since 0.7.0 (#97) the
+square fills the whole canvas, with Postino's corner radius, and the symbol is scaled to match, so
+both apps look the same size in a dock or a taskbar (design page `ted 0.7.0`). It is the same file
 as `crates/ted-app/assets/ted.svg`, which the title bar, the empty state and About paint, and as
 `site/img/logo.svg`.
 
