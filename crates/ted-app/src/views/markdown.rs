@@ -72,26 +72,96 @@ impl AppView {
         };
         let view = preview.read(cx).view();
         let palette = cx.palette();
+        let split = view == MarkdownView::Split;
+        let share = self.markdown_share;
+        let bounds = self.markdown_bounds.clone();
         h_flex()
             .relative()
             .flex_1()
             .min_h_0()
-            .when(view.shows_editor(), |row| {
-                row.child(div().flex_1().min_w_0().h_full().child(editor.clone()))
-            })
-            .when(view.shows_preview(), |row| {
+            // The row's bounds, for the divider drag (`root.rs`).
+            .when(split, |row| {
                 row.child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .h_full()
-                        .when(view == MarkdownView::Split, |pane| {
-                            pane.border_l_1().border_color(palette.border)
-                        })
-                        .child(preview.clone()),
+                    canvas(move |area, _, _| bounds.set(Some(area)), |_, _, _, _| {})
+                        .absolute()
+                        .inset_0(),
                 )
             })
+            .when(view.shows_editor(), |row| {
+                row.child(
+                    div()
+                        .when(split, |pane| pane.flex_none().w(relative(share)))
+                        .when(!split, |pane| pane.flex_1())
+                        .min_w_0()
+                        .h_full()
+                        .child(editor.clone()),
+                )
+            })
+            .when(split, |row| {
+                row.child(self.render_split_divider(&palette, cx))
+            })
+            .when(view.shows_preview(), |row| {
+                row.child(div().flex_1().min_w_0().h_full().child(preview.clone()))
+            })
             .child(render_toolbar(&preview, view, &palette, cx))
+    }
+
+    /// The line between the editor and the preview of the split view: drag it to share the
+    /// width, double click it for half and half (#102, design `ted 0.7.0`). At rest the 1 px border;
+    /// on hover and while dragged, 3 px of accent with the editor's share beside it.
+    fn render_split_divider(&self, palette: &Palette, cx: &mut Context<Self>) -> impl IntoElement {
+        let active = self.resizing_markdown;
+        let percent = (self.markdown_share * 100.0).round() as u32;
+        let (accent, border) = (palette.accent, palette.border);
+        div()
+            .id("markdown-split-divider")
+            .group("markdown-split-divider")
+            .relative()
+            .flex_none()
+            .h_full()
+            .w(px(7.0))
+            .mx(px(-3.0))
+            .flex()
+            .justify_center()
+            .cursor_col_resize()
+            .child(
+                div()
+                    .h_full()
+                    .w(px(if active { 3.0 } else { 1.0 }))
+                    .bg(if active { accent } else { border })
+                    .group_hover("markdown-split-divider", move |line| {
+                        line.w(px(3.0)).bg(accent)
+                    }),
+            )
+            .when(active, |divider| {
+                divider.child(
+                    div()
+                        .absolute()
+                        .top(relative(0.5))
+                        .left(px(-36.0))
+                        .px(px(6.0))
+                        .py(px(2.0))
+                        .rounded(px(5.0))
+                        .bg(palette.raised)
+                        .border_1()
+                        .border_color(palette.border_strong)
+                        .text_size(px(11.0))
+                        .text_color(palette.fg_muted)
+                        .child(format!("{percent} %")),
+                )
+            })
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                    if event.click_count >= 2 {
+                        this.markdown_share = 0.5;
+                    } else {
+                        this.resizing_markdown = true;
+                    }
+                    cx.stop_propagation();
+                    cx.notify();
+                }),
+            )
     }
 
     /// `Ctrl+Shift+V`: the next view of the active Markdown document.

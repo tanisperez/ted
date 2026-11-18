@@ -71,9 +71,31 @@ impl MarkdownView {
     }
 }
 
+/// The least width of each side of the Markdown split view, in logical pixels (#102).
+pub const SPLIT_MIN_WIDTH: f32 = 240.0;
+
+/// The editor's share of a split row `width` wide with the divider dragged to `x` (from the
+/// row's left edge): each side keeps [`SPLIT_MIN_WIDTH`], and a row too narrow for both is halved.
+pub fn split_share(x: f32, width: f32) -> f32 {
+    if !width.is_finite() || width <= SPLIT_MIN_WIDTH * 2.0 {
+        return 0.5;
+    }
+    x.clamp(SPLIT_MIN_WIDTH, width - SPLIT_MIN_WIDTH) / width
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_split_keeps_both_sides_wide_enough() {
+        assert_eq!(split_share(500.0, 1000.0), 0.5);
+        assert_eq!(split_share(600.0, 1000.0), 0.6);
+        assert_eq!(split_share(10.0, 1000.0), 0.24);
+        assert_eq!(split_share(990.0, 1000.0), 0.76);
+        assert_eq!(split_share(100.0, 400.0), 0.5);
+        assert_eq!(split_share(100.0, f32::NAN), 0.5);
+    }
 
     #[test]
     fn ctrl_shift_v_cycles_the_three_views() {

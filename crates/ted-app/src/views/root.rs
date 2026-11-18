@@ -32,6 +32,7 @@ use crate::actions::{
 };
 use crate::state::git::GitState;
 use crate::state::launch::{self, LaunchError, Target};
+use crate::state::markdown_view::split_share;
 use crate::state::recents::{self, Recents};
 use crate::state::settings::{Settings, SettingsCategory, Startup};
 use crate::state::tabs::Tabs;
@@ -162,6 +163,12 @@ pub struct AppView {
     explorer_width: f32,
     /// While the explorer's edge is dragged.
     resizing_explorer: bool,
+    /// The editor's share of the Markdown split view, 0.5 at first and kept for the window (#102).
+    pub(crate) markdown_share: f32,
+    /// Whether the Markdown split's divider is being dragged.
+    pub(crate) resizing_markdown: bool,
+    /// The bounds of the Markdown split row in the last frame, for the divider drag.
+    pub(crate) markdown_bounds: Rc<std::cell::Cell<Option<Bounds<Pixels>>>>,
     /// The window title last set, so it is only set again when it changes.
     last_title: String,
     /// The user chose to close the window without saving: it may close now.
@@ -257,6 +264,9 @@ impl AppView {
             git_scroll: UniformListScrollHandle::new(),
             explorer_width: EXPLORER_WIDTH,
             resizing_explorer: false,
+            markdown_share: 0.5,
+            resizing_markdown: false,
+            markdown_bounds: Rc::default(),
             last_title: String::new(),
             closing: false,
             settings_category: SettingsCategory::default(),
@@ -1130,10 +1140,24 @@ impl Render for AppView {
                     this.explorer_width = width.clamp(EXPLORER_WIDTH_MIN, EXPLORER_WIDTH_MAX);
                     cx.notify();
                 }
+                if this.resizing_markdown
+                    && let Some(bounds) = this.markdown_bounds.get()
+                {
+                    this.markdown_share = split_share(
+                        f32::from(event.position.x - bounds.origin.x),
+                        f32::from(bounds.size.width),
+                    );
+                    cx.notify();
+                }
             }))
             .on_mouse_up(
                 MouseButton::Left,
-                cx.listener(|this, _, _, _| this.resizing_explorer = false),
+                cx.listener(|this, _, _, cx| {
+                    this.resizing_explorer = false;
+                    if std::mem::take(&mut this.resizing_markdown) {
+                        cx.notify();
+                    }
+                }),
             )
             .size_full()
             .relative()
