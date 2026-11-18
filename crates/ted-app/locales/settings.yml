@@ -142,8 +142,11 @@ _version: 2
   en: "Only for the file types whose default app is ted. Your file manager may need a reload (F5)."
   es: "Solo en los tipos de archivo cuya app predeterminada es ted. Puede que el gestor de archivos necesite recargar (F5)."
 "settings.about.footer":
-  en: "ted does not update itself yet: new versions are published on GitHub."
-  es: "ted aún no se actualiza solo: las versiones nuevas se publican en GitHub."
+  en: "This copy does not update itself: new versions are published on GitHub."
+  es: "Esta copia no se actualiza sola: las versiones nuevas se publican en GitHub."
+"settings.about.footer_updater":
+  en: "ted only contacts GitHub to check for updates, never with your files."
+  es: "ted solo contacta con GitHub para buscar actualizaciones, nunca con tus archivos."
 "settings.about.version":
   en: "Version"
   es: "Versión"

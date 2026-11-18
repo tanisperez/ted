@@ -34,7 +34,7 @@ use telaio_editor::state::editor::set_indentation;
 use super::document_icons;
 use super::logo::logo;
 use super::root::AppView;
-use super::settings_git::git_sections;
+use super::settings_git::{git_sections, switch};
 use telaio_editor::views::editor::EditorDisplay;
 
 /// Side of the app icon in the About header.
@@ -273,10 +273,20 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
             &view.git.availability,
             view.git_select.as_ref().map(|(select, _)| select),
         ),
-        SettingsCategory::About => vec![
-            about_header(&palette, &mono_font),
-            about_whats_new(weak.clone()),
-        ],
+        SettingsCategory::About => {
+            let mut rows = vec![
+                about_header(&palette, &mono_font),
+                about_whats_new(weak.clone()),
+            ];
+            if crate::state::update::updater_enabled() {
+                rows.push(about_updates(
+                    weak.clone(),
+                    settings.check_updates,
+                    &palette,
+                ));
+            }
+            rows
+        }
     };
 
     let layout = SettingsLayout::new("settings")
@@ -297,7 +307,14 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
         .sections(sections);
     if category == SettingsCategory::About {
         layout
-            .footer(t!("settings.about.footer"), div())
+            .footer(
+                if crate::state::update::updater_enabled() {
+                    t!("settings.about.footer_updater")
+                } else {
+                    t!("settings.about.footer")
+                },
+                div(),
+            )
             .into_any_element()
     } else {
         layout
@@ -311,6 +328,34 @@ fn render_settings(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
             )
             .into_any_element()
     }
+}
+
+/// The Updates section of About (#99): the automatic check and a check now. Only in a copy that
+/// has the in-app updater.
+fn about_updates(weak: WeakEntity<AppView>, check: bool, palette: &Palette) -> AnyElement {
+    let toggle = switch("settings-check-updates", check, palette, {
+        let weak = weak.clone();
+        move |on, window, cx| {
+            let _ = weak.update(cx, |view, cx| {
+                view.settings.check_updates = on;
+                view.apply_settings(window, cx);
+            });
+        }
+    });
+    let now = SecondaryButton::new("settings-check-updates-now", t!("update.setting.check_now"))
+        .icon(Icon::new(IconName::RefreshCw))
+        .on_click(move |_, window, cx| {
+            let _ = weak.update(cx, |view, cx| view.check_for_updates_manually(window, cx));
+        });
+    v_flex()
+        .gap(px(14.0))
+        .child(SectionHeading::new(t!("update.setting.title")))
+        .child(
+            LabeledRow::new(t!("update.setting.check"), toggle)
+                .description(t!("update.setting.check_description")),
+        )
+        .child(LabeledRow::new(t!("update.check_for_updates"), now))
+        .into_any_element()
 }
 
 /// The row of About that opens the What's new tab, closing Settings.

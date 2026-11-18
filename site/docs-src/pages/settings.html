@@ -60,6 +60,9 @@ description: Every setting of ted, its default, and the settings.toml file.
     </tbody>
 </table></div>
 
+<h2 id="about">About</h2>
+<p>The version of ted, its release notes and the What's new tab. A copy that updates itself (see <a href="installation.html#updates">Updates</a>) also has <strong>Check for updates automatically</strong>, on by default, which looks for a new version once, a few seconds after ted starts, and <strong>Check now</strong>. The global search has the same <strong>Check for updates</strong>.</p>
+
 <h2>settings.toml</h2>
 <p>The settings live in a plain text file: <code>~/.config/ted/settings.toml</code> on Linux, <code>~/Library/Application Support/ted/settings.toml</code> on macOS and <code>%APPDATA%\ted\settings.toml</code> on Windows. You can edit it by hand while ted is closed; a value ted does not understand falls back to its default, and the rest of the file still applies. These keys exist only in the file, or are written only when set:</p>
 <ul>
@@ -92,4 +95,5 @@ log_level = "info"
 git_fetch_automatically = true
 git_confirm_discard = true
 git_commit_action = "commit"
+check_updates = true                  # look for a new version once at startup
 ```

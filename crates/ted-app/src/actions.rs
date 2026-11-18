@@ -32,6 +32,8 @@ actions!(
         OpenSettings,
         /// Opens the What's new tab.
         ShowWhatsNew,
+        /// Looks for a new version now, whatever the setting says (#99).
+        CheckForUpdates,
         /// Opens the global search, files and actions (`Ctrl+K`).
         OpenSearch,
         /// Opens the keyboard shortcuts cheat sheet (`F1`, `Cmd+Shift+/` on macOS).

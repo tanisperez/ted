@@ -20,5 +20,6 @@ pub mod settings;
 pub mod shortcuts;
 pub mod status;
 pub mod tabs;
+pub mod update;
 pub mod whats_new;
 pub mod window;

@@ -188,7 +188,7 @@ fn changes_section(
 }
 
 /// A switch in its halo.
-fn switch(
+pub(super) fn switch(
     id: &'static str,
     checked: bool,
     palette: &Palette,

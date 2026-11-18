@@ -25,6 +25,7 @@ pub enum ActionId {
     OpenSettings,
     OpenShortcuts,
     ShowWhatsNew,
+    CheckForUpdates,
     ToggleExplorer,
     ToggleGit,
     Find,
@@ -54,6 +55,8 @@ pub struct Context {
     pub editor: bool,
     /// The document shown is Markdown: its views and the preview tab.
     pub markdown: bool,
+    /// This copy has the in-app updater: Check for updates (#99).
+    pub updates: bool,
 }
 
 impl ActionId {
@@ -92,6 +95,9 @@ impl ActionId {
             OpenShortcuts,
             ShowWhatsNew,
         ]);
+        if context.updates {
+            actions.push(CheckForUpdates);
+        }
         actions
     }
 
@@ -108,6 +114,7 @@ impl ActionId {
             OpenSettings => "search.action.settings",
             OpenShortcuts => "search.action.shortcuts",
             ShowWhatsNew => "whats_new.show",
+            CheckForUpdates => "update.check_for_updates",
             ToggleExplorer => "search.action.toggle_explorer",
             ToggleGit => "search.action.toggle_git",
             Find => "search.action.find",
@@ -440,8 +447,9 @@ mod tests {
             document: true,
             editor: true,
             markdown: true,
+            updates: true,
         });
-        assert_eq!(all.len(), 25);
+        assert_eq!(all.len(), 26);
     }
 
     #[test]
@@ -451,6 +459,7 @@ mod tests {
             document: true,
             editor: true,
             markdown: true,
+            updates: true,
         });
         for action in all {
             let label = action.label();

@@ -287,6 +287,8 @@ pub struct Settings {
     pub git_confirm_discard: bool,
     /// What Ctrl+Enter does in the commit message.
     pub git_commit_action: GitCommitAction,
+    /// Whether ted looks for a new version once, a few seconds after it starts (#99).
+    pub check_updates: bool,
 }
 
 impl Settings {
@@ -327,6 +329,7 @@ impl Default for Settings {
             git_executable: None,
             git_fetch_automatically: true,
             git_confirm_discard: true,
+            check_updates: true,
             git_commit_action: GitCommitAction::default(),
         }
     }
@@ -494,6 +497,9 @@ fn parse_settings(content: &str) -> Settings {
     if let Some(value) = text("git_commit_action").and_then(GitCommitAction::parse) {
         settings.git_commit_action = value;
     }
+    if let Some(value) = flag("check_updates") {
+        settings.check_updates = value;
+    }
     settings
 }
 
@@ -635,6 +641,7 @@ mod tests {
             git_executable: Some(PathBuf::from("/opt/git/bin/git")),
             git_fetch_automatically: false,
             git_confirm_discard: false,
+            check_updates: false,
             git_commit_action: GitCommitAction::CommitAndPush,
             ..Settings::default()
         };

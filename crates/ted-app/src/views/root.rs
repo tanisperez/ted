@@ -203,6 +203,10 @@ pub struct AppView {
     /// Files or folders dragged from outside over the window: how many files, and whether a
     /// folder is among them, for the drop overlay (#98).
     pub(crate) external_drag: Option<(usize, bool)>,
+    /// The in-app updater's state: the check running, an update ready (#99).
+    pub(crate) update: crate::state::update::UpdateState,
+    /// How this copy was installed, read once for the updater.
+    pub(crate) update_env: crate::state::update::UpdateEnv,
     /// The context menu `Shift+F10` opened, while it is open.
     pub(crate) keyboard_menu: Option<super::keyboard_menu::KeyboardMenu>,
     /// The language menu of the status bar.
@@ -289,6 +293,8 @@ impl AppView {
             tab_bounds: Rc::default(),
             keyboard_menu: None,
             external_drag: None,
+            update: Default::default(),
+            update_env: crate::state::update::UpdateEnv::detect(),
             checkout_choice: CheckoutChoice::default(),
             document_icons: DocumentIcons::default(),
             file_index: None,
@@ -307,6 +313,7 @@ impl AppView {
             view.open_whats_new(window, cx);
         }
         view.apply_debug_open(window, cx);
+        view.schedule_startup_update_check(cx);
         view
     }
 
@@ -1140,6 +1147,11 @@ impl Render for AppView {
             )
             .on_action(
                 cx.listener(|this, _: &ShowWhatsNew, window, cx| this.open_whats_new(window, cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &crate::actions::CheckForUpdates, window, cx| {
+                    this.check_for_updates_manually(window, cx)
+                }),
             )
             .on_action(
                 cx.listener(|this, _: &OpenShortcuts, window, cx| this.open_shortcuts(window, cx)),

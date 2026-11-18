@@ -2,8 +2,12 @@
 
 Publishing a version means pushing a tag. The `Release` workflow
 (`.github/workflows/release.yml`) builds ted for every platform, attaches the packages to the
-GitHub release of that tag and publishes it. It is Postino's workflow without the in-app updater
-(no `latest.json`): ted has no updater, no website and no package repositories yet.
+GitHub release of that tag and publishes it, with `latest.json`, the manifest of the in-app
+updater (#99). It is Postino's workflow. Once the release is published, `website.yml` rebuilds
+the site: the download buttons point at the new files and, when the `GPG_PRIVATE_KEY` and
+`GPG_PASSPHRASE` secrets exist, the APT and DNF repositories get the new packages (#101,
+`packaging/linux/README.md`). To try an update between pre-releases, start a release build with
+`TED_UPDATE_URL` set to the address of another `latest.json`.
 
 ## Versions and tags
 

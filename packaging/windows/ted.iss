@@ -50,7 +50,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 ChangesAssociations=yes
 ; The PATH task changes the user environment: tell running programs (new terminals) about it.
 ChangesEnvironment=yes
-; Close a running ted through the Restart Manager instead of asking for a reboot.
+; The updater runs the installer silently while ted may be open (#99): close it through the
+; Restart Manager, never ask for a reboot, and relaunch from [Run].
 CloseApplications=yes
 RestartApplications=no
 SetupIconFile=..\..\crates\ted-app\assets\ted.ico
@@ -317,11 +318,18 @@ Root: HKA; Subkey: "Software\Classes\ted.csv\DefaultIcon"; ValueType: string; Va
 Root: HKA; Subkey: "Software\Classes\ted.csv\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
 Root: HKA; Subkey: "Software\Classes\.csv\OpenWithProgids"; ValueType: string; ValueName: "ted.csv"; ValueData: ""; Flags: uninsdeletevalue
 
-; Interactively, a checkbox on the last page. Silent installs (winget) do not launch ted.
+; Interactively, a checkbox on the last page. Silent installs (winget) do not launch ted,
+; except when the in-app updater asks for it with /relaunch=1.
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: RelaunchRequested
 
 [Code]
+function RelaunchRequested: Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:relaunch|0}') = '1');
+end;
+
 const
   EnvironmentKey = 'Environment';
 

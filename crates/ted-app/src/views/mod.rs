@@ -23,6 +23,7 @@ mod settings_git;
 mod status_bar;
 mod tabs;
 mod title_bar;
+mod update;
 mod welcome;
 mod whats_new;
 

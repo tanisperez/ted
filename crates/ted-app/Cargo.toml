@@ -21,6 +21,7 @@ rust-i18n = { workspace = true }
 telaio-ui = { workspace = true }
 telaio-app = { workspace = true }
 telaio-git = { workspace = true }
+telaio-update = { workspace = true }
 telaio-editor = { workspace = true }
 telaio-syntax = { workspace = true }
 telaio-text = { workspace = true }

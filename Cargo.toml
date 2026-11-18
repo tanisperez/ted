@@ -18,6 +18,8 @@ telaio-ui = { git = "https://github.com/tanisperez/telaio", tag = "v0.29.0" }
 telaio-app = { git = "https://github.com/tanisperez/telaio", tag = "v0.29.0" }
 # The git client shared with Postino: drives the `git` executable, no gpui.
 telaio-git = { git = "https://github.com/tanisperez/telaio", tag = "v0.29.0" }
+# The in-app updater shared with Postino: checks, downloads and installs releases (#99).
+telaio-update = { git = "https://github.com/tanisperez/telaio", tag = "v0.29.0" }
 serde = "1"
 serde_json = "1"
 thiserror = "2"

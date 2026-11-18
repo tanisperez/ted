@@ -172,6 +172,7 @@ impl AppView {
             document: self.documents.active().is_some(),
             editor: editor.is_some(),
             markdown: self.active_markdown(cx).is_some(),
+            updates: crate::state::update::updater_enabled(),
         };
         let actions: Vec<ActionRow> = ActionId::available(context)
             .into_iter()
@@ -339,6 +340,7 @@ fn boxed_action(action: ActionId) -> Option<Box<dyn Action>> {
         OpenSettings => Box::new(actions::OpenSettings),
         OpenShortcuts => Box::new(actions::OpenShortcuts),
         ShowWhatsNew => Box::new(actions::ShowWhatsNew),
+        CheckForUpdates => Box::new(actions::CheckForUpdates),
         ToggleExplorer => Box::new(actions::ToggleExplorer),
         ToggleGit => Box::new(actions::ToggleGit),
         ZoomIn => Box::new(actions::ZoomIn),
@@ -655,6 +657,7 @@ fn action_icon(action: ActionId) -> Lucide {
         OpenSettings => Lucide::Settings,
         OpenShortcuts => Lucide::Keyboard,
         ShowWhatsNew => Lucide::Sparkles,
+        CheckForUpdates => Lucide::RefreshCw,
         ToggleExplorer => Lucide::Files,
         ToggleGit => Lucide::GitBranch,
         Find | Replace => Lucide::Search,

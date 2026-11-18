@@ -1,0 +1,77 @@
+# The in-app updater (#99).
+_version: 2
+"update.setting.title":
+  en: "Updates"
+  es: "Actualizaciones"
+"update.setting.check":
+  en: "Check for updates automatically"
+  es: "Buscar actualizaciones automáticamente"
+"update.setting.check_description":
+  en: "Once, a few seconds after launch. Never polls in the background."
+  es: "Una vez, unos segundos después de abrir. Nunca en segundo plano."
+"update.setting.check_now":
+  en: "Check now"
+  es: "Buscar ahora"
+"update.setting.managed":
+  en: "This copy updates with your package manager."
+  es: "Esta copia se actualiza con tu gestor de paquetes."
+"update.status.ready":
+  en: "Update %{version} ready, restart"
+  es: "Actualización %{version} lista, reiniciar"
+"update.status.available":
+  en: "Update %{version} available, download"
+  es: "Actualización %{version} disponible, descargar"
+"update.status.available_script":
+  en: "Update %{version} available, copy the update command"
+  es: "Actualización %{version} disponible, copiar el comando"
+"update.status.notes":
+  en: "Release notes"
+  es: "Notas de la versión"
+"update.checking":
+  en: "Checking for updates..."
+  es: "Buscando actualizaciones..."
+"update.up_to_date":
+  en: "ted %{version} is the latest version"
+  es: "ted %{version} es la última versión"
+"update.found":
+  en: "Update %{version} downloaded, restart from the status bar to install it"
+  es: "Actualización %{version} descargada, reinicia desde la barra de estado para instalarla"
+"update.already_ready":
+  en: "Update %{version} is ready, restart from the status bar to install it"
+  es: "La actualización %{version} está lista, reinicia desde la barra de estado para instalarla"
+"update.available_manual":
+  en: "Update %{version} is available, download the new zip from the release page"
+  es: "La actualización %{version} está disponible, descarga el nuevo zip de la página de la versión"
+"update.available_linux":
+  en: "Update %{version} is available, download it from the release page"
+  es: "La actualización %{version} está disponible, descárgala de la página de la versión"
+"update.available_script":
+  en: "Update %{version} is available, run the install command again to update"
+  es: "La actualización %{version} está disponible, vuelve a ejecutar el comando de instalación"
+"update.command_copied":
+  en: "Command copied. Close ted and run it in a terminal to update: %{command}"
+  es: "Comando copiado. Cierra ted y ejecútalo en una terminal para actualizar: %{command}"
+"update.check_failed":
+  en: "Could not check for updates: %{error}"
+  es: "No se pudo buscar actualizaciones: %{error}"
+"update.install_failed":
+  en: "Could not install the update: %{error}"
+  es: "No se pudo instalar la actualización: %{error}"
+"update.fallback":
+  en: "Could not update in place, download the new version from GitHub"
+  es: "No se pudo actualizar aquí, descarga la nueva versión de GitHub"
+"update.unavailable":
+  en: "This copy of ted does not update itself"
+  es: "Esta copia de ted no se actualiza sola"
+"update.confirm.title":
+  en: "Restart to update?"
+  es: "¿Reiniciar para actualizar?"
+"update.confirm.text":
+  en: "Some tabs have unsaved changes. Restarting closes them without saving."
+  es: "Hay pestañas con cambios sin guardar. Al reiniciar se cierran sin guardarlos."
+"update.confirm.restart":
+  en: "Restart"
+  es: "Reiniciar"
+"update.check_for_updates":
+  en: "Check for updates"
+  es: "Buscar actualizaciones"

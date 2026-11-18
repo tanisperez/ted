@@ -17,6 +17,7 @@ use telaio_ui::components::{NeutralButtonExt, SearchableMenu};
 use crate::actions::{OpenShortcuts, ToggleExplorer, ToggleGit};
 use crate::state::launch::Target;
 use crate::state::status::DocumentStatus;
+use crate::state::update::ManualUpdate;
 use crate::theme::metrics::{
     RADIUS_MD, STATUS_BAR_HEIGHT, STATUS_TOGGLE_HEIGHT, STATUS_TOGGLE_MIN_WIDTH,
 };
@@ -121,6 +122,7 @@ impl AppView {
                     .child(op.progress_label())
             }))
             .child(div().flex_1())
+            .children(self.render_update_item(&palette, cx))
             .children(status.map(|status| {
                 h_flex()
                     .gap(px(16.0))
@@ -283,5 +285,71 @@ impl AppView {
                     }))
                     .on_click(cx.listener(move |this, _, _, cx| this.toggle_side_panel(panel, cx))),
             )
+    }
+}
+
+impl AppView {
+    /// The discreet update item (#99): "ready, restart" with the release notes, or, for a copy
+    /// that downloads nothing, "available" with what to do. Built from the stored update, no work
+    /// beyond a few small clones.
+    fn render_update_item(&self, palette: &Palette, cx: &mut Context<Self>) -> Option<AnyElement> {
+        let ready = self.update.ready()?;
+        let version = ready.version.as_str();
+        let notes_url = ready.notes_url.clone();
+        if ready.is_manual_download() {
+            let manual = self.manual_update();
+            let label = if manual == ManualUpdate::InstallScript {
+                t!("update.status.available_script", version = version)
+            } else {
+                t!("update.status.available", version = version)
+            };
+            return Some(
+                h_flex()
+                    .id("status-bar-update-download")
+                    .items_center()
+                    .gap(px(6.0))
+                    .cursor_pointer()
+                    .text_color(palette.accent_text)
+                    .hover(|style| style.underline())
+                    .child(Icon::new(IconName::Download).with_size(px(13.0)))
+                    .child(label.into_owned())
+                    .on_click(cx.listener(move |view, _, window, cx| {
+                        if manual == ManualUpdate::InstallScript {
+                            view.copy_update_command(window, cx);
+                        } else {
+                            cx.open_url(&notes_url);
+                        }
+                    }))
+                    .into_any_element(),
+            );
+        }
+        Some(
+            h_flex()
+                .items_center()
+                .gap(px(12.0))
+                .child(
+                    h_flex()
+                        .id("status-bar-update-restart")
+                        .items_center()
+                        .gap(px(6.0))
+                        .cursor_pointer()
+                        .text_color(palette.accent_text)
+                        .hover(|style| style.underline())
+                        .child(Icon::new(IconName::RefreshCw).with_size(px(13.0)))
+                        .child(t!("update.status.ready", version = version).into_owned())
+                        .on_click(cx.listener(|view, _, window, cx| {
+                            view.request_update_restart(window, cx)
+                        })),
+                )
+                .child(
+                    div()
+                        .id("status-bar-update-notes")
+                        .cursor_pointer()
+                        .hover(|style| style.underline())
+                        .child(t!("update.status.notes").into_owned())
+                        .on_click(move |_, _, cx| cx.open_url(&notes_url)),
+                )
+                .into_any_element(),
+        )
     }
 }
