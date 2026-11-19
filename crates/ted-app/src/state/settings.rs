@@ -74,6 +74,9 @@ pub fn parse_excludes(text: &str) -> Vec<String> {
 /// The tab sizes Settings offers. `settings.toml` accepts any size from 1 to 16.
 pub const TAB_SIZES: [usize; 3] = [2, 4, 8];
 
+/// The columns the right margin line can be at, 0 for none (#116).
+pub const RULERS: [usize; 4] = [0, 80, 100, 120];
+
 /// Valid range of [`Settings::ui_font_size`], in points.
 pub const UI_FONT_SIZE_RANGE: RangeInclusive<f32> = 11.0..=16.0;
 
@@ -245,6 +248,10 @@ pub struct Settings {
     /// Whether code wraps long lines into rows. Markdown and plain text always do; Alt+Z changes
     /// it for the open file.
     pub word_wrap: bool,
+    /// Whether the editor draws the indent guides and the border of the gutter (#114, #115).
+    pub indent_guides: bool,
+    /// The column of the right margin line, 0 for none (#116).
+    pub ruler: usize,
     /// What a Markdown file shows when it opens: the editor, the editor and the preview, or the
     /// preview.
     pub markdown_view: MarkdownView,
@@ -312,6 +319,8 @@ impl Default for Settings {
             highlight_current_line: true,
             minimap: true,
             word_wrap: false,
+            indent_guides: true,
+            ruler: 0,
             markdown_view: MarkdownView::default(),
             markdown_sync_scroll: true,
             tab_size: 4,
@@ -429,6 +438,12 @@ fn parse_settings(content: &str) -> Settings {
     }
     if let Some(value) = flag("word_wrap") {
         settings.word_wrap = value;
+    }
+    if let Some(value) = flag("indent_guides") {
+        settings.indent_guides = value;
+    }
+    if let Some(value) = table.get("ruler").and_then(toml::Value::as_integer) {
+        settings.ruler = value.clamp(0, 400) as usize;
     }
     if let Some(value) = text("markdown_view").and_then(MarkdownView::parse) {
         settings.markdown_view = value;

@@ -72,6 +72,18 @@ _version: 2
 "settings.text.minimap":
   en: "Minimap"
   es: "Minimapa"
+"settings.text.indent_guides":
+  en: "Indent guides"
+  es: "Guías de sangría"
+"settings.text.ruler":
+  en: "Right margin"
+  es: "Margen derecho"
+"settings.text.ruler_off":
+  en: "Off"
+  es: "No"
+"settings.text.ruler_description":
+  en: "A line at this column, to keep lines short. Also ruler = <column> in settings.toml."
+  es: "Una línea en esta columna, para no pasarse de largo. También ruler = <columna> en settings.toml."
 "settings.text.word_wrap":
   en: "Word wrap"
   es: "Ajuste de línea"

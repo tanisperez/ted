@@ -24,7 +24,7 @@ use crate::state::launch::shorten_path;
 use crate::state::locale::{self, LANGUAGES, LanguageChoice};
 use crate::state::markdown_view::MarkdownView;
 use crate::state::settings::{
-    self, MONO_FONT_SIZE_RANGE, MONO_FONT_SIZE_STEP, Settings, SettingsCategory, Startup,
+    self, MONO_FONT_SIZE_RANGE, MONO_FONT_SIZE_STEP, RULERS, Settings, SettingsCategory, Startup,
     SyntaxThemeChoice, TAB_SIZES, ThemeChoice, UI_FONT_SIZE_RANGE, UI_FONT_SIZE_STEP,
     parse_excludes,
 };
@@ -202,6 +202,8 @@ pub fn apply_editor_settings(settings: &Settings, cx: &mut App) {
         current_line: settings.highlight_current_line,
         minimap: settings.minimap,
         word_wrap: settings.word_wrap,
+        indent_guides: settings.indent_guides,
+        ruler: settings.ruler,
         ..EditorDisplay::default()
     });
 }
@@ -611,6 +613,39 @@ fn text_section(weak: WeakEntity<AppView>, palette: &Palette, settings: &Setting
                 |settings, on| settings.minimap = on,
             ),
         ))
+        .child(LabeledRow::new(
+            t!("settings.text.indent_guides"),
+            toggle(
+                "settings-indent-guides",
+                weak.clone(),
+                palette,
+                settings.indent_guides,
+                |settings, on| settings.indent_guides = on,
+            ),
+        ))
+        .child(
+            LabeledRow::new(t!("settings.text.ruler"), {
+                let mut rulers = SegmentedControl::new("settings-ruler");
+                for column in RULERS {
+                    let weak = weak.clone();
+                    let label = match column {
+                        0 => t!("settings.text.ruler_off").into_owned(),
+                        column => column.to_string(),
+                    };
+                    rulers = rulers.item(
+                        SegmentedItem::new(label)
+                            .selected(column == settings.ruler)
+                            .on_click(move |window, cx| {
+                                let _ = weak.update(cx, |app, cx| {
+                                    app.change(window, cx, |settings| settings.ruler = column)
+                                });
+                            }),
+                    );
+                }
+                rulers
+            })
+            .description(t!("settings.text.ruler_description")),
+        )
         .child(
             LabeledRow::new(
                 t!("settings.text.word_wrap"),

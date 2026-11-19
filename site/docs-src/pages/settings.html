@@ -28,6 +28,8 @@ description: Every setting of ted, its default, and the settings.toml file.
         <tr><td>Line numbers</td><td>On</td><td>Shows the line numbers at the left of the text.</td></tr>
         <tr><td>Highlight current line</td><td>On</td><td>Tints the line of the cursor.</td></tr>
         <tr><td>Minimap</td><td>On</td><td>Shows the <a href="interface.html#minimap">minimap</a> at the right of the text.</td></tr>
+        <tr><td>Indent guides</td><td>On</td><td>A thin vertical line at each indentation level, a bit stronger for the block of the cursor, and a border between the line numbers and the text.</td></tr>
+        <tr><td>Right margin</td><td>Off</td><td>A thin vertical line at column 80, 100 or 120, to keep lines short. <code>ruler</code> in <code>settings.toml</code> takes any column.</td></tr>
         <tr><td>Word wrap</td><td>Off</td><td>Whether code wraps long lines; see <a href="editing.html#word-wrap">Word wrap</a>. Markdown and plain text always wrap.</td></tr>
         <tr><td>View when opening a .md</td><td>Split</td><td>What a Markdown file shows when it opens: the editor, the editor and the <a href="editing.html#markdown-preview">preview</a>, or the preview.</td></tr>
         <tr><td>Synchronized scroll</td><td>On</td><td>Whether the preview follows the editor in the split view.</td></tr>
@@ -80,6 +82,8 @@ mono_font_size = 12.5
 line_numbers = true
 highlight_current_line = true
 minimap = true
+indent_guides = true
+ruler = 0                             # the right margin column, 0 for none
 word_wrap = false
 markdown_view = "split"
 markdown_sync_scroll = true
