@@ -13,7 +13,10 @@ description: Find and replace text in the open file and in every file of a folde
 <ul>
     <li>Type, and ted selects the first match after the cursor. Every match on screen is tinted, and the scrollbar marks where the matches of the whole file are, the selected one in a stronger color.</li>
     <li><kbd>Enter</kbd> or <kbd>F3</kbd> goes to the next match, <kbd>Shift</kbd> <kbd>Enter</kbd> or <kbd>Shift</kbd> <kbd>F3</kbd> to the previous one, wrapping around the end of the file. The arrows of the bar do the same.</li>
-    <li>The counter shows which match is selected, <code>3 of 120</code>, or <code>No results</code>.</li>
+    <li>The counter, inside the field, shows which match is selected, <code>3 of 120</code>. With no match the field turns red and the arrows and Replace are disabled.</li>
+    <li>Every match is tinted, and the selected one gets a stronger tint with an outline.</li>
+    <li>With the bar closed, <kbd>F3</kbd> and <kbd>Shift</kbd> <kbd>F3</kbd> repeat the last search.</li>
+    <li><kbd>Alt</kbd> <kbd>↑</kbd> and <kbd>Alt</kbd> <kbd>↓</kbd> in a field go back and forth through the searches and replacements of the session.</li>
     <li><kbd>Esc</kbd> or the cross closes the bar and puts the cursor back in the text, the match still selected. <kbd>Esc</kbd> also works with the cursor in the text.</li>
 </ul>
 
@@ -22,17 +25,17 @@ description: Find and replace text in the open file and in every file of a folde
 <ul>
     <li><strong>Match case</strong> (<kbd>Alt</kbd> <kbd>C</kbd>) makes the search case sensitive. Without it, the search ignores case in every language.</li>
     <li><strong>Whole words</strong> (<kbd>Alt</kbd> <kbd>W</kbd>) only finds the text when it is not part of a longer word: <code>find</code> does not match inside <code>finder</code>.</li>
-    <li><strong>Regular expression</strong> (<kbd>Alt</kbd> <kbd>X</kbd>) reads the text as a pattern, in the syntax of Rust's <code>regex</code> crate: <code>\d+</code>, <code>^fn</code>, <code>(\w+)=(\w+)</code>. <code>^</code> and <code>$</code> are the start and the end of a line. A pattern with an error shows <code>Invalid pattern</code> in the counter. Without it, the text is matched literally: a <code>.</code> or a <code>*</code> means itself.</li>
+    <li><strong>Regular expression</strong> (<kbd>Alt</kbd> <kbd>X</kbd>) reads the text as a pattern, in the syntax of Rust's <code>regex</code> crate: <code>\d+</code>, <code>^fn</code>, <code>(\w+)=(\w+)</code>. <code>^</code> and <code>$</code> are the start and the end of a line. A pattern with an error turns the field red and explains what is wrong, and where, under it. Without it, the text is matched literally: a <code>.</code> or a <code>*</code> means itself.</li>
 </ul>
-<p><strong>Find in selection</strong>, the button after the arrows, limits the search to the text selected when it is turned on. Press it again to search the whole file.</p>
+<p><strong>Find in selection</strong> (<kbd>Alt</kbd> <kbd>L</kbd>), the fourth button of the field, limits the search to the text selected when it is turned on. Press it again to search the whole file.</p>
 
 <h2 id="replace">Replace</h2>
 <p><kbd>Ctrl</kbd> <kbd>R</kbd> or <kbd>Ctrl</kbd> <kbd>H</kbd> (<kbd>Cmd</kbd> <kbd>R</kbd> or <kbd>Cmd</kbd> <kbd>Option</kbd> <kbd>F</kbd> on macOS), or the arrow at the left of the bar, shows a second field for the replacement.</p>
 <ul>
     <li><strong>Replace</strong>, or <kbd>Enter</kbd> in the replacement field, replaces the selected match and selects the next one. When the selection is not a match, it selects the next match first.</li>
-    <li><strong>Replace all</strong> replaces every match of the file (or of the selection, with Find in selection) at once, searched in the background, as one step that <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes.</li>
+    <li><strong>Replace all</strong>, or <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>Enter</kbd>, replaces every match of the file (or of the selection, with Find in selection) at once, searched in the background, as one step that <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes.</li>
     <li>With <strong>Regular expression</strong> on, <code>$1</code>, <code>$2</code> and <code>${name}</code> in the replacement put the groups of the match: <code>(\w+)=(\w+)</code> replaced with <code>$2=$1</code> turns <code>a=b</code> into <code>b=a</code>. <code>$$</code> is a <code>$</code>.</li>
-    <li><strong>Preserve case</strong>, the <code>AB</code> button of the replacement field, keeps the case of each match: replacing <code>find</code> with <code>search</code> turns <code>Find</code> into <code>Search</code> and <code>FIND</code> into <code>SEARCH</code>.</li>
+    <li><strong>Preserve case</strong>, the <code>AB</code> button of the replacement field (<kbd>Alt</kbd> <kbd>P</kbd>), keeps the case of each match: replacing <code>find</code> with <code>search</code> turns <code>Find</code> into <code>Search</code> and <code>FIND</code> into <code>SEARCH</code>.</li>
     <li>A read only file cannot be replaced in.</li>
 </ul>
 

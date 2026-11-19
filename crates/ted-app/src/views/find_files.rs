@@ -631,6 +631,7 @@ impl Render for FindFilesView {
                     "find-files-case",
                     IconName::CaseSensitive,
                     t!("find.case").into(),
+                    &["alt-c"],
                     options.case_sensitive,
                     cx,
                 )
@@ -643,6 +644,7 @@ impl Render for FindFilesView {
                     "find-files-word",
                     IconName::WholeWord,
                     t!("find.whole_word").into(),
+                    &["alt-w"],
                     options.whole_word,
                     cx,
                 )
@@ -655,6 +657,7 @@ impl Render for FindFilesView {
                     "find-files-regex",
                     IconName::Regex,
                     t!("find.regex").into(),
+                    &["alt-x"],
                     options.regex,
                     cx,
                 )
@@ -670,6 +673,7 @@ impl Render for FindFilesView {
                         "find-files-preserve-case",
                         IconName::CaseUpper,
                         t!("find.preserve_case").into(),
+                        &[],
                         self.state.preserve_case,
                         cx,
                     )
