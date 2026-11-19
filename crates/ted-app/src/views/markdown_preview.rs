@@ -42,6 +42,8 @@ const BODY_SIZE: f32 = 14.0;
 const CODE_SIZE: f32 = 12.5;
 /// Indentation of a list, where its markers sit.
 const LIST_INDENT: f32 = 22.0;
+/// The narrowest a table column gets before the table scrolls sideways (#125).
+const TABLE_COLUMN_MIN_WIDTH: f32 = 120.0;
 
 /// The preview of one editor's document.
 pub(crate) struct MarkdownPreview {
@@ -455,57 +457,59 @@ fn render_block(block: &Block, item: usize, ids: &mut usize, style: &PreviewStyl
                 .into_any_element()
         }
         BlockKind::Table(table) => {
-            let header = h_flex()
-                .bg(palette.surface)
-                .children(table.head.iter().map(|cell| {
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .py(px(7.0))
-                        .px(px(12.0))
-                        .border_b_1()
-                        .border_color(palette.border)
-                        .text_size(px(12.5))
-                        .text_color(palette.fg_muted)
-                        .child(render_inline(
-                            cell,
-                            FontWeight::MEDIUM,
-                            palette.fg_muted,
-                            item,
-                            ids,
-                            style,
-                        ))
-                }));
+            let id = next_id(item, ids);
             let columns = table.head.len().max(1);
-            let rows = table.rows.iter().enumerate().map(|(index, row)| {
+            // Every cell of a row as tall as the tallest, its text at the top; the row draws the
+            // line under it, so the lines stay straight when the cells wrap (#125).
+            let mut header = h_flex()
+                .items_stretch()
+                .bg(palette.surface)
+                .border_b_1()
+                .border_color(palette.border);
+            for column in 0..columns {
+                let text = table.head.get(column).cloned().unwrap_or_default();
+                header = header.child(table_cell(
+                    &text,
+                    (12.5, FontWeight::MEDIUM, palette.fg_muted),
+                    item,
+                    ids,
+                    style,
+                ));
+            }
+            let mut rows = Vec::with_capacity(table.rows.len());
+            for (index, row) in table.rows.iter().enumerate() {
                 let last = index + 1 == table.rows.len();
-                h_flex().children((0..columns).map(|column| {
-                    let cell = row.get(column).cloned().unwrap_or_default();
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .py(px(7.0))
-                        .px(px(12.0))
-                        .when(!last, |this| this.border_b_1().border_color(palette.border))
-                        .text_size(px(13.0))
-                        .child(render_inline(
-                            &cell,
-                            FontWeight::NORMAL,
-                            palette.fg,
-                            item,
-                            ids,
-                            style,
-                        ))
-                }))
-            });
-            v_flex()
+                let mut line = h_flex()
+                    .items_stretch()
+                    .when(!last, |this| this.border_b_1().border_color(palette.border));
+                for column in 0..columns {
+                    let text = row.get(column).cloned().unwrap_or_default();
+                    line = line.child(table_cell(
+                        &text,
+                        (13.0, FontWeight::NORMAL, palette.fg),
+                        item,
+                        ids,
+                        style,
+                    ));
+                }
+                rows.push(line);
+            }
+            // Never narrower than a readable column each: past the preview's width the table
+            // scrolls sideways inside its frame instead of breaking the words.
+            div()
+                .id(id)
                 .mb(px(16.0))
                 .border_1()
                 .border_color(palette.border)
                 .rounded(px(8.0))
-                .overflow_hidden()
-                .child(header)
-                .children(rows)
+                .overflow_x_scroll()
+                .child(
+                    v_flex()
+                        .w_full()
+                        .min_w(px(columns as f32 * TABLE_COLUMN_MIN_WIDTH))
+                        .child(header)
+                        .children(rows),
+                )
                 .into_any_element()
         }
         BlockKind::Rule => div()
@@ -514,6 +518,24 @@ fn render_block(block: &Block, item: usize, ids: &mut usize, style: &PreviewStyl
             .bg(palette.border)
             .into_any_element(),
     }
+}
+
+/// One cell of a table, its text at the top. `look` is the text size, weight and color.
+fn table_cell(
+    text: &Inline,
+    look: (f32, FontWeight, Hsla),
+    item: usize,
+    ids: &mut usize,
+    style: &PreviewStyle,
+) -> Div {
+    let (size, weight, color) = look;
+    div()
+        .flex_1()
+        .min_w_0()
+        .py(px(7.0))
+        .px(px(12.0))
+        .text_size(px(size))
+        .child(render_inline(text, weight, color, item, ids, style))
 }
 
 /// A block inside a list item or a quote: a paragraph there has no space under it, so the
