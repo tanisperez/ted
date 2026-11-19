@@ -3,6 +3,12 @@ _version: 2
 "explorer.title":
   en: "Explorer"
   es: "Explorador"
+"explorer.reveal_active":
+  en: "Select opened file"
+  es: "Seleccionar el archivo abierto"
+"explorer.reload":
+  en: "Reload from disk"
+  es: "Recargar desde el disco"
 "explorer.collapse_all":
   en: "Collapse all"
   es: "Contraer todo"

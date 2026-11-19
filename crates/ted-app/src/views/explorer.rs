@@ -20,7 +20,9 @@ use ted_workspace::{ExplorerFilter, FolderWatcher, list_dir, pointless_move};
 use telaio_ui::components::{IconButton, SectionLabel, TreeRow};
 
 use crate::state::explorer::{ExplorerTree, Listing};
+use crate::state::file_icon::{FileKind, file_kind};
 use crate::state::launch::display_name;
+use crate::theme::Palette;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{EXPLORER_HEADER_HEIGHT, EXPLORER_LIST_PADDING};
 use crate::views::git::letter_color;
@@ -64,6 +66,8 @@ pub enum ExplorerEvent {
     Open(PathBuf),
     /// A file or a folder was dragged onto a folder: move `from` into `to_dir` (#98).
     Move { from: PathBuf, to_dir: PathBuf },
+    /// The Select opened file button: reveal the file of the active tab (#121).
+    RevealActive,
 }
 
 /// A file or a folder of the explorer while it is dragged, drawn as a chip under the pointer.
@@ -169,6 +173,13 @@ impl ExplorerView {
     pub fn set_excludes(&mut self, excludes: &[String], cx: &mut Context<Self>) {
         let root = self.tree.root().to_path_buf();
         self.filter = Arc::new(ExplorerFilter::new(&root, excludes));
+        self.reload(cx);
+    }
+
+    /// Lists the root and the expanded folders again, keeping what is expanded and selected
+    /// (#123). The `.gitignore` files are read again too.
+    pub fn reload(&mut self, cx: &mut Context<Self>) {
+        let root = self.tree.root().to_path_buf();
         let dirs: Vec<PathBuf> = std::iter::once(root)
             .chain(self.tree.expanded().cloned())
             .collect();
@@ -302,25 +313,27 @@ impl Render for ExplorerView {
         let list = uniform_list(
             "explorer-rows",
             row_count,
-            cx.processor(|view, range: std::ops::Range<usize>, _window, cx| {
+            cx.processor(|view, range: std::ops::Range<usize>, window, cx| {
                 let palette = cx.palette();
+                let focused = view.focus_handle.is_focused(window);
                 let selected = view.tree.selected().map(Path::to_path_buf);
                 let root = view.tree.root().to_path_buf();
                 let marks = view.git_marks.clone();
                 range
                     .filter_map(|index| view.tree.rows().get(index).map(|row| (index, row)))
                     .map(|(index, row)| {
-                        let icon = match row.folder {
-                            Some(true) => IconName::FolderOpen,
-                            Some(false) => IconName::Folder,
-                            None => IconName::File,
+                        let (icon, icon_color) = match row.folder {
+                            Some(true) => (IconName::FolderOpen, palette.fg_subtle),
+                            Some(false) => (IconName::Folder, palette.fg_subtle),
+                            None => file_icon(file_kind(&row.name), &palette),
                         };
                         let path = row.path.clone();
                         let folder = row.folder.is_some();
                         let mut item = TreeRow::new(("row", index), row.name.clone())
                             .depth(row.depth)
                             .selected(selected.as_deref() == Some(row.path.as_path()))
-                            .leading(Icon::new(icon).small().text_color(palette.fg_subtle))
+                            .neutral_selection(focused)
+                            .leading(Icon::new(icon).small().text_color(icon_color))
                             .on_click(cx.listener(move |view, _, window, cx| {
                                 window.focus(&view.focus_handle, cx);
                                 view.activate(path.clone(), folder, cx);
@@ -429,9 +442,25 @@ impl Render for ExplorerView {
                     .justify_between()
                     .child(SectionLabel::new(root_name))
                     .child(
-                        IconButton::new("collapse-all", IconName::ListChevronsDownUp)
-                            .tooltip(t!("explorer.collapse_all"))
-                            .on_click(cx.listener(|view, _, _, cx| view.collapse_all(cx))),
+                        h_flex()
+                            .gap(px(2.0))
+                            .child(
+                                IconButton::new("reveal-active", IconName::LocateFixed)
+                                    .tooltip(t!("explorer.reveal_active"))
+                                    .on_click(cx.listener(|_, _, _, cx| {
+                                        cx.emit(ExplorerEvent::RevealActive)
+                                    })),
+                            )
+                            .child(
+                                IconButton::new("reload", IconName::RefreshCw)
+                                    .tooltip(t!("explorer.reload"))
+                                    .on_click(cx.listener(|view, _, _, cx| view.reload(cx))),
+                            )
+                            .child(
+                                IconButton::new("collapse-all", IconName::ListChevronsDownUp)
+                                    .tooltip(t!("explorer.collapse_all"))
+                                    .on_click(cx.listener(|view, _, _, cx| view.collapse_all(cx))),
+                            ),
                     ),
             )
             .child(
@@ -459,6 +488,23 @@ impl Render for ExplorerView {
             }))
             // The empty area below the rows: the root folder's menu.
             .context_menu(move |menu, _, _| location::path_items(menu, &root_path, true, None))
+    }
+}
+
+/// The icon of a file of `kind` and its color, as in the design (#108): code in `warning`, text
+/// in `info`, data and configuration in `accent_text`, scripts in `success`, images in `danger`,
+/// the rest in `fg_subtle`.
+fn file_icon(kind: FileKind, palette: &Palette) -> (IconName, Hsla) {
+    match kind {
+        FileKind::Code => (IconName::FileCode, palette.warning),
+        FileKind::Web => (IconName::FileCode, palette.warning),
+        FileKind::Text => (IconName::FileText, palette.info),
+        FileKind::Data => (IconName::FileCog, palette.accent_text),
+        FileKind::Script => (IconName::FileTerminal, palette.success),
+        FileKind::Image => (IconName::FileImage, palette.danger),
+        FileKind::Archive => (IconName::FileArchive, palette.fg_muted),
+        FileKind::Lock => (IconName::FileLock, palette.fg_subtle),
+        FileKind::Other => (IconName::File, palette.fg_subtle),
     }
 }
 

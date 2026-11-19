@@ -3,6 +3,7 @@
 
 pub mod config;
 pub mod explorer;
+pub mod file_icon;
 pub mod find_files;
 pub mod git;
 pub mod git_branches;

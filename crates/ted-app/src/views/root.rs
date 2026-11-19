@@ -485,6 +485,7 @@ impl AppView {
                         ExplorerEvent::Move { from, to_dir } => {
                             this.move_entry(from.clone(), to_dir.clone(), window, cx)
                         }
+                        ExplorerEvent::RevealActive => this.reveal_active(window, cx),
                     },
                 );
                 self.explorer = Some((explorer, subscription));
@@ -525,6 +526,19 @@ impl AppView {
 
     /// Creates a new untitled document (`Ctrl+N`) in a new tab, next to what is open. In file
     /// mode the tab bar shows from the second document on.
+    /// Shows the file of the active tab selected in the explorer, with the focus there (#121).
+    fn reveal_active(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let (Some((explorer, _)), Some(path)) = (
+            &self.explorer,
+            self.documents.active().and_then(|doc| doc.path.clone()),
+        ) else {
+            return;
+        };
+        explorer.update(cx, |explorer, cx| explorer.reveal(&path, cx));
+        let focus = explorer.read(cx).focus_handle(cx);
+        focus.focus(window, cx);
+    }
+
     /// The width of the left panel, saved with the window (#110).
     pub fn explorer_width(&self) -> f32 {
         self.explorer_width
