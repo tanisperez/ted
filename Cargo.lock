@@ -6361,7 +6361,7 @@ dependencies = [
 
 [[package]]
 name = "ted-app"
-version = "0.7.0"
+version = "0.8.0-dev"
 dependencies = [
  "async-channel",
  "embed-resource",
@@ -6388,14 +6388,14 @@ dependencies = [
 
 [[package]]
 name = "ted-cli"
-version = "0.7.0"
+version = "0.8.0-dev"
 dependencies = [
  "telaio-app",
 ]
 
 [[package]]
 name = "ted-workspace"
-version = "0.7.0"
+version = "0.8.0-dev"
 dependencies = [
  "async-channel",
  "fastrand",

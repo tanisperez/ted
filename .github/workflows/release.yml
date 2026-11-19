@@ -202,6 +202,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
@@ -283,3 +284,9 @@ jobs:
           else
             gh release edit "$TAG" --draft=false --prerelease=false --latest
           fi
+
+      # A release published with this workflow's token starts no other workflow, so the website
+      # (download links, APT and DNF repositories) is rebuilt by hand. Not for a pre-release.
+      - name: Rebuild the website
+        if: needs.check.outputs.prerelease != 'true'
+        run: gh workflow run website.yml --ref main
