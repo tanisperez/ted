@@ -351,6 +351,12 @@ _version: 2
 "git.diff.tab":
   en: "%{name} (changes)"
   es: "%{name} (cambios)"
+"git.diff.inline":
+  en: "In one column"
+  es: "En una columna"
+"git.diff.side_by_side":
+  en: "Side by side"
+  es: "Lado a lado"
 "git.diff.open_file":
   en: "Open file"
   es: "Abrir archivo"

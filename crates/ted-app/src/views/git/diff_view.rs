@@ -30,8 +30,8 @@ use telaio_ui::components::{
 
 use crate::actions::{NextDiffChange, OpenDiffFile, PreviousDiffChange};
 use crate::state::git_diff::{
-    HeaderFit, LineSpans, block_at_row, block_new_line, diff_syntax, expand_tabs, header_fit,
-    segments,
+    HeaderFit, LineSpans, SideRow, block_at_row, block_new_line, diff_syntax, expand_tabs,
+    header_fit, segments, side_rows,
 };
 use crate::state::locale::plural;
 use crate::theme::{Palette, PaletteExt};
@@ -57,6 +57,8 @@ const DIFF_KEY_CONTEXT: &str = "GitDiff";
 const EDGE_HINT_TIME: Duration = Duration::from_secs(3);
 /// Width of the minimap on the right of the diff (#105).
 const MINIMAP_WIDTH: f32 = 64.0;
+/// Below this width the diff stays in one column, even side by side (#126).
+const SIDE_BY_SIDE_MIN_WIDTH: f32 = 900.0;
 /// The least height of a mark on the minimap, so a one-line change is still seen.
 const MINIMAP_MIN_MARK: f32 = 2.0;
 /// Above this many bytes on a side of the file the diff is shown without syntax colors, as a
@@ -86,6 +88,8 @@ struct Loaded {
     marks: Arc<Vec<(usize, usize, LineKind)>>,
     /// Per line, its syntax spans; empty without a grammar.
     syntax: Arc<Vec<LineSpans>>,
+    /// The rows side by side, and the row of each line (#126).
+    side: Arc<(Vec<SideRow>, Vec<usize>)>,
     additions: usize,
     deletions: usize,
 }
@@ -148,7 +152,9 @@ impl Loaded {
             telaio_syntax::Language::detect(Path::new(repo_path)),
             HIGHLIGHT_MAX_BYTES,
         );
+        let side = side_rows(&diff);
         Ok(Loaded {
+            side: Arc::new(side),
             marks: Arc::new(marks),
             syntax: Arc::new(syntax),
             diff: Arc::new(diff),
@@ -272,6 +278,32 @@ impl DiffView {
         self.land_last = true;
     }
 
+    /// Whether the diff shows its two sides side by side now: the setting, in a wide enough tab.
+    fn side_active(&self, cx: &App) -> bool {
+        self.area_width.get() >= SIDE_BY_SIDE_MIN_WIDTH
+            && self
+                .app
+                .upgrade()
+                .is_some_and(|app| app.read(cx).settings.git_diff_side_by_side)
+    }
+
+    /// The row of the list that shows `line` of the diff.
+    fn list_row(&self, loaded: &Loaded, line: usize, cx: &App) -> usize {
+        match self.side_active(cx) {
+            true => loaded.side.1.get(line).copied().unwrap_or(line),
+            false => line,
+        }
+    }
+
+    /// Shows the diff side by side or in one column, remembered in the settings.
+    fn set_side_by_side(&mut self, on: bool, window: &mut Window, cx: &mut Context<Self>) {
+        let _ = self.app.update(cx, |app, cx| {
+            app.change(window, cx, |settings| settings.git_diff_side_by_side = on)
+        });
+        self.scroll_pending = true;
+        cx.notify();
+    }
+
     fn block_count(&self) -> usize {
         match &self.loaded {
             Some(Ok(loaded)) => loaded.diff.blocks.len(),
@@ -328,7 +360,10 @@ impl DiffView {
             return;
         }
         let fraction = (f32::from(y - bounds.origin.y) / height).clamp(0.0, 1.0);
-        let count = loaded.diff.lines.len();
+        let count = match self.side_active(cx) {
+            true => loaded.side.0.len(),
+            false => loaded.diff.lines.len(),
+        };
         let row = ((fraction * count as f32) as usize).min(count.saturating_sub(1));
         self.scroll.scroll_to_item(row, ScrollStrategy::Center);
         cx.notify();
@@ -674,8 +709,71 @@ impl DiffView {
                     .whitespace_nowrap()
             }))
             .child(div().flex_1())
+            .children(self.render_layout_toggle(palette, cx))
             .children(navigation)
             .children(open_file)
+    }
+
+    /// In one column or side by side (#126): two icons in one bordered box, the chosen one lit.
+    /// Only where the tab is wide enough for two sides.
+    fn render_layout_toggle(
+        &self,
+        palette: &Palette,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        if self.area_width.get() < SIDE_BY_SIDE_MIN_WIDTH
+            || !matches!(&self.loaded, Some(Ok(loaded)) if !loaded.diff.lines.is_empty())
+        {
+            return None;
+        }
+        let side = self.side_active(cx);
+        let option = |id: &'static str,
+                      icon: IconName,
+                      tooltip: String,
+                      on: bool,
+                      cx: &mut Context<Self>| {
+            Button::new(id)
+                .neutral_ghost(
+                    cx,
+                    if on {
+                        palette.accent_text
+                    } else {
+                        palette.fg_muted
+                    },
+                )
+                .size(px(26.0))
+                .rounded(px(0.0))
+                .when(on, |button| button.bg(palette.accent_subtle))
+                .icon(Icon::new(icon).size(px(14.0)))
+                .tooltip(tooltip)
+                .on_click(cx.listener(move |view, _, window, cx| {
+                    view.set_side_by_side(id == "diff-side-by-side", window, cx)
+                }))
+        };
+        Some(
+            h_flex()
+                .flex_none()
+                .border_1()
+                .border_color(palette.border_strong)
+                .rounded(px(7.0))
+                .overflow_hidden()
+                .child(option(
+                    "diff-inline",
+                    IconName::Rows2,
+                    t!("git.diff.inline").into_owned(),
+                    !side,
+                    cx,
+                ))
+                .child(div().w(px(1.0)).h(px(26.0)).bg(palette.border_strong))
+                .child(option(
+                    "diff-side-by-side",
+                    IconName::Columns2,
+                    t!("git.diff.side_by_side").into_owned(),
+                    side,
+                    cx,
+                ))
+                .into_any_element(),
+        )
     }
 
     /// The counter and the Previous and Next buttons, in one bordered box, with the "press
@@ -811,7 +909,11 @@ impl Render for DiffView {
                 )
                 .into_any_element(),
             Some(Ok(loaded)) => {
-                let count = loaded.diff.lines.len();
+                let side = self.side_active(cx);
+                let count = match side {
+                    true => loaded.side.0.len(),
+                    false => loaded.diff.lines.len(),
+                };
                 let theme = cx.theme();
                 let text_system = window.text_system();
                 let char_width = text_system
@@ -821,31 +923,46 @@ impl Render for DiffView {
                         '0',
                     )
                     .map_or(theme.mono_font_size * 0.6, |advance| advance.width);
-                let text_width = char_width * loaded.longest as f32
-                    + px(NUMBER_WIDTH * 2.0 + SIGN_WIDTH + END_PADDING);
-                let mut lines =
-                    uniform_list(
-                        "diff-lines",
-                        count,
-                        cx.processor(|view, range: std::ops::Range<usize>, _window, cx| {
-                            let palette = cx.palette();
-                            let colors = SyntaxColors::new(&cx.theme().highlight_theme, &palette);
-                            let Some(Ok(loaded)) = &view.loaded else {
-                                return Vec::new();
-                            };
-                            let diff = loaded.diff.clone();
-                            let stages = loaded.stages.clone();
-                            let syntax = loaded.syntax.clone();
-                            let current = diff.blocks.get(view.current).map(|block| {
-                                block.first_line..block.first_line + block.removed + block.added
-                            });
-                            range
-                                .filter_map(|index| diff.lines.get(index).map(|line| (index, line)))
-                                .map(|(index, line)| {
+                // Side by side, each half scrolls by the same amount and shows half the area.
+                let text_width = match side {
+                    true => {
+                        char_width * loaded.longest as f32
+                            + px(NUMBER_WIDTH
+                                + SIGN_WIDTH
+                                + END_PADDING
+                                + self.area_width.get() / 2.0)
+                    }
+                    false => {
+                        char_width * loaded.longest as f32
+                            + px(NUMBER_WIDTH * 2.0 + SIGN_WIDTH + END_PADDING)
+                    }
+                };
+                let mut lines = uniform_list(
+                    "diff-lines",
+                    count,
+                    cx.processor(|view, range: std::ops::Range<usize>, _window, cx| {
+                        let palette = cx.palette();
+                        let colors = SyntaxColors::new(&cx.theme().highlight_theme, &palette);
+                        let Some(Ok(loaded)) = &view.loaded else {
+                            return Vec::new();
+                        };
+                        let diff = loaded.diff.clone();
+                        let stages = loaded.stages.clone();
+                        let syntax = loaded.syntax.clone();
+                        let current = diff.blocks.get(view.current).map(|block| {
+                            block.first_line..block.first_line + block.removed + block.added
+                        });
+                        if view.side_active(cx) {
+                            let side = loaded.side.clone();
+                            let scroll_x = view.text_scroll.offset().x;
+                            return range
+                                .filter_map(|index| side.0.get(index).map(|row| (index, *row)))
+                                .map(|(index, row)| {
+                                    let lines = [row.left, row.right];
                                     let block = diff
                                         .blocks
                                         .iter()
-                                        .position(|block| block.first_line == index);
+                                        .position(|block| lines.contains(&Some(block.first_line)));
                                     let actions = block.and_then(|block| {
                                         stages
                                             .get(block)
@@ -853,40 +970,77 @@ impl Render for DiffView {
                                             .flatten()
                                             .map(|stage| render_block_actions(block, stage, cx))
                                     });
-                                    let scroll_x = view.text_scroll.offset().x;
-                                    let spans = syntax.get(index).map_or(&[][..], Vec::as_slice);
                                     let style = LineStyle {
                                         palette: &palette,
                                         colors: &colors,
-                                        current: current
-                                            .as_ref()
-                                            .is_some_and(|rows| rows.contains(&index)),
+                                        current: current.as_ref().is_some_and(|rows| {
+                                            lines.iter().flatten().any(|line| rows.contains(line))
+                                        }),
                                     };
+                                    let target = row.left.or(row.right).unwrap_or(0);
                                     div()
-                                        .id(("diff-row", index))
+                                        .id(("diff-side-row", index))
                                         .on_click(cx.listener(move |view, _, _, cx| {
-                                            view.select_row(index, cx)
+                                            view.select_row(target, cx)
                                         }))
-                                        .child(render_line(
-                                            index, line, spans, actions, scroll_x, style, cx,
+                                        .child(render_side_row(
+                                            index, row, &diff, &syntax, actions, scroll_x, style,
+                                            cx,
                                         ))
                                         .into_any_element()
                                 })
-                                .collect()
-                        }),
-                    )
-                    .track_scroll(&self.scroll)
-                    .size_full()
-                    // The block buttons and the last line stay clear of the scrollbars.
-                    .pr(px(SCROLLBAR_GUTTER))
-                    .pb(px(SCROLLBAR_GUTTER));
+                                .collect();
+                        }
+                        range
+                            .filter_map(|index| diff.lines.get(index).map(|line| (index, line)))
+                            .map(|(index, line)| {
+                                let block = diff
+                                    .blocks
+                                    .iter()
+                                    .position(|block| block.first_line == index);
+                                let actions = block.and_then(|block| {
+                                    stages
+                                        .get(block)
+                                        .copied()
+                                        .flatten()
+                                        .map(|stage| render_block_actions(block, stage, cx))
+                                });
+                                let scroll_x = view.text_scroll.offset().x;
+                                let spans = syntax.get(index).map_or(&[][..], Vec::as_slice);
+                                let style = LineStyle {
+                                    palette: &palette,
+                                    colors: &colors,
+                                    current: current
+                                        .as_ref()
+                                        .is_some_and(|rows| rows.contains(&index)),
+                                };
+                                div()
+                                    .id(("diff-row", index))
+                                    .on_click(
+                                        cx.listener(move |view, _, _, cx| {
+                                            view.select_row(index, cx)
+                                        }),
+                                    )
+                                    .child(render_line(
+                                        index, line, spans, actions, scroll_x, style, cx,
+                                    ))
+                                    .into_any_element()
+                            })
+                            .collect()
+                    }),
+                )
+                .track_scroll(&self.scroll)
+                .size_full()
+                // The block buttons and the last line stay clear of the scrollbars.
+                .pr(px(SCROLLBAR_GUTTER))
+                .pb(px(SCROLLBAR_GUTTER));
                 // A sideways wheel moves the text, not the lines.
                 lines.style().restrict_scroll_to_axis = Some(true);
                 if std::mem::take(&mut self.scroll_pending)
                     && let Some(block) = loaded.diff.blocks.get(self.current)
                 {
-                    self.scroll
-                        .scroll_to_item(block.first_line, ScrollStrategy::Center);
+                    let row = self.list_row(loaded, block.first_line, cx);
+                    self.scroll.scroll_to_item(row, ScrollStrategy::Center);
                 }
                 let minimap = self.render_minimap(loaded, &palette, cx);
                 let list_area = div()
@@ -1010,21 +1164,7 @@ fn render_line(
     cx: &App,
 ) -> AnyElement {
     let palette = style.palette;
-    let (tint, emphasis, sign, sign_color) = match line.kind {
-        LineKind::Added => (
-            Some(palette.success.opacity(0.10)),
-            palette.success.opacity(0.28),
-            "+",
-            palette.success,
-        ),
-        LineKind::Removed => (
-            Some(palette.danger.opacity(0.10)),
-            palette.danger.opacity(0.28),
-            "\u{2212}",
-            palette.danger,
-        ),
-        LineKind::Context => (None, palette.hover, " ", palette.fg_subtle),
-    };
+    let (tint, emphasis, sign, sign_color) = kind_style(line.kind, palette);
     let theme = cx.theme();
     let mono = theme.mono_font_family.clone();
     let size = theme.mono_font_size;
@@ -1099,6 +1239,149 @@ fn render_line(
             div()
                 .flex_none()
                 .pr_2()
+                .font_family(theme.font_family.clone())
+                .text_size(theme.font_size)
+                .child(actions)
+        }))
+        .into_any_element()
+}
+
+/// The tint, the emphasis of the changed words, the sign and its color of a line of `kind`.
+fn kind_style(kind: LineKind, palette: &Palette) -> (Option<Hsla>, Hsla, &'static str, Hsla) {
+    match kind {
+        LineKind::Added => (
+            Some(palette.success.opacity(0.10)),
+            palette.success.opacity(0.28),
+            "+",
+            palette.success,
+        ),
+        LineKind::Removed => (
+            Some(palette.danger.opacity(0.10)),
+            palette.danger.opacity(0.28),
+            "\u{2212}",
+            palette.danger,
+        ),
+        LineKind::Context => (None, palette.hover, " ", palette.fg_subtle),
+    }
+}
+
+/// One row side by side (#126): the old line on the left and the new one on the right, each with
+/// its own line number, and the block's buttons at the end. A side without a line is a hole in
+/// `surface`.
+#[allow(clippy::too_many_arguments)]
+fn render_side_row(
+    index: usize,
+    row: SideRow,
+    diff: &FileDiff,
+    syntax: &[LineSpans],
+    actions: Option<AnyElement>,
+    scroll_x: Pixels,
+    style: LineStyle,
+    cx: &App,
+) -> AnyElement {
+    let palette = style.palette;
+    let theme = cx.theme();
+    let size = theme.mono_font_size;
+    let half = |line: Option<usize>, left: bool| {
+        let base = div()
+            .flex_1()
+            .min_w_0()
+            .h_full()
+            .flex()
+            .items_center()
+            .when(!left, |half| half.border_l_1().border_color(palette.border));
+        let Some(line) = line.and_then(|index| diff.lines.get(index).map(|line| (index, line)))
+        else {
+            return base.bg(palette.surface);
+        };
+        let (index, line) = line;
+        let (tint, emphasis, sign, sign_color) = kind_style(line.kind, palette);
+        let number = if left {
+            line.old_number
+        } else {
+            line.new_number
+        };
+        let spans = syntax.get(index).map_or(&[][..], Vec::as_slice);
+        let text: SharedString = expand_tabs(&line.text).into();
+        let highlights: Vec<_> = segments(&line.text, spans, &line.emphasis)
+            .into_iter()
+            .map(|segment| {
+                (
+                    segment.range,
+                    HighlightStyle {
+                        color: segment
+                            .highlight
+                            .and_then(|highlight| style.colors.get(highlight)),
+                        background_color: segment.emphasis.then_some(emphasis),
+                        ..Default::default()
+                    },
+                )
+            })
+            .collect();
+        base.when_some(tint, |half, tint| half.bg(tint))
+            .child(
+                div()
+                    .flex_none()
+                    .w(px(NUMBER_WIDTH))
+                    .pr(px(10.0))
+                    .text_right()
+                    .text_color(palette.fg_subtle)
+                    .child(number.map(|n| n.to_string()).unwrap_or_default()),
+            )
+            .child(
+                div()
+                    .flex_none()
+                    .w(px(SIGN_WIDTH))
+                    .text_color(sign_color)
+                    .child(sign),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .overflow_hidden()
+                    .whitespace_nowrap()
+                    .child(
+                        div()
+                            .ml(scroll_x)
+                            .child(StyledText::new(text).with_highlights(highlights)),
+                    ),
+            )
+    };
+    h_flex()
+        .id(("diff-side-line", index))
+        .w_full()
+        .h(px(f32::from(size) * 1.6))
+        .items_center()
+        .font_family(theme.mono_font_family.clone())
+        .text_size(size)
+        .relative()
+        .child(half(row.left, true))
+        .child(half(row.right, false))
+        .when(style.current, |row| {
+            row.child(
+                div()
+                    .absolute()
+                    .left_0()
+                    .top_0()
+                    .bottom_0()
+                    .w(px(2.0))
+                    .bg(palette.accent),
+            )
+        })
+        .children(actions.map(|actions| {
+            // Over the end of the right side, so both sides keep the width of every other row.
+            h_flex()
+                .absolute()
+                .right_0()
+                .top_0()
+                .bottom_0()
+                .items_center()
+                .pl_2()
+                .pr_2()
+                .bg(palette.surface)
+                .border_l_1()
+                .border_color(palette.border)
                 .font_family(theme.font_family.clone())
                 .text_size(theme.font_size)
                 .child(actions)

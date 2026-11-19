@@ -187,6 +187,56 @@ pub fn header_fit(width: f32) -> HeaderFit {
     }
 }
 
+/// One row of the side by side diff (#126): the line shown on the left, from the old side of the
+/// file, and the one on the right, from the new side, as indexes into the diff's lines. A context
+/// line is on both; in a change, the removed lines pair with the added ones in order, and the
+/// longer side leaves holes in the other.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SideRow {
+    pub left: Option<usize>,
+    pub right: Option<usize>,
+}
+
+/// The rows of `diff` side by side, and for each of its lines the row it is on.
+pub fn side_rows(diff: &FileDiff) -> (Vec<SideRow>, Vec<usize>) {
+    let lines = &diff.lines;
+    let mut rows = Vec::with_capacity(lines.len());
+    let mut row_of = vec![0; lines.len()];
+    let mut index = 0;
+    while index < lines.len() {
+        if lines[index].kind == LineKind::Context {
+            row_of[index] = rows.len();
+            rows.push(SideRow {
+                left: Some(index),
+                right: Some(index),
+            });
+            index += 1;
+            continue;
+        }
+        let start = index;
+        while index < lines.len() && lines[index].kind != LineKind::Context {
+            index += 1;
+        }
+        let removed: Vec<usize> = (start..index)
+            .filter(|&line| lines[line].kind == LineKind::Removed)
+            .collect();
+        let added: Vec<usize> = (start..index)
+            .filter(|&line| lines[line].kind == LineKind::Added)
+            .collect();
+        for pair in 0..removed.len().max(added.len()) {
+            let row = SideRow {
+                left: removed.get(pair).copied(),
+                right: added.get(pair).copied(),
+            };
+            for line in row.left.iter().chain(row.right.iter()) {
+                row_of[*line] = rows.len();
+            }
+            rows.push(row);
+        }
+    }
+    (rows, row_of)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -296,5 +346,26 @@ mod tests {
         let diff = parse_file_diff(patch);
         assert!(diff_syntax(&diff, Language::PlainText, 1 << 20).is_empty());
         assert!(diff_syntax(&diff, Language::Rust, 4).is_empty());
+    }
+
+    #[test]
+    fn side_by_side_pairs_removed_and_added_lines() {
+        // Lines: 0 context, 1 removed, 2 removed, 3 added, 4 context, 5 added.
+        let patch =
+            "diff --git a/a b/a\n--- a/a\n+++ b/a\n@@ -1,4 +1,4 @@\n a\n-b\n-c\n+B\n d\n+e\n";
+        let diff = parse_file_diff(patch);
+        let (rows, row_of) = side_rows(&diff);
+        let row = |left, right| SideRow { left, right };
+        assert_eq!(
+            rows,
+            vec![
+                row(Some(0), Some(0)),
+                row(Some(1), Some(3)),
+                row(Some(2), None),
+                row(Some(4), Some(4)),
+                row(None, Some(5)),
+            ]
+        );
+        assert_eq!(row_of, vec![0, 1, 2, 1, 3, 4]);
     }
 }

@@ -108,7 +108,7 @@ impl AppView {
     }
 
     /// Changes one setting with `change`, then applies and saves them all.
-    fn change(
+    pub(crate) fn change(
         &mut self,
         window: &mut Window,
         cx: &mut Context<Self>,

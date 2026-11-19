@@ -292,6 +292,9 @@ pub struct Settings {
     pub git_fetch_automatically: bool,
     /// Whether discarding changes asks first.
     pub git_confirm_discard: bool,
+    /// Whether the diff tab shows the two sides of the file side by side instead of in one
+    /// column (#126).
+    pub git_diff_side_by_side: bool,
     /// What Ctrl+Enter does in the commit message.
     pub git_commit_action: GitCommitAction,
     /// Whether ted looks for a new version once, a few seconds after it starts (#99).
@@ -338,6 +341,7 @@ impl Default for Settings {
             git_executable: None,
             git_fetch_automatically: true,
             git_confirm_discard: true,
+            git_diff_side_by_side: false,
             check_updates: true,
             git_commit_action: GitCommitAction::default(),
         }
@@ -509,6 +513,9 @@ fn parse_settings(content: &str) -> Settings {
     if let Some(value) = flag("git_confirm_discard") {
         settings.git_confirm_discard = value;
     }
+    if let Some(value) = flag("git_diff_side_by_side") {
+        settings.git_diff_side_by_side = value;
+    }
     if let Some(value) = text("git_commit_action").and_then(GitCommitAction::parse) {
         settings.git_commit_action = value;
     }
@@ -656,6 +663,7 @@ mod tests {
             git_executable: Some(PathBuf::from("/opt/git/bin/git")),
             git_fetch_automatically: false,
             git_confirm_discard: false,
+            git_diff_side_by_side: true,
             check_updates: false,
             git_commit_action: GitCommitAction::CommitAndPush,
             ..Settings::default()
