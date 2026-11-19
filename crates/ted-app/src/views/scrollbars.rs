@@ -7,6 +7,11 @@ use gpui_kit::*;
 
 use crate::theme::Palette;
 
+/// The room a list leaves on its right (or bottom) edge for the scrollbar laid over it, so the
+/// thumb never covers a row's controls, counts or status letters: the thumb's inset and its width
+/// while dragged, as gpui-base draws it.
+pub(crate) const SCROLLBAR_GUTTER: f32 = 12.0;
+
 /// A scrollbar of `axis` for the area scrolled with `handle`, to put next to the scrolling element
 /// inside a `relative()` wrapper. `id` tells apart the scrollbars of one view.
 pub(crate) fn scrollbar_overlay<H: ScrollbarHandle + Clone>(

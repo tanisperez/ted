@@ -29,7 +29,7 @@ use crate::theme::metrics::{EXPLORER_HEADER_HEIGHT, EXPLORER_LIST_PADDING};
 use crate::theme::{Palette, PaletteExt};
 
 use super::super::root::AppView;
-use super::super::scrollbars::scrollbar_overlay;
+use super::super::scrollbars::{SCROLLBAR_GUTTER, scrollbar_overlay};
 use super::super::settings_git::INSTALL_GIT_URL;
 
 /// Least width of a commit button, enough for the longest "Commit and push…" label: below twice
@@ -271,7 +271,8 @@ impl AppView {
                 )
                 .track_scroll(&self.git_scroll)
                 .size_full()
-                .px(px(EXPLORER_LIST_PADDING))
+                .pl(px(EXPLORER_LIST_PADDING))
+                .pr(px(SCROLLBAR_GUTTER))
                 .pb_2();
                 v_flex()
                     .flex_1()

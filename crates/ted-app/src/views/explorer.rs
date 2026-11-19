@@ -25,7 +25,7 @@ use crate::theme::PaletteExt;
 use crate::theme::metrics::{EXPLORER_HEADER_HEIGHT, EXPLORER_LIST_PADDING};
 use crate::views::git::letter_color;
 use crate::views::location;
-use crate::views::scrollbars::scrollbar_overlay;
+use crate::views::scrollbars::{SCROLLBAR_GUTTER, scrollbar_overlay};
 
 actions!(
     explorer,
@@ -391,7 +391,8 @@ impl Render for ExplorerView {
         )
         .track_scroll(&self.scroll)
         .size_full()
-        .px(px(EXPLORER_LIST_PADDING))
+        .pl(px(EXPLORER_LIST_PADDING))
+        .pr(px(SCROLLBAR_GUTTER))
         .pb_2();
 
         v_flex()

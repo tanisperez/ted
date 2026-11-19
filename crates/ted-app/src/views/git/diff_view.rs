@@ -37,7 +37,7 @@ use crate::state::locale::plural;
 use crate::theme::{Palette, PaletteExt};
 
 use super::super::root::AppView;
-use super::super::scrollbars::scrollbar_overlay;
+use super::super::scrollbars::{SCROLLBAR_GUTTER, scrollbar_overlay};
 use super::letter_color;
 
 /// Above this many change blocks the buttons are left out: checking each block against the index
@@ -876,7 +876,10 @@ impl Render for DiffView {
                         }),
                     )
                     .track_scroll(&self.scroll)
-                    .size_full();
+                    .size_full()
+                    // The block buttons and the last line stay clear of the scrollbars.
+                    .pr(px(SCROLLBAR_GUTTER))
+                    .pb(px(SCROLLBAR_GUTTER));
                 // A sideways wheel moves the text, not the lines.
                 lines.style().restrict_scroll_to_axis = Some(true);
                 if std::mem::take(&mut self.scroll_pending)

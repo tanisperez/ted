@@ -24,7 +24,7 @@ use crate::state::git_branches::relative_time;
 use crate::state::locale::plural;
 use crate::theme::{Palette, PaletteExt};
 
-use super::super::scrollbars::scrollbar_overlay;
+use super::super::scrollbars::{SCROLLBAR_GUTTER, scrollbar_overlay};
 use super::letter_color;
 
 /// How many commits one page of the log holds.
@@ -434,7 +434,8 @@ impl Render for HistoryView {
                 }),
             )
             .track_scroll(&self.scroll)
-            .size_full();
+            .size_full()
+            .pr(px(SCROLLBAR_GUTTER));
             div()
                 .relative()
                 .flex_1()
