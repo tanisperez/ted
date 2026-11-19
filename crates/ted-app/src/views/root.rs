@@ -525,6 +525,19 @@ impl AppView {
 
     /// Creates a new untitled document (`Ctrl+N`) in a new tab, next to what is open. In file
     /// mode the tab bar shows from the second document on.
+    /// The width of the left panel, saved with the window (#110).
+    pub fn explorer_width(&self) -> f32 {
+        self.explorer_width
+    }
+
+    /// Restores the saved width of the left panel.
+    pub fn set_explorer_width(&mut self, width: f32, cx: &mut Context<Self>) {
+        if width.is_finite() {
+            self.explorer_width = width.clamp(EXPLORER_WIDTH_MIN, EXPLORER_WIDTH_MAX);
+            cx.notify();
+        }
+    }
+
     pub(crate) fn new_document(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.open_untitled(window, cx);
     }

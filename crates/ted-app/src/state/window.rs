@@ -1,5 +1,6 @@
 //! The size of the main window, remembered between sessions in `<config dir>/ted/window.toml`,
-//! next to the settings. Only the size and whether it was maximized: the position is left to the
+//! next to the settings, with the width of the left panel. Only the size and whether it was
+//! maximized: the position is left to the
 //! window manager (Wayland does not allow choosing it). Reading or writing it never interrupts
 //! the user: errors are only logged.
 
@@ -20,6 +21,9 @@ pub struct WindowState {
     pub height: f32,
     #[serde(default)]
     pub maximized: bool,
+    /// The width of the left panel (explorer, Git), `None` until it is first saved (#110).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub explorer_width: Option<f32>,
 }
 
 /// Whether `width` x `height` is a size a window can have. A minimized window on Windows reports
@@ -94,6 +98,7 @@ mod tests {
             width,
             height,
             maximized: false,
+            explorer_width: None,
         }
     }
 
@@ -105,6 +110,7 @@ mod tests {
             width: 1100.5,
             height: 700.0,
             maximized: true,
+            explorer_width: Some(312.0),
         };
         write(dir.path(), &saved);
         assert_eq!(read(dir.path()), Some(saved));

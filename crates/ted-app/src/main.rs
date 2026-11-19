@@ -219,7 +219,11 @@ fn remember_window_size(
         width: opened.width.into(),
         height: opened.height.into(),
         maximized: false,
+        explorer_width: None,
     })));
+    if let Some(width) = saved.and_then(|saved| saved.explorer_width) {
+        view.update(cx, |view, cx| view.set_explorer_width(width, cx));
+    }
 
     let resized = last.clone();
     view.update(cx, |_, cx| {
@@ -240,8 +244,15 @@ fn remember_window_size(
         })
         .detach();
     });
-    cx.on_window_closed(move |_, _| state::window::save(&last.get()))
-        .detach();
+    let closing = view.downgrade();
+    cx.on_window_closed(move |cx, _| {
+        let mut state = last.get();
+        if let Some(view) = closing.upgrade() {
+            state.explorer_width = Some(view.read(cx).explorer_width().round());
+        }
+        state::window::save(&state)
+    })
+    .detach();
 }
 
 /// The size that opens the window as it is now, so it neither grows nor shrinks on every run. The
