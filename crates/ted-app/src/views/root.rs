@@ -135,6 +135,9 @@ impl Document {
     }
 }
 
+/// Pixels of touchpad travel, with Ctrl held, for one step of the editor's font size.
+const ZOOM_SCROLL_STEP: f32 = 40.0;
+
 /// The root view of the main window.
 pub struct AppView {
     /// The settings in effect, read once at startup.
@@ -163,6 +166,8 @@ pub struct AppView {
     explorer_width: f32,
     /// While the explorer's edge is dragged.
     resizing_explorer: bool,
+    /// Touchpad travel with Ctrl held not yet turned into a zoom step (#111).
+    zoom_scroll: f32,
     /// The editor's share of the Markdown split view, 0.5 at first and kept for the window (#102).
     pub(crate) markdown_share: f32,
     /// Whether the Markdown split's divider is being dragged.
@@ -271,6 +276,7 @@ impl AppView {
             git_scroll: UniformListScrollHandle::new(),
             explorer_width: EXPLORER_WIDTH,
             resizing_explorer: false,
+            zoom_scroll: 0.0,
             markdown_share: 0.5,
             resizing_markdown: false,
             markdown_bounds: Rc::default(),
@@ -1217,6 +1223,26 @@ impl Render for AppView {
             .on_action(
                 cx.listener(|this, _: &ZoomReset, window, cx| this.zoom_editor(None, window, cx)),
             )
+            // Ctrl (Cmd on macOS) and the wheel over the editor, which lets it through (#111).
+            .on_scroll(cx.listener(|this, event: &ScrollEvent, window, cx| {
+                if !event.modifiers.secondary(cx) {
+                    return;
+                }
+                let steps = match event.delta {
+                    ScrollDelta::Lines(lines) => lines.y.signum(),
+                    // A touchpad: one step every few lines of travel.
+                    ScrollDelta::Pixels(pixels) => {
+                        this.zoom_scroll += f32::from(pixels.y);
+                        let steps = (this.zoom_scroll / ZOOM_SCROLL_STEP).trunc();
+                        this.zoom_scroll -= steps * ZOOM_SCROLL_STEP;
+                        steps
+                    }
+                };
+                if steps != 0.0 {
+                    this.zoom_editor(Some(steps), window, cx);
+                }
+                cx.stop_propagation();
+            }))
             // Files and folders dropped from the file manager open, as `ted a b` would (#98).
             .on_drag_move::<ExternalPaths>(cx.listener(
                 |this, event: &DragMoveEvent<ExternalPaths>, _, cx| {
