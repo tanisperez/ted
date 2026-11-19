@@ -237,7 +237,9 @@ impl ExplorerView {
         for dir in self.watched.difference(&expanded) {
             watcher.unwatch(dir);
         }
-        for dir in expanded.difference(&self.watched) {
+        // Every expanded folder, not only the new ones: `watch` skips the folders already watched
+        // and adds again those deleted and created anew since (#124).
+        for dir in &expanded {
             watcher.watch(dir);
         }
         self.watched = expanded;

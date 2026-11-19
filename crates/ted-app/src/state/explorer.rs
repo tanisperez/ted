@@ -132,15 +132,18 @@ impl ExplorerTree {
         }
     }
 
-    /// Expands the folder `path`. Returns it when it must be listed.
+    /// Expands the folder `path` and returns it to be listed. A collapsed folder is not watched,
+    /// so a listing kept from before may be stale: it is shown until the new one arrives (#124).
     pub fn expand(&mut self, path: &Path) -> Option<PathBuf> {
-        self.expanded.insert(path.to_path_buf());
-        let needs_listing = !matches!(self.listings.get(path), Some(Listing::Loaded(_)));
-        if needs_listing {
+        let newly = self.expanded.insert(path.to_path_buf());
+        if !matches!(self.listings.get(path), Some(Listing::Loaded(_))) {
             self.listings.insert(path.to_path_buf(), Listing::Loading);
+        } else if !newly {
+            self.rebuild();
+            return None;
         }
         self.rebuild();
-        needs_listing.then(|| path.to_path_buf())
+        Some(path.to_path_buf())
     }
 
     /// Collapses every folder but the root.
@@ -161,13 +164,16 @@ impl ExplorerTree {
         let components: Vec<_> = relative.components().collect();
         for component in components.iter().take(components.len().saturating_sub(1)) {
             dir.push(component);
-            self.expanded.insert(dir.clone());
-            if !matches!(
-                self.listings.get(&dir),
-                Some(Listing::Loaded(_) | Listing::Loading)
-            ) {
-                self.listings.insert(dir.clone(), Listing::Loading);
-                to_list.push(dir.clone());
+            let newly = self.expanded.insert(dir.clone());
+            match self.listings.get(&dir) {
+                Some(Listing::Loading) => {}
+                // Kept from before it was collapsed, unwatched since: shown and listed again.
+                Some(Listing::Loaded(_)) if newly => to_list.push(dir.clone()),
+                Some(Listing::Loaded(_)) => {}
+                _ => {
+                    self.listings.insert(dir.clone(), Listing::Loading);
+                    to_list.push(dir.clone());
+                }
             }
         }
         self.selected = Some(path.to_path_buf());
@@ -302,7 +308,7 @@ mod tests {
     }
 
     #[test]
-    fn expanding_asks_for_a_listing_once() {
+    fn expanding_again_lists_again_but_shows_the_old_listing() {
         let mut tree = sample();
         assert_eq!(
             tree.toggle(Path::new("/r/src")),
@@ -316,9 +322,13 @@ mod tests {
         assert_eq!(names(&tree), vec!["src", "  main.rs", "README.md"]);
         assert_eq!(tree.toggle(Path::new("/r/src")), None);
         assert_eq!(names(&tree), vec!["src", "README.md"]);
-        // Listed already: expanding again needs no listing.
-        assert_eq!(tree.toggle(Path::new("/r/src")), None);
-        assert_eq!(tree.rows().len(), 3);
+        // Not watched while collapsed: listed again, the old listing shown meanwhile (#124).
+        assert_eq!(
+            tree.toggle(Path::new("/r/src")),
+            Some(PathBuf::from("/r/src"))
+        );
+        assert_eq!(names(&tree), vec!["src", "  main.rs", "README.md"]);
+        assert!(!tree.rows()[0].loading);
     }
 
     #[test]

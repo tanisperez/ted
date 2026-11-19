@@ -53,8 +53,10 @@ impl FolderWatcher {
         Ok((Self { watcher, watched }, rx))
     }
 
-    /// Starts watching `dir`. Failures (the folder vanished, no inotify watches left) are logged
-    /// and the folder is simply not live.
+    /// Starts watching `dir`, unless it is already watched. A watched folder that was deleted is no
+    /// longer watched (the OS drops the watch), so calling this again after it is created anew
+    /// follows it again. Failures (the folder vanished, no inotify watches left) are logged and
+    /// the folder is simply not live.
     pub fn watch(&mut self, dir: &Path) {
         if !lock(&self.watched).insert(dir.to_path_buf()) {
             return;
@@ -122,8 +124,18 @@ fn collect(event: notify::Result<Event>, watched: &Watched, changed: &mut HashSe
     if matches!(event.kind, EventKind::Access(_) | EventKind::Other) {
         return;
     }
-    let watched = lock(watched);
+    let gone = matches!(
+        event.kind,
+        EventKind::Remove(_) | EventKind::Modify(notify::event::ModifyKind::Name(_))
+    );
+    let mut watched = lock(watched);
     for path in &event.paths {
+        // A watched folder deleted or renamed away loses its watch: forget it, so the next
+        // `watch` call (from the listing that this change triggers) adds it again.
+        if gone && watched.contains(path) && !path.is_dir() {
+            watched.remove(path);
+            changed.insert(path.clone());
+        }
         // A child changed: its folder. A watched folder itself changed (removed, renamed): the
         // folder, so the view can list it again and show the error.
         match path.parent() {
@@ -212,6 +224,25 @@ mod tests {
         fs::write(dir.join("sub").join("deep.txt"), "x").unwrap();
         fs::write(dir.join("other").join("x.txt"), "x").unwrap();
         assert_eq!(recv(&rx, Duration::from_millis(300)), None);
+    }
+
+    #[test]
+    fn follows_a_folder_deleted_and_created_again() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().canonicalize().unwrap();
+        let dir = root.join("build");
+        fs::create_dir(&dir).unwrap();
+        let (mut w, rx) = FolderWatcher::new().unwrap();
+        w.watch(&root);
+        w.watch(&dir);
+        fs::remove_dir(&dir).unwrap();
+        while recv(&rx, Duration::from_millis(300)).is_some() {}
+        fs::create_dir(&dir).unwrap();
+        while recv(&rx, Duration::from_millis(300)).is_some() {}
+        // The explorer asks again for every expanded folder after a change.
+        w.watch(&dir);
+        fs::write(dir.join("out.txt"), "x").unwrap();
+        assert_eq!(recv(&rx, WAIT), Some(vec![dir]));
     }
 
     #[test]
