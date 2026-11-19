@@ -7,12 +7,16 @@
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::Button;
+use gpui_kit::component::menu::DropdownMenu as _;
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
-use telaio_ui::components::{NeutralButtonExt, SearchableMenu};
+use telaio_text::{Indent, LineEnding};
+use telaio_ui::components::{NeutralButtonExt, SearchableMenu, menu_choice_item, rich_menu_width};
+
+use crate::state::settings::TAB_SIZES;
 
 use crate::actions::{OpenShortcuts, ToggleExplorer, ToggleGit};
 use crate::state::launch::Target;
@@ -131,9 +135,9 @@ impl AppView {
                         row.child(self.render_position(status.position, &palette, cx))
                     })
                     .child(self.render_wrap_toggle(status.wrap, &palette, cx))
-                    .children(status.indent)
+                    .child(self.render_indent_menu(status.indent, &palette, cx))
                     .child(status.encoding)
-                    .child(status.line_ending)
+                    .child(self.render_line_ending_menu(status.line_ending, &palette, cx))
                     .child(language_menu_popover(
                         &self.language_menu,
                         language,
@@ -188,6 +192,162 @@ impl AppView {
 
     /// The Wrap toggle: the wrap-text icon and "Wrap", `accent_subtle` and `accent_text` while
     /// the document wraps. A click does what Alt+Z does.
+    /// A ghost button of the status bar that opens a menu, as the language one.
+    fn status_menu_button(
+        id: &'static str,
+        label: impl Into<SharedString>,
+        tooltip: SharedString,
+        palette: &Palette,
+        cx: &App,
+    ) -> Button {
+        Button::new(id)
+            .neutral_ghost(cx, palette.fg_subtle)
+            .compact()
+            .h(px(22.0))
+            .px(px(6.0))
+            .mx(px(-6.0))
+            .rounded(px(RADIUS_MD - 2.0))
+            .text_size(px(11.5))
+            .tooltip(tooltip)
+            .child(label.into())
+    }
+
+    /// `LF` or `CRLF`: a menu converts the whole file to the other (#118).
+    fn render_line_ending_menu(
+        &self,
+        current: &'static str,
+        palette: &Palette,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let editor = self.editor().map(|editor| editor.downgrade());
+        Self::status_menu_button(
+            "status-line-ending",
+            current,
+            t!("status.line_ending_tooltip").into(),
+            palette,
+            cx,
+        )
+        .dropdown_menu_with_anchor(Anchor::BottomRight, move |menu, _, _| {
+            let choice = |ending: LineEnding, label: SharedString| {
+                let editor = editor.clone();
+                menu_choice_item(label, None, ending.label() == current, move |_, cx| {
+                    if let Some(editor) = editor.as_ref().and_then(WeakEntity::upgrade) {
+                        editor.update(cx, |editor, cx| editor.convert_line_endings(ending, cx));
+                    }
+                })
+            };
+            rich_menu_width(menu, 240.0)
+                .label(t!("status.line_ending_title"))
+                .item(choice(LineEnding::Lf, t!("status.line_ending_lf").into()))
+                .item(choice(
+                    LineEnding::CrLf,
+                    t!("status.line_ending_crlf").into(),
+                ))
+        })
+    }
+
+    /// `Spaces: 4` or `Tabs`: a menu, as IntelliJ's, to indent with spaces or tabs, the size, to
+    /// convert the file, and to open the `.editorconfig` that applies (#119).
+    fn render_indent_menu(
+        &self,
+        label: Option<String>,
+        palette: &Palette,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let detected = self
+            .editor()
+            .and_then(|editor| editor.read(cx).state.buffer.indent());
+        let current = detected.unwrap_or(match self.settings.insert_spaces {
+            true => Indent::Spaces(self.settings.tab_size.clamp(1, 16) as u8),
+            false => Indent::Tabs,
+        });
+        let label = label.unwrap_or_else(|| match current {
+            Indent::Tabs => t!("status.tabs").into_owned(),
+            Indent::Spaces(count) => t!("status.spaces", count = count).into_owned(),
+        });
+        let size = match current {
+            Indent::Spaces(count) => count,
+            Indent::Tabs => self.settings.tab_size.clamp(1, 16) as u8,
+        };
+        let editor = self.editor().map(|editor| editor.downgrade());
+        let app = cx.weak_entity();
+        Self::status_menu_button(
+            "status-indent",
+            label,
+            t!("status.indent_tooltip").into(),
+            palette,
+            cx,
+        )
+        .dropdown_menu_with_anchor(Anchor::BottomRight, move |menu, _, _| {
+            let style = |indent: Indent| {
+                let editor = editor.clone();
+                move |_: &mut Window, cx: &mut App| {
+                    if let Some(editor) = editor.as_ref().and_then(WeakEntity::upgrade) {
+                        editor.update(cx, |editor, cx| editor.set_indent_style(indent, cx));
+                    }
+                }
+            };
+            let convert = |indent: Indent| {
+                let editor = editor.clone();
+                move |_: &mut Window, cx: &mut App| {
+                    if let Some(editor) = editor.as_ref().and_then(WeakEntity::upgrade) {
+                        editor.update(cx, |editor, cx| editor.convert_indentation(indent, cx));
+                    }
+                }
+            };
+            let spaces = matches!(current, Indent::Spaces(_));
+            let mut menu = rich_menu_width(menu, 270.0)
+                .label(t!("status.indent_title"))
+                .item(menu_choice_item(
+                    t!("status.indent_spaces"),
+                    None,
+                    spaces,
+                    style(Indent::Spaces(size)),
+                ))
+                .item(menu_choice_item(
+                    t!("status.indent_tabs"),
+                    None,
+                    !spaces,
+                    style(Indent::Tabs),
+                ));
+            if spaces {
+                menu = menu.separator().label(t!("status.indent_size"));
+                for option in TAB_SIZES {
+                    let option = option as u8;
+                    menu = menu.item(menu_choice_item(
+                        option.to_string(),
+                        None,
+                        option == size,
+                        style(Indent::Spaces(option)),
+                    ));
+                }
+            }
+            let app = app.clone();
+            menu.separator()
+                .item(menu_choice_item(
+                    t!("status.indent_convert_spaces"),
+                    None,
+                    false,
+                    convert(Indent::Spaces(size)),
+                ))
+                .item(menu_choice_item(
+                    t!("status.indent_convert_tabs"),
+                    None,
+                    false,
+                    convert(Indent::Tabs),
+                ))
+                .separator()
+                .item(menu_choice_item(
+                    t!("status.editorconfig"),
+                    None,
+                    false,
+                    move |window, cx| {
+                        let _ = app.update(cx, |app, cx| app.open_editorconfig(window, cx));
+                    },
+                ))
+        })
+    }
+
     /// `Ln 12, Col 5`: a click opens Go to line, as `Ctrl+G` (#117).
     fn render_position(
         &self,

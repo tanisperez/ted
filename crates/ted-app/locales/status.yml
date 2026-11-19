@@ -48,3 +48,39 @@ _version: 2
 "status.language_tooltip":
   en: "Highlight as another language (Alt+L)"
   es: "Resaltar como otro lenguaje (Alt+L)"
+"status.line_ending_tooltip":
+  en: "Line separator"
+  es: "Separador de línea"
+"status.line_ending_title":
+  en: "Convert the line separators to"
+  es: "Convertir los separadores de línea a"
+"status.line_ending_lf":
+  en: "LF (Linux and macOS)"
+  es: "LF (Linux y macOS)"
+"status.line_ending_crlf":
+  en: "CRLF (Windows)"
+  es: "CRLF (Windows)"
+"status.indent_tooltip":
+  en: "Indentation"
+  es: "Sangría"
+"status.indent_title":
+  en: "Indent with"
+  es: "Sangrar con"
+"status.indent_spaces":
+  en: "Spaces"
+  es: "Espacios"
+"status.indent_tabs":
+  en: "Tabs"
+  es: "Tabulaciones"
+"status.indent_size":
+  en: "Size"
+  es: "Tamaño"
+"status.indent_convert_spaces":
+  en: "Convert the indentation to spaces"
+  es: "Convertir la sangría a espacios"
+"status.indent_convert_tabs":
+  en: "Convert the indentation to tabs"
+  es: "Convertir la sangría a tabulaciones"
+"status.editorconfig":
+  en: "Open .editorconfig"
+  es: "Abrir .editorconfig"

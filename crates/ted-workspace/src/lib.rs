@@ -3,6 +3,7 @@
 //! and keeps ted's document icons for the file types it opens by default (freedesktop systems).
 //! No `gpui`: every function here blocks, the app calls them on its background executor.
 
+mod editorconfig;
 mod find_files;
 mod index;
 mod list;
@@ -13,6 +14,7 @@ mod paths;
 mod save;
 mod watch;
 
+pub use editorconfig::{EDITORCONFIG, create_editorconfig, find_editorconfig};
 pub use find_files::{
     CONTEXT_LINES, FileMask, LineMatch, MAX_LINE_BYTES, MAX_SEARCHED_FILE, find_lines, read_text,
     replace_in_file,

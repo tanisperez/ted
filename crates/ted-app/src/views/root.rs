@@ -19,7 +19,7 @@ use gpui_kit::*;
 use rust_i18n::t;
 use ted_workspace::{FileContent, LoadedFile, load_file, load_head};
 use telaio_syntax::Language;
-use telaio_text::Buffer;
+use telaio_text::{Buffer, Indent, LineEnding};
 use telaio_ui::components::{
     CloseScope, EmptyState, UnsavedChoice, close_targets, open_shortcuts_dialog,
     open_unsaved_dialog,
@@ -543,6 +543,47 @@ impl AppView {
         explorer.update(cx, |explorer, cx| explorer.reveal(&path, cx));
         let focus = explorer.read(cx).focus_handle(cx);
         focus.focus(window, cx);
+    }
+
+    /// Opens the `.editorconfig` that applies to the active file, the nearest one up to the open
+    /// folder. With none, creates one at the folder's root (or next to the file in file mode)
+    /// with the file's indentation and line separator, and opens it (#119).
+    pub(crate) fn open_editorconfig(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(path) = self.documents.active().and_then(|doc| doc.path.clone()) else {
+            return;
+        };
+        let Some(dir) = path.parent().map(Path::to_path_buf) else {
+            return;
+        };
+        let root = match &self.target {
+            Some(Target::Folder(root)) => Some(root.clone()),
+            _ => None,
+        };
+        let (indent, ending) = self.editor().map_or((None, LineEnding::Lf), |editor| {
+            let buffer = &editor.read(cx).state.buffer;
+            (buffer.indent(), buffer.line_ending())
+        });
+        let template = editorconfig_template(indent, ending, &self.settings);
+        cx.spawn_in(window, async move |this, cx| {
+            let found = cx
+                .background_spawn(async move {
+                    match ted_workspace::find_editorconfig(&dir, root.as_deref()) {
+                        Some(found) => Ok(found),
+                        None => ted_workspace::create_editorconfig(
+                            root.as_deref().unwrap_or(&dir),
+                            &template,
+                        ),
+                    }
+                })
+                .await;
+            match found {
+                Ok(found) => {
+                    let _ = this.update_in(cx, |app, window, cx| app.open_path(&found, window, cx));
+                }
+                Err(error) => log::warn!("cannot create .editorconfig: {error}"),
+            }
+        })
+        .detach();
     }
 
     /// The width of the left panel, saved with the window (#110).
@@ -1327,6 +1368,28 @@ impl Render for AppView {
 
 /// An editor for `state`, with ted's right-click menu: the standard entries, then Duplicate line
 /// and Delete line.
+/// A new `.editorconfig` for every file, with this file's indentation and line separator.
+fn editorconfig_template(
+    indent: Option<Indent>,
+    ending: LineEnding,
+    settings: &Settings,
+) -> String {
+    let (style, size) = match indent {
+        Some(Indent::Tabs) => ("tab", settings.tab_size),
+        Some(Indent::Spaces(count)) => ("space", usize::from(count)),
+        None if settings.insert_spaces => ("space", settings.tab_size),
+        None => ("tab", settings.tab_size),
+    };
+    let ending = match ending {
+        LineEnding::Lf => "lf",
+        LineEnding::CrLf => "crlf",
+    };
+    format!(
+        "root = true\n\n[*]\nindent_style = {style}\nindent_size = {size}\nend_of_line = {ending}\ncharset = utf-8\ntrim_trailing_whitespace = {}\ninsert_final_newline = {}\n",
+        settings.trim_trailing_whitespace, settings.insert_final_newline
+    )
+}
+
 fn new_editor(state: EditorState, cx: &mut Context<EditorView>) -> EditorView {
     let mut editor = EditorView::new(state, cx);
     editor.set_context_menu(|entries, edit, _, _| {
