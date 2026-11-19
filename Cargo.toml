@@ -43,6 +43,9 @@ ignore = "0.4.33"
 # The version `ignore` already builds, for the file mask of Find in files.
 globset = "0.4.20"
 notify = "8.2"
+# Mermaid diagrams of the Markdown preview drawn as SVG, in pure Rust (#113). Without its command
+# line and PNG features; its fontdb is the one gpui already builds.
+mermaid-rs-renderer = { version = "0.3.1", default-features = false }
 async-channel = "2.5"
 
 [workspace.lints.clippy]

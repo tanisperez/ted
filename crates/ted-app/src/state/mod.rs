@@ -14,6 +14,7 @@ pub mod language_picker;
 pub mod launch;
 pub mod locale;
 pub mod markdown_view;
+pub mod mermaid;
 pub mod open_queue;
 pub mod palette;
 pub mod recents;

@@ -27,6 +27,9 @@ _version: 2
 "markdown.words":
   en: "%{count} words"
   es: "%{count} palabras"
+"markdown.mermaid_error":
+  en: "This Mermaid diagram cannot be drawn: %{error}"
+  es: "Este diagrama Mermaid no se puede dibujar: %{error}"
 "markdown.word":
   en: "1 word"
   es: "1 palabra"

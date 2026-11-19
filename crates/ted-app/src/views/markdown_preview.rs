@@ -8,6 +8,7 @@
 //! split view the preview follows the editor: the block that holds the editor's top line is
 //! scrolled to the top.
 
+use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::Arc;
 use std::time::Duration;
@@ -18,11 +19,13 @@ use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 use telaio_syntax::{
     Block, BlockKind, Inline, InlineStyle, MarkdownDocument, parse_markdown, word_count,
 };
 
 use crate::state::markdown_view::MarkdownView;
+use crate::state::mermaid::{DiagramColors, diagram_key, render_diagram};
 use crate::theme::{Palette, PaletteExt};
 use telaio_editor::SyntaxColors;
 
@@ -45,12 +48,43 @@ const LIST_INDENT: f32 = 22.0;
 /// The narrowest a table column gets before the table scrolls sideways (#125).
 const TABLE_COLUMN_MIN_WIDTH: f32 = 120.0;
 
+/// A drawn diagram with its size, or why it could not be drawn.
+type Diagram = Result<(Arc<Image>, gpui_kit::Size<f32>), SharedString>;
+type Diagrams = HashMap<u64, Diagram>;
+
+/// The CSS colors of `palette` for the diagrams.
+fn diagram_colors(palette: &Palette) -> DiagramColors {
+    let css = |color: Hsla| {
+        let rgba = Rgba::from(color);
+        let byte = |value: f32| (value.clamp(0.0, 1.0) * 255.0).round() as u8;
+        format!(
+            "#{:02x}{:02x}{:02x}",
+            byte(rgba.r),
+            byte(rgba.g),
+            byte(rgba.b)
+        )
+    };
+    DiagramColors {
+        dark: palette.dark,
+        fg: css(palette.fg),
+        fg_muted: css(palette.fg_muted),
+        bg: css(palette.bg),
+        surface: css(palette.surface),
+        raised: css(palette.raised),
+        border: css(palette.border),
+        border_strong: css(palette.border_strong),
+        accent: css(palette.accent),
+    }
+}
+
 /// The preview of one editor's document.
 pub(crate) struct MarkdownPreview {
     editor: Entity<EditorView>,
     /// What the document shows. A preview tab is always `Preview`.
     view: MarkdownView,
     document: Arc<MarkdownDocument>,
+    /// The Mermaid diagrams of the document, drawn with the parse, by [`diagram_key`] (#113).
+    diagrams: Arc<Diagrams>,
     list: ListState,
     /// The buffer version parsed, or waiting to be parsed.
     parsed: Option<u64>,
@@ -81,6 +115,7 @@ impl MarkdownPreview {
             editor: editor.clone(),
             view,
             document: Arc::default(),
+            diagrams: Arc::default(),
             list: ListState::new(0, ListAlignment::Top, px(400.0)),
             parsed: None,
             generation: 0,
@@ -150,15 +185,21 @@ impl MarkdownPreview {
                 cx.background_executor().timer(REPARSE_DELAY).await;
             }
             // The text as it is after the delay, the latest edits included.
-            let Ok((buffer, blocks)) = this.update(cx, |preview, cx| {
+            let Ok((buffer, blocks, colors, known)) = this.update(cx, |preview, cx| {
                 preview.running = true;
                 let buffer = preview.editor.read(cx).state.buffer.clone();
                 preview.parsed = Some(buffer.version());
-                (buffer, preview.view.shows_preview())
+                let colors = diagram_colors(&cx.palette());
+                (
+                    buffer,
+                    preview.view.shows_preview(),
+                    colors,
+                    preview.diagrams.clone(),
+                )
             }) else {
                 return;
             };
-            let document = cx
+            let (document, diagrams) = cx
                 .background_spawn(async move {
                     let started = std::time::Instant::now();
                     let text = buffer.to_text();
@@ -175,7 +216,8 @@ impl MarkdownPreview {
                         document.blocks.len(),
                         started.elapsed()
                     );
-                    document
+                    let diagrams = draw_diagrams(&document.blocks, &colors, &known);
+                    (document, diagrams)
                 })
                 .await;
             let _ = this.update(cx, |preview, cx| {
@@ -200,6 +242,7 @@ impl MarkdownPreview {
                 let old = preview.document.blocks.len();
                 let new = document.blocks.len();
                 preview.document = Arc::new(document);
+                preview.diagrams = diagrams;
                 // Keeps the scroll position on the same block while typing.
                 preview.list.splice(0..old, new);
                 preview.followed = None;
@@ -238,7 +281,7 @@ impl MarkdownPreview {
         let Some(block) = self.document.blocks.get(item) else {
             return div().into_any_element();
         };
-        let style = PreviewStyle::new(window, cx);
+        let style = PreviewStyle::new(window, cx, self.diagrams.clone());
         let last = item + 1 == self.document.blocks.len();
         let mut ids = 0;
         div()
@@ -299,22 +342,74 @@ impl Render for MarkdownPreview {
 /// What every block needs to paint itself: the palette, the fonts and the code colors.
 struct PreviewStyle {
     palette: Palette,
+    /// The drawn Mermaid diagrams, and the colors their keys were made with.
+    diagrams: Arc<Diagrams>,
+    diagram_colors: DiagramColors,
     ui_font: Font,
     mono_font: Font,
     syntax: SyntaxColors,
 }
 
 impl PreviewStyle {
-    fn new(window: &Window, cx: &App) -> Self {
+    fn new(window: &Window, cx: &App, diagrams: Arc<Diagrams>) -> Self {
         let palette = (*cx.palette()).clone();
+        let diagram_colors = diagram_colors(&palette);
         let ui_font = window.text_style().font();
         let mono_font = font(cx.theme().mono_font_family.clone());
         let syntax = SyntaxColors::new(&cx.theme().highlight_theme, &palette);
         Self {
             palette,
+            diagrams,
+            diagram_colors,
             ui_font,
             mono_font,
             syntax,
+        }
+    }
+}
+
+/// The diagrams of the Mermaid blocks of `blocks`, drawn now unless `known` has them already.
+/// Only the ones still in the document are kept. Blocking: runs with the parse.
+fn draw_diagrams(blocks: &[Block], colors: &DiagramColors, known: &Diagrams) -> Arc<Diagrams> {
+    let mut diagrams = Diagrams::new();
+    let mut sources = Vec::new();
+    collect_mermaid(blocks, &mut sources);
+    for source in sources {
+        let key = diagram_key(source, colors);
+        if diagrams.contains_key(&key) {
+            continue;
+        }
+        let diagram = match known.get(&key) {
+            Some(diagram) => diagram.clone(),
+            None => {
+                let started = std::time::Instant::now();
+                let drawn = render_diagram(source, colors)
+                    .map(|drawn| {
+                        let image = Image::from_bytes(ImageFormat::Svg, drawn.svg.into_bytes());
+                        (Arc::new(image), size(drawn.width, drawn.height))
+                    })
+                    .map_err(SharedString::from);
+                log::debug!("drew a Mermaid diagram in {:?}", started.elapsed());
+                drawn
+            }
+        };
+        diagrams.insert(key, diagram);
+    }
+    Arc::new(diagrams)
+}
+
+/// The sources of the Mermaid blocks, inside lists and quotes too.
+fn collect_mermaid<'a>(blocks: &'a [Block], out: &mut Vec<&'a str>) {
+    for block in blocks {
+        match &block.kind {
+            BlockKind::Code { fence, text, .. } if fence == "mermaid" => out.push(text),
+            BlockKind::Quote(inner) => collect_mermaid(inner, out),
+            BlockKind::List(list) => {
+                for item in &list.items {
+                    collect_mermaid(&item.blocks, out);
+                }
+            }
+            _ => {}
         }
     }
 }
@@ -428,6 +523,57 @@ fn render_block(block: &Block, item: usize, ids: &mut usize, style: &PreviewStyl
                     .map(|inner| render_list_block(inner, palette.fg_muted, item, ids, style)),
             )
             .into_any_element(),
+        BlockKind::Code { text, fence, .. }
+            if fence == "mermaid"
+                && let Some(Ok((image, drawn))) = style
+                    .diagrams
+                    .get(&diagram_key(text, &style.diagram_colors)) =>
+        {
+            // At its size, or narrower to fit the preview, keeping its shape.
+            div()
+                .mb(px(16.0))
+                .w_full()
+                .flex()
+                .justify_center()
+                .child(
+                    img(image.clone())
+                        .w_full()
+                        .max_w(px(drawn.width))
+                        .aspect_ratio(drawn.width / drawn.height),
+                )
+                .into_any_element()
+        }
+        BlockKind::Code { text, fence, .. }
+            if fence == "mermaid"
+                && let Some(Err(error)) = style
+                    .diagrams
+                    .get(&diagram_key(text, &style.diagram_colors)) =>
+        {
+            // The source as code, and why it is not drawn.
+            let code = Block {
+                kind: BlockKind::Code {
+                    language: None,
+                    fence: String::new(),
+                    text: text.clone(),
+                    spans: Vec::new(),
+                },
+                ..block.clone()
+            };
+            v_flex()
+                .child(render_block(&code, item, ids, style))
+                .child(
+                    div()
+                        .mt(px(-10.0))
+                        .mb(px(16.0))
+                        .text_size(px(12.0))
+                        .text_color(palette.warning)
+                        .child(SharedString::from(t!(
+                            "markdown.mermaid_error",
+                            error = error.as_ref()
+                        ))),
+                )
+                .into_any_element()
+        }
         BlockKind::Code { text, spans, .. } => {
             let runs = code_runs(text, spans, style);
             let shown: SharedString = if text.is_empty() {
