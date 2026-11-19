@@ -127,7 +127,9 @@ impl AppView {
                 h_flex()
                     .gap(px(16.0))
                     .children(words)
-                    .when(shows_cursor, |row| row.child(status.position))
+                    .when(shows_cursor, |row| {
+                        row.child(self.render_position(status.position, &palette, cx))
+                    })
                     .child(self.render_wrap_toggle(status.wrap, &palette, cx))
                     .children(status.indent)
                     .child(status.encoding)
@@ -186,6 +188,38 @@ impl AppView {
 
     /// The Wrap toggle: the wrap-text icon and "Wrap", `accent_subtle` and `accent_text` while
     /// the document wraps. A click does what Alt+Z does.
+    /// `Ln 12, Col 5`: a click opens Go to line, as `Ctrl+G` (#117).
+    fn render_position(
+        &self,
+        position: String,
+        palette: &Palette,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let hover = palette.hover;
+        h_flex()
+            .id("status-position")
+            .h(px(22.0))
+            .px(px(6.0))
+            .mx(px(-6.0))
+            .items_center()
+            .rounded(px(RADIUS_MD - 2.0))
+            .cursor_pointer()
+            .hover(move |style| style.bg(hover))
+            .tooltip(|window, cx| {
+                Tooltip::new(SharedString::from(t!("status.position_tooltip"))).build(window, cx)
+            })
+            .child(position)
+            .on_click(cx.listener(|this, _, window, cx| {
+                let Some(editor) = this.editor().cloned() else {
+                    return;
+                };
+                editor.read(cx).focus_handle().clone().focus(window, cx);
+                window.defer(cx, |window, cx| {
+                    window.dispatch_action(Box::new(telaio_editor::views::goto::OpenGoto), cx)
+                });
+            }))
+    }
+
     fn render_wrap_toggle(
         &self,
         wrap: bool,
